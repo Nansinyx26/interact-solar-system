@@ -310,13 +310,16 @@ button.ativo {
 .painel-camera {
   position: fixed;
   right: var(--margem);
-  bottom: calc(var(--margem) + var(--seguro-baixo));
-  width: 268px;
-  padding: 8px 8px 4px;
+  bottom: calc(75px + var(--seguro-baixo));
+  width: 380px;
+  padding: 10px 10px 6px;
   border-radius: var(--raio);
   background: var(--painel);
   border: 1px solid var(--borda);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  z-index: 10;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transition: width 0.3s ease, bottom 0.3s ease;
 }
 .painel-camera canvas {
   width: 100%;
@@ -328,11 +331,12 @@ button.ativo {
 }
 .painel-camera span {
   display: block;
-  padding: 3px 2px 2px;
-  font-size: 10px;
+  padding: 4px 2px 2px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--texto-fraco);
+  text-align: center;
 }
 
 /* --------------------------------------------------------- botões de gesto */
@@ -553,8 +557,9 @@ button.ativo {
     top: 58px;
     bottom: auto;
     right: var(--margem);
-    width: 128px;
-    padding: 5px 5px 2px;
+    width: 200px;
+    padding: 6px 6px 3px;
+    z-index: 15;
   }
   .painel-camera span {
     display: none;
