@@ -59,6 +59,7 @@ class Aplicacao {
     this._distanciaPinca = null;
 
     this._ligarEventos();
+    this._observarPainelGesto();
     this._montarBotoes();
   }
 
@@ -78,6 +79,31 @@ class Aplicacao {
     this._ajustarCanvas();
     this.camera.redimensionar(this.canvas.width, this.canvas.height);
     this.renderizador.redimensionar(this.canvas.width, this.canvas.height);
+  }
+
+  /**
+   * Publica a altura do painel de gesto em `--altura-painel-gesto`.
+   *
+   * A ficha divide a coluna esquerda com esse painel e precisa parar onde ele
+   * começa. A altura muda entre desktop e celular e com a fonte do sistema, por
+   * isso é medida em tempo real em vez de estimada no CSS.
+   */
+  _observarPainelGesto() {
+    const painel = document.querySelector(".painel-gesto");
+    if (!painel) return;
+    const publicar = () => {
+      const altura = Math.round(painel.getBoundingClientRect().height);
+      document.documentElement.style.setProperty(
+        "--altura-painel-gesto",
+        `${altura}px`,
+      );
+    };
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(publicar).observe(painel);
+    } else {
+      window.addEventListener("resize", publicar);
+    }
+    publicar();
   }
 
   _montarBotoes() {
@@ -305,6 +331,8 @@ class Aplicacao {
     this.corpoAlvo = corpo;
     this.camera.focarCorpo(this.posicoes.get(corpo.nome), raioCorpoPx(corpo), true);
     this.ficha.mostrar(corpo);
+    // A ficha ocupa o lugar da legenda no canto esquerdo: uma entra, a outra sai.
+    document.body.classList.add("com-foco");
   }
 
   _voltarVisaoGeral(reiniciarGesto = true) {
@@ -313,6 +341,7 @@ class Aplicacao {
     this.corpoAlvo = null;
     this.camera.voltarVisaoGeral();
     this.ficha.ocultar();
+    document.body.classList.remove("com-foco");
     if (reiniciarGesto) this.estabilizador.reiniciar();
   }
 

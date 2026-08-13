@@ -22,6 +22,12 @@
   /* Altura reservada para a assinatura no canto inferior direito. O preview da
      webcam se apoia nela para os dois não ocuparem o mesmo canto. */
   --altura-assinatura: 46px;
+  /* Altura real do painel de gesto, medida pelo app.js (ResizeObserver): ele
+     muda de tamanho entre desktop e celular, e a ficha — que divide a coluna
+     esquerda com ele — precisa parar exatamente onde ele começa. */
+  --altura-painel-gesto: 120px;
+  /* Respiro entre os blocos empilhados no canto inferior direito. */
+  --folga-canto: 13px;
 }
 
 * {
@@ -198,22 +204,43 @@ button.ativo {
 .ficha {
   position: fixed;
   top: 64px;
-  right: var(--margem);
+  /* Coluna da ESQUERDA, onde fica a legenda de dedos (que some enquanto há um
+     corpo em foco). A direita inteira é da webcam e da assinatura — com a ficha
+     lá, ela crescia por baixo do preview e o final dos dados sumia. */
+  left: var(--margem);
+  right: auto;
   width: 330px;
-  max-height: calc(100vh - 300px);
+  /* Ocupa daqui até o topo do painel de gesto, que está ancorado embaixo. */
+  max-height: calc(
+    100dvh - 64px - var(--altura-painel-gesto) - var(--margem) -
+      2 * var(--folga-canto)
+  );
   overflow-y: auto;
+  /* Acima da cena, abaixo do preview (10): mesmo que as contas falhem em algum
+     navegador, a webcam continua legível. */
+  z-index: 8;
   padding: 18px;
   border-radius: var(--raio);
   background: var(--painel);
   border: 1px solid var(--borda);
   backdrop-filter: blur(10px);
   opacity: 0;
-  transform: translateX(24px);
+  transform: translateX(-24px); /* entra pela esquerda, o lado em que mora */
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 .ficha.visivel {
   opacity: 1;
   transform: none;
+}
+
+/* Ficha e legenda dividem o mesmo canto: com um corpo em foco valem os dados;
+   sem foco, vale a tabela de dedos → corpo celeste. */
+.painel-legenda {
+  transition: opacity 0.25s ease;
+}
+body.com-foco .painel-legenda {
+  opacity: 0;
+  pointer-events: none;
 }
 .ficha .faixa {
   height: 4px;

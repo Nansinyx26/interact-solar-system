@@ -77,6 +77,20 @@ _ALTURA_PAINEL_STATUS = 78
 
 _MAXIMO_DEDOS_UMA_MAO = GESTO_MINIMO_DUAS_MAOS - 1
 
+
+def topo_do_painel_gesto(altura_janela: int) -> int:
+    """Y onde começa o painel de gesto, ancorado na base da coluna esquerda.
+
+    A ficha do corpo focado divide essa coluna com ele e precisa parar aqui —
+    por isso o valor é exposto em vez de recalculado em outro módulo.
+    """
+    return altura_janela - MARGEM_HUD - _ALTURA_PAINEL_GESTO - ALTURA_BARRA_ATALHOS
+
+
+def base_do_painel_status() -> int:
+    """Y logo abaixo do painel de status, onde a ficha pode começar."""
+    return MARGEM_HUD + _ALTURA_PAINEL_STATUS + MARGEM_HUD
+
 # Altura total do bloco do preview (imagem + rodapé com a legenda da tecla C).
 # A ficha do planeta usa isto para não invadir o espaço da webcam.
 ALTURA_BLOCO_PREVIEW = ALTURA_PREVIEW_CAMERA + 22
@@ -215,7 +229,9 @@ class HUD:
         """Desenha o HUD completo."""
         self._desenhar_status(superficie, estado)
         self._desenhar_painel_gesto(superficie, estado)
-        if self._altura >= ALTURA_MINIMA_LEGENDA:
+        # A ficha do corpo focado ocupa a mesma coluna esquerda da legenda: com
+        # um corpo em foco valem os dados; sem foco, vale a tabela de dedos.
+        if estado.corpo_alvo is None and self._altura >= ALTURA_MINIMA_LEGENDA:
             self._desenhar_legenda(superficie, estado)
         self._desenhar_barra_atalhos(superficie)
         self._desenhar_avisos(superficie, estado)
@@ -272,7 +288,7 @@ class HUD:
         self, superficie: pygame.Surface, estado: EstadoHUD
     ) -> None:
         """Número detectado (com anel de progresso) e número confirmado."""
-        topo = self._altura - MARGEM_HUD - _ALTURA_PAINEL_GESTO - ALTURA_BARRA_ATALHOS
+        topo = topo_do_painel_gesto(self._altura)
         retangulo = pygame.Rect(
             MARGEM_HUD, topo, _LARGURA_PAINEL_GESTO, _ALTURA_PAINEL_GESTO
         )

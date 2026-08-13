@@ -70,7 +70,9 @@ export const ZOOM_MIN = 0.35;
 export const ZOOM_MAX = 6.0;
 export const RAIO_ALVO_FOCO_PX = 92;
 export const DURACAO_TRANSICAO_S = 0.8;
-export const DESLOCAMENTO_FOCO_X_PX = -150;
+// Ao focar, o corpo é deslocado para a DIREITA: a ficha ocupa a coluna
+// esquerda, então o alvo precisa fugir dela, não do lado oposto.
+export const DESLOCAMENTO_FOCO_X_PX = 150;
 export const FATOR_ZOOM_RODA = 1.15;
 
 // ---------------------------------------------------------------------------

@@ -17,12 +17,12 @@ from config import (
 )
 from dados.planetas import CorpoCeleste
 from nucleo.camera import suavizar
-from ui.hud import Fontes, desenhar_painel
+from ui.hud import Fontes, base_do_painel_status, desenhar_painel
 
-# A ficha ocupa a faixa direita a partir do topo; o preview da webcam fica no
-# canto inferior direito, então o limite de baixo chega pronto de fora.
-_TOPO_FICHA = MARGEM_HUD
-_TOPO_TITULO = 120
+# A ficha ocupa a coluna ESQUERDA, começando logo abaixo do painel de status e
+# terminando onde o painel de gesto começa — o limite de baixo chega pronto de
+# fora, porque depende do tamanho corrente da janela.
+_TOPO_FICHA = base_do_painel_status()
 # Cada item é rótulo + N linhas de valor + respiro; alguns valores ocupam duas
 # linhas (UA e km, por exemplo), então a altura do item é calculada, não fixa.
 _ALTURA_ROTULO = 17
@@ -170,28 +170,7 @@ class FichaPlaneta:
         if not self.visivel or self._corpo is None:
             return
         fator = suavizar(self._progresso)
-        self._desenhar_titulo(superficie, self._corpo, fator)
         self._desenhar_card(superficie, self._corpo, fator, limite_inferior)
-
-    def _desenhar_titulo(
-        self, superficie: pygame.Surface, corpo: CorpoCeleste, fator: float
-    ) -> None:
-        """Nome do corpo em destaque, entrando de baixo com fade."""
-        texto = self._fontes.titulo.render(corpo.nome, True, COR_TEXTO)
-        legenda = self._fontes.media.render(
-            f"{nome_do_tipo(corpo)} · gesto {corpo.indice_gesto}",
-            True,
-            COR_DESTAQUE,
-        )
-        deslocamento = (1.0 - fator) * DESLOCAMENTO_ENTRADA_FICHA_PX
-        alpha = int(255 * fator)
-        texto.set_alpha(alpha)
-        legenda.set_alpha(alpha)
-        superficie.blit(texto, (MARGEM_HUD + 12, _TOPO_TITULO + deslocamento))
-        superficie.blit(
-            legenda,
-            (MARGEM_HUD + 16, _TOPO_TITULO + texto.get_height() + 2 + deslocamento),
-        )
 
     def _desenhar_card(
         self,
@@ -212,8 +191,10 @@ class FichaPlaneta:
         altura = max(120, min(altura, limite_inferior - _TOPO_FICHA))
         deslocamento = (1.0 - fator) * DESLOCAMENTO_ENTRADA_FICHA_PX
 
+        # Coluna da ESQUERDA, no lugar da legenda de dedos (que o HUD esconde
+        # enquanto há foco). A direita inteira é da webcam e da assinatura.
         retangulo = pygame.Rect(
-            int(self._largura - LARGURA_FICHA - MARGEM_HUD + deslocamento),
+            int(MARGEM_HUD - deslocamento),
             _TOPO_FICHA,
             LARGURA_FICHA,
             int(altura),
@@ -225,9 +206,15 @@ class FichaPlaneta:
         pygame.draw.rect(
             camada, (*corpo.cor_base, 210), (0, 0, LARGURA_FICHA, 4), border_radius=2
         )
+        # Nome e subtítulo vivem dentro do card (mesma estrutura da versão web):
+        # não há mais título flutuante, que duplicaria o nome nesta coluna.
         camada.blit(self._fontes.grande.render(corpo.nome, True, COR_TEXTO), (18, 16))
         camada.blit(
-            self._fontes.mini.render("FICHA ASTRONÔMICA", True, COR_TEXTO_SECUNDARIO),
+            self._fontes.mini.render(
+                f"{nome_do_tipo(corpo)} · gesto {corpo.indice_gesto}".upper(),
+                True,
+                COR_DESTAQUE,
+            ),
             (18, 58),
         )
 

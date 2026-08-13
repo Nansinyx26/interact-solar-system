@@ -98,8 +98,9 @@ ZOOM_MIN: Final[float] = 0.35
 ZOOM_MAX: Final[float] = 6.00
 RAIO_ALVO_FOCO_PX: Final[float] = 92.0  # raio desejado na tela ao focar um corpo
 DURACAO_TRANSICAO_S: Final[float] = 0.80  # ease-in-out do zoom/pan
-# Ao focar, o corpo é deslocado para a esquerda para não ficar sob a ficha.
-DESLOCAMENTO_FOCO_X_PX: Final[float] = -150.0
+# Ao focar, o corpo é deslocado para a DIREITA: a ficha ocupa a coluna esquerda,
+# então o alvo precisa fugir dela, não do lado oposto.
+DESLOCAMENTO_FOCO_X_PX: Final[float] = 150.0
 # Navegação manual: arrastar com o botão esquerdo faz pan, a roda dá zoom.
 FATOR_ZOOM_RODA: Final[float] = 1.15
 

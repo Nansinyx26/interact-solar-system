@@ -41,8 +41,14 @@ from nucleo.camera import Camera2D
 from nucleo.orbita import posicoes_do_sistema, raio_corpo_px
 from nucleo.renderizador import Renderizador
 from ui.ficha_planeta import FichaPlaneta
-from ui.hud import ALTURA_BLOCO_PREVIEW, HUD, EstadoHUD, Fontes
-from ui.marca_dagua import ALTURA_BLOCO_ASSINATURA, MarcaDagua
+from ui.hud import (
+    ALTURA_BLOCO_PREVIEW,
+    HUD,
+    EstadoHUD,
+    Fontes,
+    topo_do_painel_gesto,
+)
+from ui.marca_dagua import MarcaDagua
 
 # Limite de dt: se a janela for arrastada ou o processo travar por um instante,
 # a simulação não deve dar um salto gigante.
@@ -294,10 +300,9 @@ class Aplicacao:
         self.renderizador.desenhar(
             self.tela, self.camera, self.posicoes, self.tempo_dias, self.corpo_alvo
         )
-        # A ficha só pode descer até onde começa a assinatura — que por sua vez
-        # se apoia no preview da webcam quando ele está visível.
-        limite = self._base_canto_direito() - ALTURA_BLOCO_ASSINATURA
-        self.ficha.desenhar(self.tela, limite)
+        # A ficha vive na coluna esquerda e só pode descer até onde o painel de
+        # gesto começa — a coluna direita é da webcam e da assinatura.
+        self.ficha.desenhar(self.tela, topo_do_painel_gesto(self.altura) - MARGEM_HUD)
         self.hud.desenhar(
             self.tela,
             EstadoHUD(
