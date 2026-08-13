@@ -12,3 +12,8 @@ build_temp/
 # arquivos acima de 100 MB no repositório. Ele é publicado como asset de
 # Release (limite de 2 GB) — veja publicar_release.py.
 web/sistema-solar-gestos.zip
+
+# Variáveis de ambiente e chaves de API
+.env
+.env*.local
+
