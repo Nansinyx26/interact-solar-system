@@ -48,42 +48,113 @@ function numero(valor, casas = 0) {
  * quilômetros de diâmetro" em vez de "Diâmetro equatorial: 12.756 km". Rótulo e
  * valor soltos soariam como uma planilha sendo lida em voz alta.
  */
+/**
+ * Número para ser dito em voz alta, sem casas decimais inúteis.
+ *
+ * "243,0 dias" era lido como "duzentos e quarenta e três vírgula zero"; o zero
+ * à direita não informa nada e atrapalha a fala.
+ */
+function quantidade(valor, casas = 1) {
+  if (Math.abs(valor - Math.round(valor)) < 10 ** -casas / 2) {
+    return numero(Math.round(valor));
+  }
+  return numero(valor, casas);
+}
+
+/** Escolhe singular ou plural conforme o número dito. */
+function concordar(valor, singular, plural) {
+  return Math.abs(valor - 1) < 1e-9 ? singular : plural;
+}
+
+/**
+ * Distância em escala legível.
+ *
+ * Ninguém diz "149.600.000 quilômetros" em voz alta, e o sintetizador se perde
+ * no meio dos nove dígitos — na transcrição saía "149.600 mil". Acima de um
+ * milhão a frase passa a usar milhões e bilhões.
+ */
+function distanciaFalada(km) {
+  if (km >= 1_000_000_000) {
+    const bilhoes = km / 1_000_000_000;
+    return `${quantidade(bilhoes, 2)} ${concordar(bilhoes, "bilhão", "bilhões")} de quilômetros`;
+  }
+  if (km >= 1_000_000) {
+    const milhoes = km / 1_000_000;
+    return `${quantidade(milhoes, 1)} ${concordar(milhoes, "milhão", "milhões")} de quilômetros`;
+  }
+  return `${numero(km)} quilômetros`;
+}
+
+/**
+ * Temperatura com o sinal dito por extenso.
+ * O "−" antes do número desaparecia na fala: −65 virava "65 graus".
+ */
+function temperaturaFalada(graus) {
+  return graus < 0
+    ? `${numero(Math.abs(graus))} graus Celsius negativos`
+    : `${numero(graus)} graus Celsius`;
+}
+
+/** Frase das luas, com o gênero certo — "2 luas" saía como "dois luas". */
+function luasFaladas(luas) {
+  if (luas <= 0) return null;
+  if (luas === 1) return "Tem uma lua conhecida.";
+  if (luas === 2) return "Tem duas luas conhecidas.";
+  return `Tem ${numero(luas)} luas conhecidas.`;
+}
+
 export function frasesDaFicha(corpo) {
   const frases = [`Tem ${numero(corpo.diametroKm)} quilômetros de diâmetro.`];
 
   if (corpo.orbitaEmTornoDe) {
     const preposicao = corpo.orbitaEmTornoDe === "Terra" ? "da" : "de";
     frases.push(
-      `Fica a ${numero(corpo.distanciaKm)} quilômetros ${preposicao} ${corpo.orbitaEmTornoDe}.`,
+      `Fica a ${distanciaFalada(corpo.distanciaKm)} ${preposicao} ${corpo.orbitaEmTornoDe}.`,
     );
   } else if (corpo.distanciaUa > 0) {
+    const ua = corpo.distanciaUa;
     frases.push(
-      `Fica a ${numero(corpo.distanciaUa, 2)} unidades astronômicas do Sol, ` +
-        `ou seja, ${numero(corpo.distanciaKm)} quilômetros.`,
+      `Fica a ${quantidade(ua, 2)} ` +
+        `${concordar(ua, "unidade astronômica", "unidades astronômicas")} do Sol, ` +
+        `ou seja, ${distanciaFalada(corpo.distanciaKm)}.`,
     );
   }
 
   if (corpo.periodoOrbitalDias > 0) {
-    frases.push(
-      corpo.periodoOrbitalDias >= 365.26
-        ? `Uma volta completa leva ${numero(corpo.periodoOrbitalDias / 365.26, 1)} anos terrestres.`
-        : `Uma volta completa leva ${numero(corpo.periodoOrbitalDias)} dias.`,
-    );
+    if (corpo.periodoOrbitalDias >= 365.26) {
+      const anos = corpo.periodoOrbitalDias / 365.26;
+      frases.push(
+        `Uma volta completa leva ${quantidade(anos, 1)} ` +
+          `${concordar(anos, "ano terrestre", "anos terrestres")}.`,
+      );
+    } else {
+      const dias = corpo.periodoOrbitalDias;
+      frases.push(
+        `Uma volta completa leva ${quantidade(dias, 0)} ${concordar(dias, "dia", "dias")}.`,
+      );
+    }
   }
 
   const horas = Math.abs(corpo.periodoRotacaoHoras);
   const sentido =
     corpo.periodoRotacaoHoras < 0 ? " no sentido contrário ao dos demais" : "";
-  frases.push(
-    horas >= 48
-      ? `Gira em torno de si mesmo em ${numero(horas / 24, 1)} dias${sentido}.`
-      : `Gira em torno de si mesmo em ${numero(horas, 1)} horas${sentido}.`,
-  );
+  if (horas >= 48) {
+    const diasRotacao = horas / 24;
+    frases.push(
+      `Gira em torno de si mesmo em ${quantidade(diasRotacao, 1)} ` +
+        `${concordar(diasRotacao, "dia", "dias")}${sentido}.`,
+    );
+  } else {
+    frases.push(
+      `Gira em torno de si mesmo em ${quantidade(horas, 1)} ` +
+        `${concordar(horas, "hora", "horas")}${sentido}.`,
+    );
+  }
 
-  if (corpo.luas === 1) frases.push("Tem uma lua conhecida.");
-  else if (corpo.luas > 1) frases.push(`Tem ${numero(corpo.luas)} luas conhecidas.`);
+  const luas = luasFaladas(corpo.luas);
+  if (luas) frases.push(luas);
 
-  frases.push(`A temperatura média é de ${numero(corpo.temperaturaMediaC)} graus Celsius.`);
+  frases.push(`A temperatura média é de ${temperaturaFalada(corpo.temperaturaMediaC)}.`);
   frases.push(corpo.fatoCurioso);
   return frases;
 }

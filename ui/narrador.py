@@ -74,6 +74,59 @@ def _numero(valor: float, casas: int = 0) -> str:
     return texto.replace(",", "@").replace(".", ",").replace("@", ".")
 
 
+def _quantidade(valor: float, casas: int = 1) -> str:
+    """Número para ser dito em voz alta, sem casas decimais inúteis.
+
+    "243,0 dias" era lido como "duzentos e quarenta e três vírgula zero"; o
+    zero à direita não informa nada e atrapalha a fala.
+    """
+    if abs(valor - round(valor)) < 10 ** (-casas) / 2:
+        return _numero(round(valor))
+    return _numero(valor, casas)
+
+
+def _concordar(valor: float, singular: str, plural: str) -> str:
+    """Escolhe singular ou plural conforme o número dito."""
+    return singular if abs(valor - 1.0) < 1e-9 else plural
+
+
+def _distancia_falada(km: float) -> str:
+    """Distância em escala legível.
+
+    Ninguém diz "149.600.000 quilômetros" em voz alta, e o sintetizador se
+    perde no meio dos nove dígitos — na transcrição saía "149.600 mil". Acima de
+    um milhão a frase passa a usar milhões e bilhões.
+    """
+    if km >= 1_000_000_000:
+        bilhoes = km / 1_000_000_000
+        return f"{_quantidade(bilhoes, 2)} {_concordar(bilhoes, 'bilhão', 'bilhões')} de quilômetros"
+    if km >= 1_000_000:
+        milhoes = km / 1_000_000
+        return f"{_quantidade(milhoes, 1)} {_concordar(milhoes, 'milhão', 'milhões')} de quilômetros"
+    return f"{_numero(km)} quilômetros"
+
+
+def _temperatura_falada(graus: float) -> str:
+    """Temperatura com o sinal dito por extenso.
+
+    O "−" antes do número desaparecia na fala: −65 virava "65 graus".
+    """
+    if graus < 0:
+        return f"{_numero(abs(graus))} graus Celsius negativos"
+    return f"{_numero(graus)} graus Celsius"
+
+
+def _luas_faladas(luas: int) -> str | None:
+    """Frase das luas, com o gênero certo — "2 luas" saía como "dois luas"."""
+    if luas <= 0:
+        return None
+    if luas == 1:
+        return "Tem uma lua conhecida."
+    if luas == 2:
+        return "Tem duas luas conhecidas."
+    return f"Tem {_numero(luas)} luas conhecidas."
+
+
 def frases_da_ficha(corpo: CorpoCeleste) -> list[str]:
     """A ficha do corpo em orações completas, prontas para serem lidas.
 
@@ -84,40 +137,53 @@ def frases_da_ficha(corpo: CorpoCeleste) -> list[str]:
     frases = [f"Tem {_numero(corpo.diametro_km)} quilômetros de diâmetro."]
 
     if corpo.eh_satelite:
+        preposicao = "da" if corpo.orbita_em_torno_de == "Terra" else "de"
         frases.append(
-            f"Fica a {_numero(corpo.distancia_km)} quilômetros "
-            f"{'da' if corpo.orbita_em_torno_de == 'Terra' else 'de'} "
-            f"{corpo.orbita_em_torno_de}."
+            f"Fica a {_distancia_falada(corpo.distancia_km)} "
+            f"{preposicao} {corpo.orbita_em_torno_de}."
         )
     elif corpo.distancia_ua > 0:
+        ua = corpo.distancia_ua
         frases.append(
-            f"Fica a {_numero(corpo.distancia_ua, 2)} unidades astronômicas do Sol, "
-            f"ou seja, {_numero(corpo.distancia_km)} quilômetros."
+            f"Fica a {_quantidade(ua, 2)} "
+            f"{_concordar(ua, 'unidade astronômica', 'unidades astronômicas')} do Sol, "
+            f"ou seja, {_distancia_falada(corpo.distancia_km)}."
         )
 
     if corpo.periodo_orbital_dias > 0:
         if corpo.periodo_orbital_dias >= 365.26:
             anos = corpo.periodo_orbital_dias / 365.26
-            frases.append(f"Uma volta completa leva {_numero(anos, 1)} anos terrestres.")
-        else:
             frases.append(
-                f"Uma volta completa leva {_numero(corpo.periodo_orbital_dias)} dias."
+                f"Uma volta completa leva {_quantidade(anos, 1)} "
+                f"{_concordar(anos, 'ano terrestre', 'anos terrestres')}."
+            )
+        else:
+            dias = corpo.periodo_orbital_dias
+            frases.append(
+                f"Uma volta completa leva {_quantidade(dias, 0)} "
+                f"{_concordar(dias, 'dia', 'dias')}."
             )
 
     horas = abs(corpo.periodo_rotacao_horas)
     sentido = " no sentido contrário ao dos demais" if corpo.periodo_rotacao_horas < 0 else ""
     if horas >= 48:
-        frases.append(f"Gira em torno de si mesmo em {_numero(horas / 24, 1)} dias{sentido}.")
+        dias_rotacao = horas / 24
+        unidade = _concordar(dias_rotacao, "dia", "dias")
+        frases.append(
+            f"Gira em torno de si mesmo em {_quantidade(dias_rotacao, 1)} {unidade}{sentido}."
+        )
     else:
-        frases.append(f"Gira em torno de si mesmo em {_numero(horas, 1)} horas{sentido}.")
+        unidade = _concordar(horas, "hora", "horas")
+        frases.append(
+            f"Gira em torno de si mesmo em {_quantidade(horas, 1)} {unidade}{sentido}."
+        )
 
-    if corpo.luas == 1:
-        frases.append("Tem uma lua conhecida.")
-    elif corpo.luas > 1:
-        frases.append(f"Tem {_numero(corpo.luas)} luas conhecidas.")
+    luas = _luas_faladas(corpo.luas)
+    if luas:
+        frases.append(luas)
 
     frases.append(
-        f"A temperatura média é de {_numero(corpo.temperatura_media_c)} graus Celsius."
+        f"A temperatura média é de {_temperatura_falada(corpo.temperatura_media_c)}."
     )
     frases.append(corpo.fato_curioso)
     return frases
