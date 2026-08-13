@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Saída do build_exe.py
+SistemaSolar.exe
+_internal_sistema_solar/
+build_dist/
+build_temp/

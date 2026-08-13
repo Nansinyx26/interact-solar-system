@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sistema Solar Interativo por Gestos</title>
+    <meta
+      name="description"
+      content="Sistema Solar animado que você controla mostrando números com a mão para a câmera. Roda no navegador, sem instalar nada."
+    />
+    <meta name="theme-color" content="#060710" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ffd660'/%3E%3Cellipse cx='16' cy='16' rx='15' ry='5' fill='none' stroke='%236f7fb0' stroke-width='1.5'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <canvas id="cena" aria-label="Cena animada do Sistema Solar"></canvas>
+
+    <!-- Barra superior -->
+    <header class="barra">
+      <div class="marca">
+        <strong>Sistema Solar Interativo</strong>
+        <span data-fps>0 FPS</span>
+        <span data-escala-tempo>tempo ×12.0</span>
+      </div>
+      <div class="acoes">
+        <button type="button" id="btn-camera">Ativar câmera</button>
+        <button type="button" id="btn-pausa">Pausar</button>
+        <button type="button" id="btn-ajuda">Como usar</button>
+        <a class="download" href="sistema-solar-gestos.zip" download>
+          Baixar versão desktop
+        </a>
+      </div>
+    </header>
+
+    <!-- Avisos centrais (câmera, iluminação, dica das duas mãos) -->
+    <div class="avisos" data-avisos></div>
+
+    <!-- Ficha do planeta focado -->
+    <aside id="ficha" class="ficha" hidden>
+      <div class="faixa" data-ficha-faixa></div>
+      <h2 data-ficha-titulo>Terra</h2>
+      <p class="legenda" data-ficha-legenda>Rochoso · gesto 3</p>
+      <dl class="dados" data-ficha-dados></dl>
+      <div class="fato">
+        <h3>Fato curioso</h3>
+        <p data-ficha-fato></p>
+      </div>
+    </aside>
+
+    <!-- Painel de gesto: número detectado, anel de progresso e confirmado -->
+    <section class="painel-gesto">
+      <div class="anel">
+        <svg viewBox="0 0 80 80" aria-hidden="true">
+          <circle class="trilho" cx="40" cy="40" r="34" />
+          <circle class="progresso" data-anel-progresso cx="40" cy="40" r="34" />
+        </svg>
+        <span data-detectado class="inativo">—</span>
+      </div>
+      <div class="leitura">
+        <span class="rotulo">Confirmado</span>
+        <b data-confirmado>—</b>
+        <span class="alvo" data-alvo>visão geral</span>
+        <span class="maos" data-maos>0 mão(s)</span>
+      </div>
+    </section>
+
+    <!-- Preview da webcam -->
+    <section id="painel-camera" class="painel-camera" hidden>
+      <canvas id="preview"></canvas>
+      <span>webcam</span>
+    </section>
+
+    <!-- Botões de toque (essenciais no celular, úteis no desktop) -->
+    <nav id="botoes-gesto" class="botoes-gesto" aria-label="Selecionar corpo celeste"></nav>
+
+    <!-- Legenda gesto -> corpo -->
+    <ul class="legenda-gestos" data-legenda></ul>
+
+    <!-- Painel de ajuda -->
+    <div id="ajuda" class="ajuda">
+      <div class="conteudo">
+        <button type="button" id="fechar-ajuda" aria-label="Fechar">×</button>
+        <h2>Como usar</h2>
+
+        <h3>Gestos</h3>
+        <p>
+          Conte os dedos levantados <b>somando as duas mãos</b>. Segure a pose por
+          cerca de meio segundo — o anel azul enche enquanto a leitura é confirmada.
+        </p>
+        <table>
+          <tbody>
+            <tr><td>0 (mão fechada)</td><td>Sol</td></tr>
+            <tr><td>1 · 2 · 3 · 4</td><td>Mercúrio · Vênus · Terra · Marte</td></tr>
+            <tr><td>5 (mão aberta)</td><td>Júpiter</td></tr>
+            <tr><td>6 · 7 · 8 (duas mãos)</td><td>Saturno · Urano · Netuno</td></tr>
+            <tr><td><b>10 (duas mãos abertas)</b></td><td>volta à visão geral</td></tr>
+          </tbody>
+        </table>
+        <p class="nota">
+          Uma mão só chega a 5. Para 6, 7 e 8 use as duas — por exemplo
+          <b>5 + 3 = 8</b> (Netuno). O painel mostra o que cada mão está lendo
+          (<code>2 mão(s): 5+3</code>): se aparecer <code>1 mão(s)</code>, a segunda
+          mão não está sendo vista.
+        </p>
+
+        <h3>Sem câmera</h3>
+        <p>
+          Toque direto em um planeta, use os botões numerados ou, no teclado:
+          <code>0</code>–<code>8</code> focam, <code>V</code> volta à visão geral,
+          <code>espaço</code> pausa, <code>+</code>/<code>−</code> mudam a
+          velocidade do tempo e <code>C</code> liga/desliga a câmera.
+          Arraste para mover a cena; roda do mouse ou pinça para o zoom.
+        </p>
+
+        <h3>As escalas não são reais</h3>
+        <p>
+          Em escala linear, se a órbita de Netuno coubesse na tela a Terra teria
+          menos de 1 pixel. Os raios orbitais usam escala <b>logarítmica</b> e os
+          tamanhos dos corpos uma <b>lei de potência</b> (expoente 0,40). O que é
+          fiel são as proporções entre os <b>períodos</b>: um ano de Netuno ainda
+          dura ~165 anos terrestres. Os números reais estão na ficha de cada corpo.
+        </p>
+
+        <h3>Privacidade</h3>
+        <p>
+          O vídeo nunca sai do seu aparelho: a detecção roda no próprio navegador
+          via WebAssembly. Nada é enviado, gravado ou armazenado.
+        </p>
+      </div>
+    </div>
+
+    <video id="video" playsinline muted hidden></video>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

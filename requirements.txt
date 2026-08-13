@@ -1,0 +1,11 @@
+# Testado com Python 3.12.10 (Windows 11 Pro). Compatível com Python 3.11+.
+#
+# mediapipe 0.10.14 é a última linha que ainda traz as "legacy solutions"
+# (mp.solutions.hands) COM o modelo embutido no wheel — nada é baixado em
+# runtime. A partir de 0.10.31 o wheel virou "tasks only": mp.solutions some e o
+# HandLandmarker passa a exigir o download de um arquivo .task, o que quebraria
+# o requisito de zero rede em execução.
+mediapipe==0.10.14
+opencv-python==4.10.0.84
+pygame==2.6.1
+numpy==1.26.4

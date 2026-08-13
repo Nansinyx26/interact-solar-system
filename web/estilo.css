@@ -1,0 +1,591 @@
+/*
+ * Layout da versão web.
+ *
+ * A cena ocupa a tela inteira em um canvas; todo o resto é DOM sobreposto, o que
+ * mantém o texto nítido e permite reorganizar tudo entre desktop e celular sem
+ * tocar no código de render.
+ */
+
+:root {
+  --fundo: #060710;
+  --painel: rgba(14, 17, 30, 0.86);
+  --borda: rgba(255, 255, 255, 0.12);
+  --texto: #e8ecf5;
+  --texto-fraco: #96a0b9;
+  --destaque: #78c8ff;
+  --aviso: #ffbe5a;
+  --erro: #ff6e6e;
+  --raio: 12px;
+  --margem: 16px;
+  --seguro-baixo: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+#cena {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* o pan/zoom é nosso, não do navegador */
+  cursor: grab;
+}
+#cena:active {
+  cursor: grabbing;
+}
+
+#video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+button,
+.download {
+  font: inherit;
+  color: var(--texto);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.15s, background 0.15s;
+}
+button:hover,
+.download:hover {
+  border-color: var(--destaque);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+button.ativo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+.download {
+  border-color: rgba(120, 200, 255, 0.45);
+  color: var(--destaque);
+}
+
+/* --------------------------------------------------------------- barra topo */
+.barra {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--margem);
+  pointer-events: none;
+}
+.barra > * {
+  pointer-events: auto;
+}
+.marca {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--texto-fraco);
+}
+.marca strong {
+  color: var(--texto);
+  font-size: 15px;
+}
+.marca span {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ----------------------------------------------------------------- avisos */
+.avisos {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  pointer-events: none;
+  max-width: min(92vw, 560px);
+}
+.avisos p {
+  margin: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  font-size: 13px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+.avisos .aviso {
+  color: var(--aviso);
+}
+.avisos .erro {
+  color: var(--erro);
+}
+.avisos .dica {
+  color: var(--destaque);
+}
+
+/* ------------------------------------------------------------------ ficha */
+.ficha {
+  position: fixed;
+  top: 64px;
+  right: var(--margem);
+  width: 330px;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.ficha.visivel {
+  opacity: 1;
+  transform: none;
+}
+.ficha .faixa {
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+.ficha h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+.ficha .legenda {
+  margin: 2px 0 14px;
+  color: var(--destaque);
+  font-size: 13px;
+}
+.ficha .dados {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ficha .item dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.ficha .item dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.ficha .fato {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+}
+.ficha .fato h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--destaque);
+}
+.ficha .fato p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ----------------------------------------------------------- painel gesto */
+.painel-gesto {
+  position: fixed;
+  left: var(--margem);
+  bottom: calc(var(--margem) + var(--seguro-baixo));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+}
+.anel {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex: none;
+}
+.anel svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.anel circle {
+  fill: none;
+  stroke-width: 6;
+}
+.anel .trilho {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+.anel .progresso {
+  stroke: var(--destaque);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.08s linear;
+}
+.anel .progresso.cooldown {
+  stroke: var(--aviso);
+}
+.anel span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.anel span.inativo {
+  color: var(--texto-fraco);
+}
+.leitura {
+  display: grid;
+  gap: 1px;
+  min-width: 118px;
+}
+.leitura .rotulo {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.leitura b {
+  font-size: 26px;
+  color: var(--destaque);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.leitura .alvo {
+  font-size: 14px;
+}
+.leitura .maos {
+  font-size: 11px;
+  color: var(--texto-fraco);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------- preview câmera */
+.painel-camera {
+  position: fixed;
+  right: var(--margem);
+  bottom: calc(var(--margem) + var(--seguro-baixo));
+  width: 268px;
+  padding: 8px 8px 4px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+}
+.painel-camera canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: #05060c;
+  display: block;
+}
+.painel-camera span {
+  display: block;
+  padding: 3px 2px 2px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+/* --------------------------------------------------------- botões de gesto */
+.botoes-gesto {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--margem) + var(--seguro-baixo));
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+  max-width: calc(100vw - 2 * var(--margem));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.botoes-gesto::-webkit-scrollbar {
+  display: none;
+}
+.botoes-gesto button {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  line-height: 1.1;
+}
+.botoes-gesto button b {
+  font-size: 15px;
+}
+.botoes-gesto button span {
+  font-size: 9px;
+  color: var(--texto-fraco);
+}
+.botoes-gesto button.comando b {
+  color: var(--destaque);
+}
+
+/* ------------------------------------------------------- legenda de gestos */
+.legenda-gestos {
+  position: fixed;
+  left: var(--margem);
+  bottom: calc(var(--margem) + 116px + var(--seguro-baixo));
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  columns: 2;
+  column-gap: 18px;
+}
+.legenda-gestos li {
+  display: flex;
+  gap: 8px;
+  padding: 1px 0;
+  break-inside: avoid;
+}
+.legenda-gestos b {
+  color: var(--destaque);
+  min-width: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.legenda-gestos span {
+  color: var(--texto-fraco);
+}
+.legenda-gestos .comando span {
+  color: var(--destaque);
+}
+
+/* ------------------------------------------------------------------ ajuda */
+.ajuda {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: var(--margem);
+  background: rgba(4, 5, 12, 0.72);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+.ajuda.aberta {
+  display: grid;
+}
+.ajuda .conteudo {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 26px;
+  border-radius: 16px;
+  background: #0d1120;
+  border: 1px solid var(--borda);
+  line-height: 1.55;
+}
+.ajuda h2 {
+  margin: 0 0 6px;
+}
+.ajuda h3 {
+  margin: 22px 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--destaque);
+}
+.ajuda p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.ajuda .nota {
+  color: var(--texto-fraco);
+}
+.ajuda table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.ajuda td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--borda);
+}
+.ajuda td:last-child {
+  text-align: right;
+  color: var(--texto-fraco);
+}
+.ajuda code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+#fechar-ajuda {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* =========================================================================
+   Celular e telas estreitas
+   ========================================================================= */
+@media (max-width: 900px), (max-height: 560px) {
+  :root {
+    --margem: 10px;
+  }
+
+  .marca strong {
+    font-size: 13px;
+  }
+  .marca span[data-escala-tempo] {
+    display: none;
+  }
+  .acoes button,
+  .acoes .download {
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+
+  /* A legenda completa vive no painel de ajuda; aqui ela só ocuparia a tela. */
+  .legenda-gestos {
+    display: none;
+  }
+
+  /* Ficha vira uma folha deslizante presa na base. */
+  .ficha {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 46vh;
+    padding: 14px 16px calc(80px + var(--seguro-baixo));
+    border-radius: 16px 16px 0 0;
+    transform: translateY(28px);
+  }
+  .ficha .dados {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ficha h2 {
+    font-size: 24px;
+  }
+
+  /* Painel de gesto compacto no alto, sem competir com a ficha. */
+  .painel-gesto {
+    top: 58px;
+    bottom: auto;
+    left: var(--margem);
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  .anel {
+    width: 56px;
+    height: 56px;
+  }
+  .anel span {
+    font-size: 22px;
+  }
+  .leitura {
+    min-width: 92px;
+  }
+  .leitura b {
+    font-size: 20px;
+  }
+
+  .painel-camera {
+    top: 58px;
+    bottom: auto;
+    right: var(--margem);
+    width: 128px;
+    padding: 5px 5px 2px;
+  }
+  .painel-camera span {
+    display: none;
+  }
+
+  /* Botões grandes o suficiente para o dedo, roláveis na horizontal. */
+  .botoes-gesto {
+    left: 0;
+    right: 0;
+    transform: none;
+    max-width: none;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    justify-content: flex-start;
+    padding: 8px var(--margem) calc(8px + var(--seguro-baixo));
+  }
+  .botoes-gesto button {
+    min-width: 52px;
+    padding: 8px 10px;
+  }
+  .botoes-gesto button b {
+    font-size: 17px;
+  }
+}
+
+/* Quem prefere menos movimento não precisa das transições da ficha. */
+@media (prefers-reduced-motion: reduce) {
+  .ficha,
+  .anel .progresso {
+    transition: none;
+  }
+}
