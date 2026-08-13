@@ -82,9 +82,12 @@ class Aplicacao {
 
   _montarBotoes() {
     const barra = document.getElementById("botoes-gesto");
+    // A tira de cor no topo do botão repete a cor do corpo na cena e na legenda:
+    // no celular, onde a legenda não cabe, é a única pista visual do alvo.
     const itens = CORPOS.map(
       (corpo) =>
         `<button type="button" data-gesto="${corpo.indiceGesto}" title="${corpo.nome}">` +
+        `<i style="background:rgb(${corpo.corBase})"></i>` +
         `<b>${corpo.indiceGesto}</b><span>${corpo.nome}</span></button>`,
     );
     itens.push(
@@ -259,8 +262,8 @@ class Aplicacao {
     // instantânea, perdendo o efeito de filtro.
     if (leitura.sequencia !== this._ultimaSequencia) {
       this._ultimaSequencia = leitura.sequencia;
-      // 0-8 selecionam um corpo e 10 é o comando "visão geral"; 9 não tem
-      // significado e entra como leitura inválida.
+      // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
+      // Qualquer outra contagem entra como leitura inválida.
       const contagem = leitura.contagem;
       const valido = CORPOS_POR_GESTO.has(contagem) || contagem === GESTO_VISAO_GERAL;
       this.resultadoGesto = this.estabilizador.atualizar(valido ? contagem : null, agora);

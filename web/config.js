@@ -6,6 +6,30 @@
  */
 
 // ---------------------------------------------------------------------------
+// Versão
+// ---------------------------------------------------------------------------
+// Uma única versão para as DUAS implementações (desktop e web). Ao alterar
+// qualquer uma delas, suba este número aqui E em config.py — o
+// verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
+// regenera o ZIP de download com a versão nova.
+export const VERSAO = "1.1.0";
+
+// Destino do botão "Baixar versão desktop".
+//
+// O pacote com o executável tem ~107 MB e o limite por arquivo estático do
+// Vercel é 100 MB no plano Hobby — por isso ele NÃO é servido junto do site.
+// Fica como asset de GitHub Releases (que aceita até 2 GB) e o botão aponta
+// para lá. O caminho ".../releases/latest/download/..." resolve sempre para o
+// release mais recente, então esta URL não precisa mudar a cada versão.
+//
+// Deixar vazio faz o botão servir o arquivo local gerado pelo empacotar_web.py
+// (útil ao rodar o site localmente, onde não há limite de tamanho).
+export const URL_DOWNLOAD_EXECUTAVEL =
+  "https://github.com/Nansinyx26/interact-solar-system-exe/releases/latest/download/sistema-solar-gestos.zip";
+export const ARQUIVO_DOWNLOAD_LOCAL = "sistema-solar-gestos.zip";
+export const REPOSITORIO_GITHUB = "Nansinyx26/interact-solar-system-exe";
+
+// ---------------------------------------------------------------------------
 // Escalas da cena — ATENÇÃO: NÃO SÃO REALISTAS (e nem podem ser)
 // ---------------------------------------------------------------------------
 // Em escala linear real o Sistema Solar é indesenhável: se a órbita de Netuno
@@ -142,6 +166,9 @@ export const SEGUNDOS_ATE_VISAO_GERAL = 6;
 
 // Gesto de comando: as duas mãos abertas (5 + 5) reenquadram o sistema.
 export const GESTO_VISAO_GERAL = 10;
+// A partir daqui é impossível com uma mão só — é o que dispara a dica
+// "use as duas mãos" no HUD quando a leitura chega em 5.
+export const GESTO_MINIMO_DUAS_MAOS = 6;
 
 // ---------------------------------------------------------------------------
 // Lua (satélite da Terra)

@@ -15,9 +15,13 @@
   --destaque: #78c8ff;
   --aviso: #ffbe5a;
   --erro: #ff6e6e;
+  --sucesso: #6ee2a0; /* câmera ativa — mesmo COR_SUCESSO do config.py */
   --raio: 12px;
   --margem: 16px;
   --seguro-baixo: env(safe-area-inset-bottom, 0px);
+  /* Altura reservada para a assinatura no canto inferior direito. O preview da
+     webcam se apoia nela para os dois não ocuparem o mesmo canto. */
+  --altura-assinatura: 46px;
 }
 
 * {
@@ -79,8 +83,8 @@ button:disabled {
   cursor: progress;
 }
 button.ativo {
-  border-color: var(--destaque);
-  color: var(--destaque);
+  border-color: var(--sucesso);
+  color: var(--sucesso);
 }
 .download {
   border-color: rgba(120, 200, 255, 0.45);
@@ -123,6 +127,38 @@ button.ativo {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* Pastilha de estado da câmera: o ponto colorido entrega a situação antes de
+   qualquer leitura de texto. As cores são as mesmas do HUD desktop. */
+.estado-camera {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.estado-camera i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--texto-fraco);
+  flex: none;
+}
+.estado-camera.ativa i {
+  background: var(--sucesso);
+  box-shadow: 0 0 6px var(--sucesso);
+}
+.estado-camera.iniciando i {
+  background: var(--aviso);
+  animation: pulsar-estado 1s ease-in-out infinite;
+}
+.estado-camera.erro i {
+  background: var(--erro);
+}
+@keyframes pulsar-estado {
+  50% {
+    opacity: 0.25;
+  }
 }
 
 /* ----------------------------------------------------------------- avisos */
@@ -242,11 +278,30 @@ button.ativo {
   border: 1px solid var(--borda);
   backdrop-filter: blur(10px);
 }
+.coluna-anel {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  flex: none;
+}
 .anel {
   position: relative;
   width: 80px;
   height: 80px;
   flex: none;
+}
+/* Rótulo abaixo do anel: "detectado" em repouso, "segure..." enquanto confirma. */
+.rodape-anel {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.rodape-anel.segurando {
+  color: var(--destaque);
+}
+.rodape-anel.cooldown {
+  color: var(--aviso);
 }
 .anel svg {
   width: 100%;
@@ -298,7 +353,18 @@ button.ativo {
   font-variant-numeric: tabular-nums;
 }
 .leitura .alvo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
+}
+/* Ponto na cor do corpo em foco — a mesma pista usada na legenda e na cena. */
+.leitura .alvo i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
 .leitura .maos {
   font-size: 11px;
@@ -310,7 +376,9 @@ button.ativo {
 .painel-camera {
   position: fixed;
   right: var(--margem);
-  bottom: calc(75px + var(--seguro-baixo));
+  /* Apoiado sobre a assinatura: os dois moram no canto inferior direito e sem
+     esta folga o preview cobriria a marca d'água. */
+  bottom: calc(var(--margem) + var(--altura-assinatura) + 13px + var(--seguro-baixo));
   width: 380px;
   padding: 10px 10px 6px;
   border-radius: var(--raio);
@@ -369,6 +437,12 @@ button.ativo {
   border: 1px solid transparent;
   line-height: 1.1;
 }
+.botoes-gesto button i {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  margin-bottom: 3px;
+}
 .botoes-gesto button b {
   font-size: 15px;
 }
@@ -379,28 +453,71 @@ button.ativo {
 .botoes-gesto button.comando b {
   color: var(--destaque);
 }
+/* Botão do corpo em foco: o mesmo realce da linha ativa da legenda. O `color`
+   é explícito porque o `button.ativo` genérico (botão da câmera) pinta de
+   verde, e aqui o estado não é "ligado", é "selecionado". */
+.botoes-gesto button.ativo {
+  background: rgba(120, 200, 255, 0.16);
+  border-color: rgba(120, 200, 255, 0.55);
+  color: var(--texto);
+}
+.botoes-gesto button.ativo span {
+  color: var(--texto);
+}
 
 /* ------------------------------------------------------- legenda de gestos */
-.legenda-gestos {
+.painel-legenda {
   position: fixed;
   left: var(--margem);
-  bottom: calc(var(--margem) + 116px + var(--seguro-baixo));
-  margin: 0;
-  padding: 10px 14px;
-  list-style: none;
+  bottom: calc(var(--margem) + 132px + var(--seguro-baixo));
+  padding: 10px 14px 8px;
   border-radius: var(--raio);
   background: var(--painel);
   border: 1px solid var(--borda);
   backdrop-filter: blur(10px);
+}
+.painel-legenda h2 {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.nota-legenda {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--borda);
+  font-size: 10px;
+  color: var(--texto-fraco);
+}
+.legenda-gestos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: 12px;
   columns: 2;
   column-gap: 18px;
 }
 .legenda-gestos li {
   display: flex;
-  gap: 8px;
-  padding: 1px 0;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border-radius: 5px;
   break-inside: avoid;
+}
+/* Bolinha na cor do corpo: acha-se a linha certa sem ler a lista inteira. */
+.legenda-gestos li i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.legenda-gestos .comando i {
+  background: var(--destaque);
 }
 .legenda-gestos b {
   color: var(--destaque);
@@ -412,6 +529,13 @@ button.ativo {
 }
 .legenda-gestos .comando span {
   color: var(--destaque);
+}
+/* Sempre há exatamente uma linha ativa: o corpo em foco ou o comando 10. */
+.legenda-gestos li.ativo {
+  background: rgba(120, 200, 255, 0.15);
+}
+.legenda-gestos li.ativo span {
+  color: var(--texto);
 }
 
 /* ------------------------------------------------------------------ ajuda */
@@ -488,6 +612,61 @@ button.ativo {
 }
 
 /* =========================================================================
+   RESPONSIVIDADE
+   -------------------------------------------------------------------------
+   Faixas cobertas, da menor para a maior:
+
+     ≤ 360px   celular pequeno em pé (iPhone SE, Androids de entrada)
+     ≤ 480px   celular comum em pé
+     ≤ 900px   celular grande / tablet em pé / janela estreita
+     paisagem  altura ≤ 560px — a ficha vira painel lateral, não folha de baixo
+     ≥ 1600px  monitores grandes e 4K: tudo cresce junto, nada fica minúsculo
+     toque     ponteiro grosso — alvos com no mínimo 44px
+
+   A cena em si nunca depende disso: o canvas ocupa a viewport inteira e a
+   câmera recalcula o enquadramento a partir do tamanho corrente.
+   ========================================================================= */
+
+/* Monitores grandes: sem isto o HUD vira um selo no canto de uma tela 4K. */
+@media (min-width: 1600px) {
+  :root {
+    --margem: 24px;
+  }
+  .marca strong {
+    font-size: 17px;
+  }
+  .marca span {
+    font-size: 13px;
+  }
+  .ficha {
+    width: 390px;
+    padding: 22px;
+  }
+  .ficha h2 {
+    font-size: 34px;
+  }
+  .ficha .item dd {
+    font-size: 15px;
+  }
+  .painel-camera {
+    width: 320px;
+  }
+  .anel {
+    width: 92px;
+    height: 92px;
+  }
+  .anel span {
+    font-size: 38px;
+  }
+  .botoes-gesto button b {
+    font-size: 17px;
+  }
+  .botoes-gesto button span {
+    font-size: 10px;
+  }
+}
+
+/* =========================================================================
    Celular e telas estreitas
    ========================================================================= */
 @media (max-width: 900px), (max-height: 560px) {
@@ -508,7 +687,11 @@ button.ativo {
   }
 
   /* A legenda completa vive no painel de ajuda; aqui ela só ocuparia a tela. */
-  .legenda-gestos {
+  .painel-legenda {
+    display: none;
+  }
+  /* Sem espaço para o rótulo do anel: o próprio anel já mostra o progresso. */
+  .rodape-anel {
     display: none;
   }
 
@@ -587,11 +770,175 @@ button.ativo {
   }
 }
 
+/* -------------------------------------------------------------------------
+   Celular em pé (≤ 480px)
+   ------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .marca span[data-fps] {
+    display: none; /* o FPS interessa em depuração, não no celular */
+  }
+  .marca strong {
+    font-size: 12px;
+  }
+  .estado-camera {
+    font-size: 11px;
+  }
+  .acoes {
+    gap: 6px;
+  }
+  .acoes button,
+  .acoes .download {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .painel-camera {
+    width: 132px;
+  }
+  .ficha .dados {
+    grid-template-columns: 1fr; /* duas colunas cortariam os valores longos */
+  }
+  .ficha {
+    max-height: 52vh;
+  }
+  .avisos {
+    top: 52px;
+    max-width: calc(100vw - 2 * var(--margem));
+  }
+  .avisos p {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Celular pequeno (≤ 360px) — aqui cada pixel de largura conta
+   ------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+  :root {
+    --margem: 8px;
+  }
+  /* O título vira redundante: o favicon e a própria cena já identificam o app. */
+  .marca strong,
+  .estado-camera {
+    display: none;
+  }
+  .acoes button,
+  .acoes .download {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+  /* Só o essencial fica: ligar a câmera e pedir ajuda. */
+  #btn-pausa {
+    display: none;
+  }
+  .painel-gesto {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .anel {
+    width: 48px;
+    height: 48px;
+  }
+  .anel span {
+    font-size: 19px;
+  }
+  .leitura {
+    min-width: 76px;
+  }
+  .leitura .maos {
+    font-size: 10px;
+  }
+  .painel-camera {
+    width: 108px;
+  }
+  .botoes-gesto button {
+    min-width: 46px;
+    padding: 7px 8px;
+  }
+  .botoes-gesto button span {
+    display: none; /* fica só o número, que é o que importa */
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Celular deitado (paisagem): sobra largura e falta altura, então a ficha
+   volta a ser um painel lateral — uma folha de baixo comeria a cena inteira.
+   ------------------------------------------------------------------------- */
+@media (max-height: 560px) and (orientation: landscape) {
+  .ficha {
+    top: 50px;
+    left: auto;
+    right: var(--margem);
+    bottom: auto;
+    width: min(300px, 42vw);
+    max-height: calc(100dvh - 60px - var(--seguro-baixo));
+    padding: 12px 14px;
+    border-radius: var(--raio);
+    transform: translateX(20px);
+  }
+  .ficha .dados {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .ficha h2 {
+    font-size: 20px;
+  }
+  .ficha .legenda {
+    margin-bottom: 8px;
+  }
+  /* Com a ficha na direita, o preview volta para baixo dela, à esquerda. */
+  .painel-camera {
+    top: auto;
+    bottom: calc(56px + var(--seguro-baixo));
+    right: auto;
+    left: var(--margem);
+    width: 116px;
+  }
+  .painel-gesto {
+    top: 50px;
+  }
+  .botoes-gesto {
+    padding: 5px var(--margem) calc(5px + var(--seguro-baixo));
+  }
+  .botoes-gesto button {
+    padding: 6px 9px;
+  }
+  .botoes-gesto button span {
+    display: none;
+  }
+  .ajuda .conteudo {
+    max-height: 92vh;
+    padding: 18px;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Telas de toque: o dedo precisa de alvo maior que o cursor.
+   ------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .botoes-gesto button {
+    min-height: 44px;
+  }
+  .acoes button,
+  .acoes .download {
+    min-height: 38px;
+  }
+  #fechar-ajuda {
+    width: 44px;
+    height: 44px;
+  }
+  #cena {
+    cursor: default; /* "grab" não significa nada sem mouse */
+  }
+}
+
 /* Quem prefere menos movimento não precisa das transições da ficha. */
 @media (prefers-reduced-motion: reduce) {
   .ficha,
-  .anel .progresso {
+  .anel .progresso,
+  .estado-camera i {
     transition: none;
+    animation: none;
   }
 }
 

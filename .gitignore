@@ -7,3 +7,8 @@ SistemaSolar.exe
 _internal_sistema_solar/
 build_dist/
 build_temp/
+
+# Pacote de download (~107 MB). NÃO pode ir para o Git: o GitHub rejeita
+# arquivos acima de 100 MB no repositório. Ele é publicado como asset de
+# Release (limite de 2 GB) — veja publicar_release.py.
+web/sistema-solar-gestos.zip

@@ -62,8 +62,21 @@ def _formatar_rotacao(corpo: CorpoCeleste) -> str:
     return f"{_formatar_decimal(horas, 2)} h{sufixo}"
 
 
+def _rotulo_distancia(corpo: CorpoCeleste) -> str:
+    """Rótulo da linha de distância — satélites medem do corpo-pai, não do Sol."""
+    if corpo.eh_satelite:
+        return f"Distância média à {corpo.orbita_em_torno_de}"
+    return "Distância média ao Sol"
+
+
 def _formatar_distancia(corpo: CorpoCeleste) -> str:
-    """Distância média ao Sol em UA e km."""
+    """Distância média em UA e km, ou só em km para satélites.
+
+    A UA é uma unidade heliocêntrica: expressar a órbita da Lua em UA daria
+    0,00257 — um número exato e inútil. Para satélites fica só o valor em km.
+    """
+    if corpo.eh_satelite:
+        return f"{_formatar_inteiro(corpo.distancia_km)} km"
     if corpo.distancia_ua <= 0:
         return "0 (centro do sistema)"
     return (
@@ -72,11 +85,26 @@ def _formatar_distancia(corpo: CorpoCeleste) -> str:
     )
 
 
+# O ``tipo`` é um identificador interno (sem acento, minúsculo): o card mostra a
+# forma legível, senão a Lua aparece como "Satelite".
+_NOMES_DE_TIPO: dict[str, str] = {
+    "estrela": "Estrela",
+    "rochoso": "Planeta rochoso",
+    "gasoso": "Gigante gasoso",
+    "satelite": "Satélite natural",
+}
+
+
+def nome_do_tipo(corpo: CorpoCeleste) -> str:
+    """Nome legível do tipo do corpo, para o subtítulo da ficha."""
+    return _NOMES_DE_TIPO.get(corpo.tipo, corpo.tipo.capitalize())
+
+
 def linhas_da_ficha(corpo: CorpoCeleste) -> list[tuple[str, str]]:
     """Pares (rótulo, valor) exibidos no card."""
     return [
         ("Diâmetro equatorial", f"{_formatar_inteiro(corpo.diametro_km)} km"),
-        ("Distância média ao Sol", _formatar_distancia(corpo)),
+        (_rotulo_distancia(corpo), _formatar_distancia(corpo)),
         ("Período orbital", _formatar_periodo_orbital(corpo)),
         ("Período de rotação", _formatar_rotacao(corpo)),
         ("Luas conhecidas", _formatar_inteiro(corpo.luas)),
@@ -151,7 +179,7 @@ class FichaPlaneta:
         """Nome do corpo em destaque, entrando de baixo com fade."""
         texto = self._fontes.titulo.render(corpo.nome, True, COR_TEXTO)
         legenda = self._fontes.media.render(
-            f"{corpo.tipo.capitalize()} · gesto {corpo.indice_gesto}",
+            f"{nome_do_tipo(corpo)} · gesto {corpo.indice_gesto}",
             True,
             COR_DESTAQUE,
         )
@@ -249,4 +277,4 @@ class FichaPlaneta:
         return linhas
 
 
-__all__ = ["FichaPlaneta", "linhas_da_ficha"]
+__all__ = ["FichaPlaneta", "linhas_da_ficha", "nome_do_tipo"]

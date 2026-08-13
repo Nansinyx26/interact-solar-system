@@ -10,6 +10,15 @@ from __future__ import annotations
 from typing import Final
 
 # ---------------------------------------------------------------------------
+# Versão
+# ---------------------------------------------------------------------------
+# Uma única versão para as DUAS implementações (desktop e web). Ao alterar
+# qualquer uma delas, suba este número aqui E em web/config.js — o
+# verificar_paridade.py falha se os dois ficarem diferentes, e o
+# publicar.py regenera o ZIP de download com a versão nova.
+VERSAO: Final[str] = "1.1.0"
+
+# ---------------------------------------------------------------------------
 # Janela e loop principal
 # ---------------------------------------------------------------------------
 
@@ -215,8 +224,10 @@ COOLDOWN_TROCA_S: Final[float] = 0.80
 SEGUNDOS_ATE_VISAO_GERAL: Final[float] = 6.0
 
 # Gesto de comando (não seleciona corpo): as duas mãos abertas, 5 + 5 = 10,
-# reenquadram o sistema inteiro. 9 continua sem significado.
+# reenquadram o sistema inteiro. O 9 (5 + 4) seleciona a Lua.
 GESTO_VISAO_GERAL: Final[int] = 10
+# Primeiro gesto que exige as duas mãos (uma mão sozinha só chega a 5).
+GESTO_MINIMO_DUAS_MAOS: Final[int] = 6
 
 # ---------------------------------------------------------------------------
 # HUD
@@ -232,8 +243,21 @@ COR_TEXTO_SECUNDARIO: Final[tuple[int, int, int]] = (150, 160, 185)
 COR_DESTAQUE: Final[tuple[int, int, int]] = (120, 200, 255)
 COR_AVISO: Final[tuple[int, int, int]] = (255, 190, 90)
 COR_ERRO: Final[tuple[int, int, int]] = (255, 110, 110)
+COR_SUCESSO: Final[tuple[int, int, int]] = (110, 226, 160)  # câmera ativa
 COR_PAINEL: Final[tuple[int, int, int]] = (14, 17, 30)
 ALPHA_PAINEL: Final[int] = 210
+
+# Legenda de gestos: cada linha ganha um ponto com a cor do corpo, e a linha do
+# corpo em foco recebe um realce de fundo — é o que permite achar "onde estou"
+# sem ler a lista inteira.
+RAIO_PONTO_LEGENDA: Final[int] = 4
+ALPHA_LINHA_LEGENDA_ATIVA: Final[int] = 38
+# Barra de atalhos rente à base da janela.
+ALTURA_BARRA_ATALHOS: Final[int] = 26
+# Abaixo destas alturas/larguras o HUD abre mão de blocos inteiros em vez de
+# empilhá-los sobre a cena: legenda primeiro, depois a barra de atalhos.
+ALTURA_MINIMA_LEGENDA: Final[int] = 700
+LARGURA_MINIMA_ATALHOS: Final[int] = 1040
 
 # Ficha do planeta
 LARGURA_FICHA: Final[int] = 330

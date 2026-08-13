@@ -37,7 +37,30 @@ EXCLUIR = [
     "sounddevice",
     "pytest",
     "IPython",
+    # matplotlib só precisa do backend Agg aqui (nada é plotado em tela).
+    "tkinter",
 ]
+
+# Arquivos que o PyInstaller copia por precaução e que este aplicativo nunca
+# toca. Cada linha traz o motivo de ser seguro remover — sem isso o bundle passa
+# de 340 MB, quase tudo em código que nunca executa.
+LIXO_APOS_BUILD = [
+    # Codecs de arquivo de vídeo do OpenCV: só abrimos webcam (DirectShow/MSMF),
+    # nunca arquivos .mp4/.avi. ~52 MB em duas DLLs.
+    "cv2/opencv_videoio_ffmpeg*.dll",
+    # Interpretador Tcl/Tk, arrastado pelo matplotlib junto do backend TkAgg.
+    "_tcl_data",
+    "_tk_data",
+    "tcl8",
+    "tk",
+    # Decodificador AVIF do Pillow: nenhuma imagem é carregada de disco.
+    "PIL/_avif*.pyd",
+]
+
+# Modelos do MediaPipe usados pelo mp.solutions.hands. Todos os outros
+# (pose, face, íris, holistic, objectron, segmentação) vêm no wheel e ficam
+# ocupando espaço sem nunca serem carregados.
+MODELOS_USADOS = {"hand_landmark", "palm_detection"}
 
 
 def construir() -> int:
@@ -78,9 +101,64 @@ def construir() -> int:
         return resultado.returncode
 
     _publicar_na_raiz()
+    liberado = _enxugar_bundle()
     print(f"\nPronto: {RAIZ / (NOME_APP + '.exe')}")
     print(f"Bibliotecas em: {RAIZ / PASTA_BIBLIOTECAS}")
+    print(f"Enxugado: -{liberado / 1024 / 1024:.1f} MB de código nunca executado")
+    print(f"Tamanho final: {_tamanho_bundle() / 1024 / 1024:.1f} MB")
     return 0
+
+
+def _caminho_longo(caminho: Path) -> str:
+    """Prefixo \\\\?\\ para escapar do limite de 260 caracteres do Windows.
+
+    A árvore do mediapipe dentro do bundle ultrapassa esse limite e qualquer
+    ``stat``/``remove`` falha sem isto, mesmo o caminho existindo.
+    """
+    return "\\\\?\\" + str(caminho.resolve())
+
+
+def _tamanho_bundle() -> int:
+    """Soma o executável e todas as bibliotecas ao lado dele."""
+    total = (RAIZ / f"{NOME_APP}.exe").stat().st_size
+    for item in (RAIZ / PASTA_BIBLIOTECAS).rglob("*"):
+        try:
+            if item.is_file():
+                total += Path(_caminho_longo(item)).stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+def _enxugar_bundle() -> int:
+    """Remove do bundle o que este aplicativo comprovadamente não usa."""
+    base = RAIZ / PASTA_BIBLIOTECAS
+    liberado = 0
+
+    for padrao in LIXO_APOS_BUILD:
+        for alvo in base.glob(padrao):
+            if alvo.is_dir():
+                liberado += sum(
+                    Path(_caminho_longo(p)).stat().st_size
+                    for p in alvo.rglob("*")
+                    if p.is_file()
+                )
+                shutil.rmtree(alvo, ignore_errors=True)
+            elif alvo.is_file():
+                liberado += alvo.stat().st_size
+                alvo.unlink()
+
+    modulos = base / "mediapipe" / "modules"
+    if modulos.is_dir():
+        for pasta in modulos.iterdir():
+            if pasta.is_dir() and pasta.name not in MODELOS_USADOS:
+                liberado += sum(
+                    Path(_caminho_longo(p)).stat().st_size
+                    for p in pasta.rglob("*")
+                    if p.is_file()
+                )
+                shutil.rmtree(pasta, ignore_errors=True)
+    return liberado
 
 
 def _publicar_na_raiz() -> None:

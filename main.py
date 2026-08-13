@@ -2,7 +2,7 @@
 
 Loop principal: consome a última leitura da thread de visão, estabiliza o gesto,
 move a câmera e desenha a cena. A aplicação funciona por completo sem webcam —
-nesse caso as teclas 0-8 fazem o papel dos dedos.
+nesse caso as teclas 0-9 fazem o papel dos dedos.
 
 Uso:
     python main.py
@@ -326,7 +326,10 @@ def main() -> int:
     argumentos = analisador.parse_args()
 
     print(TITULO_JANELA)
-    print("Teclas: 0-8 focar | V visão geral | ESPAÇO pausa | +/- tempo | C câmera | Q sair")
+    print(
+        "Teclas: 0-9 focar (9/L = Lua) | V visão geral | ESPAÇO pausa | "
+        "+/- tempo | C câmera | Q sair"
+    )
     print("Mouse: arrastar = pan | roda = zoom | janela redimensionável")
     print(f"Python {sys.version.split()[0]} | webcam pedida: índice {argumentos.camera}")
     if not MEDIAPIPE_DISPONIVEL:

@@ -31,19 +31,48 @@ function formatarRotacao(corpo) {
   return `${formatarDecimal(horas)} h${sufixo}`;
 }
 
-/** Distância média ao Sol em UA e km. */
+/** Rótulo da distância — satélites medem do corpo-pai, não do Sol. */
+function rotuloDistancia(corpo) {
+  return corpo.orbitaEmTornoDe
+    ? `Distância média à ${corpo.orbitaEmTornoDe}`
+    : "Distância média ao Sol";
+}
+
+/**
+ * Distância média em UA e km, ou só em km para satélites.
+ *
+ * A UA é uma unidade heliocêntrica: expressar a órbita da Lua em UA daria
+ * 0,00257 — um número exato e inútil. Para satélites fica só o valor em km.
+ */
 function formatarDistancia(corpo) {
+  if (corpo.orbitaEmTornoDe) return `${formatadorInteiro.format(corpo.distanciaKm)} km`;
   if (corpo.distanciaUa <= 0) return "0 (centro do sistema)";
   return `${formatarDecimal(corpo.distanciaUa, 3)} UA<br>${formatadorInteiro.format(
     corpo.distanciaKm,
   )} km`;
 }
 
+/**
+ * O `tipo` é um identificador interno (sem acento, minúsculo): a ficha mostra a
+ * forma legível, senão a Lua aparece como "Satelite".
+ */
+const NOMES_DE_TIPO = {
+  estrela: "Estrela",
+  rochoso: "Planeta rochoso",
+  gasoso: "Gigante gasoso",
+  satelite: "Satélite natural",
+};
+
+/** Nome legível do tipo do corpo, para o subtítulo da ficha. */
+export function nomeDoTipo(corpo) {
+  return NOMES_DE_TIPO[corpo.tipo] ?? corpo.tipo.charAt(0).toUpperCase() + corpo.tipo.slice(1);
+}
+
 /** Pares (rótulo, valor) exibidos no card. */
 export function linhasDaFicha(corpo) {
   return [
     ["Diâmetro equatorial", `${formatadorInteiro.format(corpo.diametroKm)} km`],
-    ["Distância média ao Sol", formatarDistancia(corpo)],
+    [rotuloDistancia(corpo), formatarDistancia(corpo)],
     ["Período orbital", formatarPeriodoOrbital(corpo)],
     ["Período de rotação", formatarRotacao(corpo)],
     ["Luas conhecidas", formatadorInteiro.format(corpo.luas)],
@@ -69,9 +98,7 @@ export class Ficha {
     this.corpoAtual = corpo;
 
     this.titulo.textContent = corpo.nome;
-    this.legenda.textContent = `${
-      corpo.tipo.charAt(0).toUpperCase() + corpo.tipo.slice(1)
-    } · gesto ${corpo.indiceGesto}`;
+    this.legenda.textContent = `${nomeDoTipo(corpo)} · gesto ${corpo.indiceGesto}`;
     this.faixa.style.background = `rgb(${corpo.corBase.join(", ")})`;
 
     this.dados.innerHTML = linhasDaFicha(corpo)

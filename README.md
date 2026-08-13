@@ -61,6 +61,29 @@ nada é baixado na primeira execução.
 
 ---
 
+## Duas versões, a mesma aplicação
+
+| | Onde | Como rodar |
+|---|---|---|
+| **Desktop** | esta pasta | `SistemaSolar.exe` ou `.venv\Scripts\python.exe main.py` |
+| **Web** | [`web/`](web/) | abre no navegador, inclusive no celular — veja o [README da web](web/README.md) |
+
+As duas têm os mesmos corpos, os mesmos gestos, a mesma estabilização e as
+mesmas fichas. **Toda alteração feita em um lado precisa ser feita no outro** —
+e isso é verificado por script, não por disciplina:
+
+```powershell
+.venv\Scripts\python.exe verificar_paridade.py   # confere os dois lados
+.venv\Scripts\python.exe publicar.py             # verifica + regenera o download
+```
+
+O `publicar.py` também regenera o ZIP que o site oferece em "Baixar versão
+desktop", garantindo que quem baixa recebe a mesma `VERSAO` que está no ar.
+O histórico de implementações fica em [TAREFAS.md](TAREFAS.md) e o que ainda
+falta, em [ROADMAP.md](ROADMAP.md).
+
+---
+
 ## Executável (Windows)
 
 Para rodar sem mexer em Python, use o **`SistemaSolar.exe`** na raiz do projeto:
@@ -102,11 +125,11 @@ Conte os dedos levantados **somando as duas mãos visíveis**:
 | 6 | Saturno |
 | 7 | Urano |
 | 8 | Netuno |
+| 9 | Lua (satélite da Terra) |
 | **10 (duas mãos abertas)** | **volta à visão geral do sistema** |
-| 9 | ignorado (nenhuma ação) |
 
-**Uma mão só chega a 5.** Para 6, 7 e 8 use as duas mãos — por exemplo
-`5 + 1 = 6` (Saturno) ou `5 + 3 = 8` (Netuno). Isso não é uma limitação do
+**Uma mão só chega a 5.** Para 6, 7, 8 e 9 use as duas mãos — por exemplo
+`5 + 1 = 6` (Saturno) ou `5 + 4 = 9` (Lua). Isso não é uma limitação do
 reconhecimento: é aritmética de dedos, e o HUD lembra disso sempre que você
 está mostrando 5.
 

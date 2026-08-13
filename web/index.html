@@ -19,21 +19,25 @@
     <header class="barra">
       <div class="marca">
         <strong>Sistema Solar Interativo</strong>
+        <span data-versao>v—</span>
         <span data-fps>0 FPS</span>
         <span data-escala-tempo>tempo ×12.0</span>
+        <!-- Pastilha de estado da câmera: a cor do ponto entrega o estado antes
+             de qualquer leitura de texto. -->
+        <span class="estado-camera" data-estado-camera><i></i>câmera desligada</span>
       </div>
       <div class="acoes">
         <button type="button" id="btn-camera">Ativar câmera</button>
         <button type="button" id="btn-pausa">Pausar</button>
         <button type="button" id="btn-ajuda">Como usar</button>
-        <a class="download" href="sistema-solar-gestos.zip" download>
+        <a class="download" href="sistema-solar-gestos.zip" download data-download>
           Baixar versão desktop
         </a>
       </div>
     </header>
 
     <!-- Avisos centrais (câmera, iluminação, dica das duas mãos) -->
-    <div class="avisos" data-avisos></div>
+    <div class="avisos" data-avisos role="status" aria-live="polite"></div>
 
     <!-- Ficha do planeta focado -->
     <aside id="ficha" class="ficha" hidden>
@@ -49,17 +53,22 @@
 
     <!-- Painel de gesto: número detectado, anel de progresso e confirmado -->
     <section class="painel-gesto">
-      <div class="anel">
-        <svg viewBox="0 0 80 80" aria-hidden="true">
-          <circle class="trilho" cx="40" cy="40" r="34" />
-          <circle class="progresso" data-anel-progresso cx="40" cy="40" r="34" />
-        </svg>
-        <span data-detectado class="inativo">—</span>
+      <div class="coluna-anel">
+        <div class="anel">
+          <svg viewBox="0 0 80 80" aria-hidden="true">
+            <circle class="trilho" cx="40" cy="40" r="34" />
+            <circle class="progresso" data-anel-progresso cx="40" cy="40" r="34" />
+          </svg>
+          <span data-detectado class="inativo">—</span>
+        </div>
+        <!-- Vira "segure..." enquanto o anel enche: é o único momento em que o
+             usuário precisa NÃO mexer a mão. -->
+        <span class="rodape-anel" data-rodape-anel>detectado</span>
       </div>
       <div class="leitura">
         <span class="rotulo">Confirmado</span>
         <b data-confirmado>—</b>
-        <span class="alvo" data-alvo>visão geral</span>
+        <span class="alvo"><i data-alvo-cor hidden></i><span data-alvo>visão geral</span></span>
         <span class="maos" data-maos>0 mão(s)</span>
       </div>
     </section>
@@ -74,7 +83,11 @@
     <nav id="botoes-gesto" class="botoes-gesto" aria-label="Selecionar corpo celeste"></nav>
 
     <!-- Legenda gesto -> corpo -->
-    <ul class="legenda-gestos" data-legenda></ul>
+    <section class="painel-legenda">
+      <h2>Dedos → corpo celeste</h2>
+      <ul class="legenda-gestos" data-legenda></ul>
+      <p class="nota-legenda" data-nota-legenda></p>
+    </section>
 
     <!-- Painel de ajuda -->
     <div id="ajuda" class="ajuda">
