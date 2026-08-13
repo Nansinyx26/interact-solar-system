@@ -210,7 +210,7 @@ export const CORPOS = [
     luas: 0,
     temperaturaMediaC: -20,
     inclinacaoAxialGraus: 6.68,
-    fatoCurioso: "É o único outro mundo que a humanidade já pisou.",
+    fatoCurioso: "É o único outro satélite natural que a humanidade já pisou.",
     corBase: [180, 180, 178],
     corSecundaria: [120, 118, 114],
     corDetalhe: [210, 208, 204],
