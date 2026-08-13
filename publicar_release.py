@@ -57,6 +57,130 @@ def _tem_gh() -> bool:
     return shutil.which("gh") is not None
 
 
+def _token_do_git() -> str | None:
+    """Obtém o token do GitHub já guardado pelo credential helper do Git.
+
+    É a mesma credencial que o ``git push`` usa nesta máquina, lida pelo canal
+    oficial (``git credential fill``) — nada é digitado nem gravado por aqui.
+    Permite publicar o release sem instalar o GitHub CLI.
+    """
+    try:
+        resultado = subprocess.run(
+            ["git", "credential", "fill"],
+            input="protocol=https\nhost=github.com\n\n",
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if resultado.returncode != 0:
+        return None
+    for linha in resultado.stdout.splitlines():
+        if linha.startswith("password="):
+            return linha.partition("=")[2].strip() or None
+    return None
+
+
+def _publicar_pela_api(etiqueta: str, versao: str, token: str) -> int:
+    """Cria o release e envia o ZIP usando a API REST do GitHub."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    base = f"https://api.github.com/repos/{REPOSITORIO}"
+    cabecalhos = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "sistema-solar-gestos",
+    }
+
+    def _pedir(url: str, dados: bytes | None = None, extra: dict | None = None,
+               metodo: str | None = None):
+        pedido = urllib.request.Request(
+            url, data=dados, headers={**cabecalhos, **(extra or {})}, method=metodo
+        )
+        with urllib.request.urlopen(pedido, timeout=900) as resposta:
+            corpo = resposta.read()
+            return json.loads(corpo) if corpo else {}
+
+    # O GitHub recusa criar release em repositório sem nenhum commit
+    # ("Repository is empty"), então o primeiro uso semeia um README.
+    try:
+        _pedir(f"{base}/contents/README.md")
+    except urllib.error.HTTPError as erro:
+        if erro.code == 404:
+            print("  repositório vazio — criando o README inicial...")
+            import base64
+
+            corpo = json.dumps(
+                {
+                    "message": "Adiciona o README dos pacotes de instalação",
+                    "content": base64.b64encode(_leia_me_do_repositorio().encode()).decode(),
+                }
+            ).encode()
+            try:
+                _pedir(
+                    f"{base}/contents/README.md",
+                    corpo,
+                    {"Content-Type": "application/json"},
+                    metodo="PUT",
+                )
+            except urllib.error.HTTPError as falha:
+                print(f"  HTTP {falha.code}: {falha.read()[:300]!r}")
+                return 1
+
+    # Release já existente: reaproveita, para o link /latest/ não mudar.
+    try:
+        release = _pedir(f"{base}/releases/tags/{etiqueta}")
+        print(f"  release {etiqueta} já existe (id {release['id']})")
+    except urllib.error.HTTPError as erro:
+        if erro.code != 404:
+            print(f"  falha ao consultar o release: HTTP {erro.code} {erro.read()[:200]!r}")
+            return 1
+        print(f"  criando o release {etiqueta}...")
+        corpo = json.dumps(
+            {
+                "tag_name": etiqueta,
+                "name": f"Sistema Solar Interativo {etiqueta}",
+                "body": _notas(versao),
+                "draft": False,
+                "prerelease": False,
+            }
+        ).encode()
+        try:
+            release = _pedir(f"{base}/releases", corpo, {"Content-Type": "application/json"})
+        except urllib.error.HTTPError as falha:
+            print(f"  HTTP {falha.code}: {falha.read()[:300]!r}")
+            if falha.code in (401, 403):
+                print("  O token salvo não tem permissão de escrita neste repositório.")
+            return 1
+
+    # Asset com o mesmo nome precisa sair antes: a API não sobrescreve.
+    for asset in release.get("assets", []):
+        if asset["name"] == ZIP.name:
+            print(f"  removendo o asset anterior ({asset['size'] / 1024 / 1024:.1f} MB)...")
+            _pedir(f"{base}/releases/assets/{asset['id']}", metodo="DELETE")
+
+    tamanho_mb = ZIP.stat().st_size / 1024 / 1024
+    print(f"  enviando {ZIP.name} ({tamanho_mb:.1f} MB) — pode levar vários minutos...")
+    url_upload = release["upload_url"].split("{")[0] + f"?name={ZIP.name}"
+    try:
+        enviado = _pedir(
+            url_upload,
+            ZIP.read_bytes(),
+            {"Content-Type": "application/zip"},
+        )
+    except urllib.error.HTTPError as falha:
+        print(f"  HTTP {falha.code}: {falha.read()[:300]!r}")
+        return 1
+
+    print(f"  asset publicado: {enviado.get('browser_download_url')}")
+    return 0
+
+
 def conferir() -> list[str]:
     """Valida os pré-requisitos e devolve a lista de problemas."""
     problemas: list[str] = []
@@ -125,6 +249,14 @@ def publicar() -> int:
     etiqueta = f"v{versao}"
 
     if not _tem_gh():
+        # Sem o CLI, tenta a API REST com a credencial que o Git já usa.
+        token = _token_do_git()
+        if token:
+            print("\nGitHub CLI ausente — publicando pela API com a credencial do Git.")
+            codigo = _publicar_pela_api(etiqueta, versao, token)
+            if codigo == 0:
+                print(f"\nPublicado. O botão do site já aponta para:\n  {URL_ESPERADA}")
+            return codigo
         _instrucoes_manuais(versao)
         return 1
 
@@ -157,6 +289,38 @@ def publicar() -> int:
 
     print(f"\nPublicado. O botão do site já aponta para:\n  {URL_ESPERADA}")
     return 0
+
+
+def _leia_me_do_repositorio() -> str:
+    """README do repositório de pacotes (ele existe só para hospedar releases)."""
+    return """\
+# Sistema Solar Interativo — pacotes para Windows
+
+Este repositório existe para **hospedar o executável**. O pacote tem ~107 MB, o
+que passa dos limites de 100 MB por arquivo tanto do Git quanto do plano Hobby
+do Vercel — GitHub Releases aceita até 2 GB por arquivo e resolve o problema.
+
+## Baixar
+
+**[⬇ Baixar a versão mais recente](../../releases/latest)**
+
+Extraia o ZIP e dê dois cliques em `SistemaSolar.exe`. Não precisa instalar
+Python. Instruções completas em `COMO-USAR.txt`, dentro do pacote.
+
+## O que é
+
+Um Sistema Solar animado que você controla **mostrando números com a mão** para
+a webcam: 0 = Sol, 3 = Terra, 5 = Júpiter, 5+4 = Lua, as duas mãos abertas
+voltam à visão geral. Sem webcam funciona igual, pelas teclas 0–9.
+
+O reconhecimento roda localmente (MediaPipe): nenhuma imagem sai do computador.
+
+## Código-fonte
+
+O código, a versão web e a documentação ficam em
+**[interact-solar-system](https://github.com/Nansinyx26/interact-solar-system)**.
+O código-fonte completo também vai dentro de cada pacote publicado aqui.
+"""
 
 
 def _notas(versao: str) -> str:
