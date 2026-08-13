@@ -181,10 +181,16 @@ class Aplicacao {
 
   _tratarTecla(evento) {
     const tecla = evento.key;
-    if (tecla >= "0" && tecla <= "8") {
+    if (tecla >= "0" && tecla <= "9") {
       const indice = Number(tecla);
       this.estabilizador.forcar(indice, performance.now() / 1000);
       this._selecionar(corpoPorGesto(indice));
+    } else if (tecla === "l" || tecla === "L") {
+      const lua = corpoPorGesto(9);
+      if (lua) {
+        this.estabilizador.forcar(9, performance.now() / 1000);
+        this._selecionar(lua);
+      }
     } else if (tecla === "v" || tecla === "V") {
       this._voltarVisaoGeral();
     } else if (tecla === " ") {

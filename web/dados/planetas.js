@@ -198,9 +198,31 @@ export const CORPOS = [
     manchas: true,
     faseInicial: 2,
   },
+  {
+    nome: "Lua",
+    indiceGesto: 9,
+    tipo: "satelite",
+    diametroKm: 3474,
+    distanciaUa: 0,        // não orbita o Sol diretamente
+    distanciaKm: 384400,   // distância média à Terra
+    periodoOrbitalDias: 27.32,
+    periodoRotacaoHoras: 655.73, // síncrona (= período orbital)
+    luas: 0,
+    temperaturaMediaC: -20,
+    inclinacaoAxialGraus: 6.68,
+    fatoCurioso: "É o único outro mundo que a humanidade já pisou.",
+    corBase: [180, 180, 178],
+    corSecundaria: [120, 118, 114],
+    corDetalhe: [210, 208, 204],
+    corTempestade: null,
+    faixas: false,
+    manchas: true,
+    faseInicial: 0,
+    orbitaEmTornoDe: "Terra",
+  },
 ];
 
-/** Índice de gesto -> corpo. Gestos 9 e 10 ficam de fora de propósito. */
+/** Índice de gesto -> corpo. Gestos 10 fica de fora de propósito. */
 export const CORPOS_POR_GESTO = new Map(CORPOS.map((c) => [c.indiceGesto, c]));
 
 /** Diâmetro de referência da lei de potência de tamanho (a Terra). */
@@ -220,3 +242,12 @@ export function corpoPorGesto(numeroDedos) {
 export function ehSol(corpo) {
   return corpo.tipo === "estrela";
 }
+
+/** Indica se o corpo é um satélite (orbita outro corpo, não o Sol). */
+export function ehSatelite(corpo) {
+  return Boolean(corpo.orbitaEmTornoDe);
+}
+
+/** Referência rápida à Lua. */
+export const LUA = CORPOS.find((c) => c.nome === "Lua");
+

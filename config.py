@@ -282,3 +282,14 @@ ASSINATURA_RAIO_ORBITA_PX: Final[float] = 15.0
 ALPHA_ASSINATURA_PAINEL: Final[int] = 165
 ALPHA_ASSINATURA_FACE_FUNDO: Final[int] = 70   # face mais distante do cubo
 ALPHA_ASSINATURA_FACE_FRENTE: Final[int] = 255
+
+# ---------------------------------------------------------------------------
+# Lua (satélite da Terra)
+# ---------------------------------------------------------------------------
+# Raio orbital da Lua em torno da Terra, em pixels de mundo. Não segue a escala
+# logarítmica dos planetas — seria invisível. É um valor visual fixo.
+RAIO_ORBITA_LUA_PX: Final[float] = 28.0
+# Raio desenhado da Lua (fixo, como o Sol). Em escala real seria ~0,27x a Terra,
+# mas com raio base 10 px isso daria 2,7 px — pequeno demais para ver textura.
+RAIO_LUA_PX: Final[float] = 4.0
+

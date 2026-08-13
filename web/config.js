@@ -142,3 +142,14 @@ export const SEGUNDOS_ATE_VISAO_GERAL = 6;
 
 // Gesto de comando: as duas mãos abertas (5 + 5) reenquadram o sistema.
 export const GESTO_VISAO_GERAL = 10;
+
+// ---------------------------------------------------------------------------
+// Lua (satélite da Terra)
+// ---------------------------------------------------------------------------
+// Raio orbital da Lua em torno da Terra, em pixels de mundo. Não segue a escala
+// logarítmica dos planetas — seria invisível. É um valor visual fixo.
+export const RAIO_ORBITA_LUA_PX = 28;
+// Raio desenhado da Lua (fixo, como o Sol). Em escala real seria ~0,27x a Terra,
+// mas com raio base 10 px isso daria 2,7 px — pequeno demais para ver textura.
+export const RAIO_LUA_PX = 4;
+

@@ -12,6 +12,8 @@ import math
 from config import (
     EXPOENTE_RAIO_CORPO,
     FATOR_ROTACAO_PROPRIA,
+    RAIO_LUA_PX,
+    RAIO_ORBITA_LUA_PX,
     RAIO_ORBITA_MAX_PX,
     RAIO_ORBITA_MIN_PX,
     RAIO_PLANETA_BASE_PX,
@@ -50,6 +52,8 @@ def raio_corpo_px(corpo: CorpoCeleste) -> float:
     """
     if corpo.eh_sol:
         return RAIO_SOL_PX
+    if corpo.eh_satelite:
+        return RAIO_LUA_PX
     razao = corpo.diametro_km / DIAMETRO_REFERENCIA_KM
     return RAIO_PLANETA_BASE_PX * (razao**EXPOENTE_RAIO_CORPO)
 
@@ -63,7 +67,16 @@ def angulo_orbital(corpo: CorpoCeleste, tempo_dias: float) -> float:
 
 
 def posicao_orbital(corpo: CorpoCeleste, tempo_dias: float) -> tuple[float, float]:
-    """Posição (x, y) do corpo em unidades de mundo, com o Sol na origem."""
+    """Posição (x, y) do corpo em unidades de mundo, com o Sol na origem.
+
+    Para satélites, devolve o deslocamento relativo ao corpo-pai (sem somá-lo).
+    """
+    if corpo.eh_satelite:
+        angulo = angulo_orbital(corpo, tempo_dias)
+        return (
+            RAIO_ORBITA_LUA_PX * math.cos(angulo),
+            RAIO_ORBITA_LUA_PX * math.sin(angulo),
+        )
     raio = raio_orbital_px(corpo.distancia_ua)
     if raio == 0.0:
         return (0.0, 0.0)
@@ -86,8 +99,22 @@ def fase_rotacao(corpo: CorpoCeleste, tempo_dias: float) -> float:
 
 
 def posicoes_do_sistema(tempo_dias: float) -> dict[str, tuple[float, float]]:
-    """Posição de todos os corpos no instante informado, indexada pelo nome."""
-    return {corpo.nome: posicao_orbital(corpo, tempo_dias) for corpo in CORPOS}
+    """Posição de todos os corpos no instante informado, indexada pelo nome.
+
+    Planetas são resolvidos primeiro; satélites somam o offset ao corpo-pai.
+    """
+    posicoes: dict[str, tuple[float, float]] = {}
+    # Primeiro: corpos que orbitam o Sol (planetas + Sol).
+    for corpo in CORPOS:
+        if not corpo.eh_satelite:
+            posicoes[corpo.nome] = posicao_orbital(corpo, tempo_dias)
+    # Depois: satélites (offset sobre a posição do corpo-pai).
+    for corpo in CORPOS:
+        if corpo.eh_satelite:
+            pai = posicoes.get(corpo.orbita_em_torno_de, (0.0, 0.0))
+            rel = posicao_orbital(corpo, tempo_dias)
+            posicoes[corpo.nome] = (pai[0] + rel[0], pai[1] + rel[1])
+    return posicoes
 
 
 def angulo_iluminacao(posicao: tuple[float, float]) -> float:

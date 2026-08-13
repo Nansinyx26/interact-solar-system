@@ -9,6 +9,8 @@
 import {
   EXPOENTE_RAIO_CORPO,
   FATOR_ROTACAO_PROPRIA,
+  RAIO_LUA_PX,
+  RAIO_ORBITA_LUA_PX,
   RAIO_ORBITA_MAX_PX,
   RAIO_ORBITA_MIN_PX,
   RAIO_PLANETA_BASE_PX,
@@ -19,6 +21,7 @@ import {
   DIAMETRO_REFERENCIA_KM,
   DISTANCIA_UA_MAXIMA,
   DISTANCIA_UA_MINIMA,
+  ehSatelite,
   ehSol,
 } from "../dados/planetas.js";
 
@@ -42,6 +45,7 @@ export function raioOrbitalPx(distanciaUa) {
  */
 export function raioCorpoPx(corpo) {
   if (ehSol(corpo)) return RAIO_SOL_PX;
+  if (ehSatelite(corpo)) return RAIO_LUA_PX;
   const razao = corpo.diametroKm / DIAMETRO_REFERENCIA_KM;
   return RAIO_PLANETA_BASE_PX * razao ** EXPOENTE_RAIO_CORPO;
 }
@@ -52,18 +56,45 @@ export function anguloOrbital(corpo, tempoDias) {
   return corpo.faseInicial + 2 * Math.PI * (tempoDias / corpo.periodoOrbitalDias);
 }
 
-/** Posição {x, y} do corpo em unidades de mundo, com o Sol na origem. */
+/**
+ * Posição {x, y} do corpo em unidades de mundo, com o Sol na origem.
+ * Para satélites, devolve o deslocamento relativo ao corpo-pai (sem somá-lo).
+ */
 export function posicaoOrbital(corpo, tempoDias) {
+  if (ehSatelite(corpo)) {
+    // Satélite: órbita ao redor do corpo-pai, não do Sol.
+    const angulo = anguloOrbital(corpo, tempoDias);
+    return {
+      x: RAIO_ORBITA_LUA_PX * Math.cos(angulo),
+      y: RAIO_ORBITA_LUA_PX * Math.sin(angulo),
+    };
+  }
   const raio = raioOrbitalPx(corpo.distanciaUa);
   if (raio === 0) return { x: 0, y: 0 };
   const angulo = anguloOrbital(corpo, tempoDias);
   return { x: raio * Math.cos(angulo), y: raio * Math.sin(angulo) };
 }
 
-/** Posição de todos os corpos no instante informado, indexada pelo nome. */
+/**
+ * Posição de todos os corpos no instante informado, indexada pelo nome.
+ * Planetas são resolvidos primeiro; satélites somam o offset ao corpo-pai.
+ */
 export function posicoesDoSistema(tempoDias) {
   const posicoes = new Map();
-  for (const corpo of CORPOS) posicoes.set(corpo.nome, posicaoOrbital(corpo, tempoDias));
+  // Primeiro: corpos que orbitam o Sol (planetas + Sol).
+  for (const corpo of CORPOS) {
+    if (!ehSatelite(corpo)) {
+      posicoes.set(corpo.nome, posicaoOrbital(corpo, tempoDias));
+    }
+  }
+  // Depois: satélites (offset sobre a posição do corpo-pai).
+  for (const corpo of CORPOS) {
+    if (ehSatelite(corpo)) {
+      const pai = posicoes.get(corpo.orbitaEmTornoDe) ?? { x: 0, y: 0 };
+      const rel = posicaoOrbital(corpo, tempoDias);
+      posicoes.set(corpo.nome, { x: pai.x + rel.x, y: pai.y + rel.y });
+    }
+  }
   return posicoes;
 }
 

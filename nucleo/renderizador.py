@@ -415,10 +415,10 @@ class Renderizador:
         tempo_dias: float,
         corpo_focado: CorpoCeleste | None,
     ) -> None:
-        """Desenha um frame completo da cena (fundo, órbitas e corpos)."""
+        """Desenha um frame completo da cena."""
         superficie.fill(COR_FUNDO)
         self._desenhar_estrelas(superficie, camera)
-        self._desenhar_orbitas(superficie, camera, corpo_focado)
+        self._desenhar_orbitas(superficie, camera, posicoes, corpo_focado)
         for corpo in CORPOS:
             self._desenhar_corpo(
                 superficie, camera, corpo, posicoes[corpo.nome], tempo_dias, corpo_focado
@@ -439,21 +439,33 @@ class Renderizador:
         self,
         superficie: pygame.Surface,
         camera: Camera2D,
+        posicoes: dict[str, tuple[float, float]],
         corpo_focado: CorpoCeleste | None,
     ) -> None:
         """Círculos orbitais; os não focados ficam tênues durante um foco."""
         self._camada_orbitas.fill((0, 0, 0, 0))
-        centro = camera.mundo_para_tela((0.0, 0.0))
+        centro_sol = camera.mundo_para_tela((0.0, 0.0))
         desenhou = False
         for corpo in CORPOS:
             if corpo.eh_sol:
                 continue
-            raio = camera.escalar(raio_orbital_px(corpo.distancia_ua))
+
+            if corpo.eh_satelite:
+                pos_pai = posicoes.get(corpo.orbita_em_torno_de)
+                if not pos_pai:
+                    continue
+                centro = camera.mundo_para_tela(pos_pai)
+                raio_mundo = 28.0  # RAIO_ORBITA_LUA_PX
+            else:
+                centro = centro_sol
+                raio_mundo = raio_orbital_px(corpo.distancia_ua)
+
+            raio = camera.escalar(raio_mundo)
             if raio < 2.0 or raio > RAIO_ORBITA_MAX_DESENHAVEL_PX:
                 continue
             if corpo_focado is None:
                 cor, alpha = COR_ORBITA, ALPHA_ORBITA_NORMAL
-            elif corpo_focado.nome == corpo.nome:
+            elif corpo_focado.nome in (corpo.nome, corpo.orbita_em_torno_de):
                 cor, alpha = COR_ORBITA_FOCADA, ALPHA_ORBITA_FOCADA
             else:
                 cor, alpha = COR_ORBITA, ALPHA_ORBITA_TENUE

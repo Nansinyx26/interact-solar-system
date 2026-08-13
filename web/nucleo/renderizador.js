@@ -394,7 +394,7 @@ export class Renderizador {
     ctx.fillRect(0, 0, this.largura, this.altura);
 
     this._desenharEstrelas(camera);
-    this._desenharOrbitas(camera, corpoFocado);
+    this._desenharOrbitas(camera, posicoes, corpoFocado);
     for (const corpo of CORPOS) {
       this._desenharCorpo(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
     }
@@ -415,22 +415,39 @@ export class Renderizador {
     });
   }
 
-  _desenharOrbitas(camera, corpoFocado) {
+  _desenharOrbitas(camera, posicoes, corpoFocado) {
     const { ctx } = this;
-    const centro = camera.mundoParaTela({ x: 0, y: 0 });
+    const centroSol = camera.mundoParaTela({ x: 0, y: 0 });
     ctx.lineWidth = 1;
+
     for (const corpo of CORPOS) {
       if (ehSol(corpo)) continue;
-      const raio = camera.escalar(raioOrbitalPx(corpo.distanciaUa));
+
+      let centro = centroSol;
+      let raioMundo = 0;
+
+      if (corpo.orbitaEmTornoDe) {
+        // Satélite (ex: Lua ao redor da Terra)
+        const posPai = posicoes.get(corpo.orbitaEmTornoDe);
+        if (!posPai) continue;
+        centro = camera.mundoParaTela(posPai);
+        raioMundo = 28; // RAIO_ORBITA_LUA_PX
+      } else {
+        raioMundo = raioOrbitalPx(corpo.distanciaUa);
+      }
+
+      const raio = camera.escalar(raioMundo);
       if (raio < 2) continue;
+
       let cor = COR_ORBITA;
       let alpha = ALPHA_ORBITA_NORMAL;
-      if (corpoFocado && corpoFocado.nome === corpo.nome) {
+      if (corpoFocado && (corpoFocado.nome === corpo.nome || corpoFocado.nome === corpo.orbitaEmTornoDe)) {
         cor = COR_ORBITA_FOCADA;
         alpha = ALPHA_ORBITA_FOCADA;
       } else if (corpoFocado) {
         alpha = ALPHA_ORBITA_TENUE;
       }
+
       ctx.strokeStyle = `rgba(${cor}, ${alpha})`;
       ctx.beginPath();
       ctx.arc(centro.x, centro.y, raio, 0, Math.PI * 2);

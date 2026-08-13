@@ -40,11 +40,17 @@ class CorpoCeleste:
     manchas: bool = False  # blobs irregulares (continentes / crateras)
     tem_aneis: bool = False
     fase_inicial: float = 0.0  # ângulo orbital inicial, em radianos
+    orbita_em_torno_de: str | None = None  # nome do corpo-pai (satélites)
 
     @property
     def eh_sol(self) -> bool:
         """Indica se o corpo é a estrela central."""
         return self.tipo == "estrela"
+
+    @property
+    def eh_satelite(self) -> bool:
+        """Indica se o corpo é um satélite (orbita outro corpo, não o Sol)."""
+        return self.orbita_em_torno_de is not None
 
 
 # Fases iniciais espalhadas para que os planetas não nasçam alinhados.
@@ -225,9 +231,29 @@ CORPOS: list[CorpoCeleste] = [
         manchas=True,
         fase_inicial=2.0,
     ),
+    CorpoCeleste(
+        nome="Lua",
+        indice_gesto=9,
+        tipo="satelite",
+        diametro_km=3_474,
+        distancia_ua=0.0,        # não orbita o Sol diretamente
+        distancia_km=384_400,    # distância média à Terra
+        periodo_orbital_dias=27.32,
+        periodo_rotacao_horas=655.73,  # síncrona (= período orbital)
+        luas=0,
+        temperatura_media_c=-20.0,
+        inclinacao_axial_graus=6.68,
+        fato_curioso="É o único outro mundo que a humanidade já pisou.",
+        cor_base=(180, 180, 178),
+        cor_secundaria=(120, 118, 114),
+        cor_detalhe=(210, 208, 204),
+        manchas=True,
+        fase_inicial=0.0,
+        orbita_em_torno_de="Terra",
+    ),
 ]
 
-# Índice de gesto -> corpo. Gestos 9 e 10 ficam de fora de propósito.
+# Índice de gesto -> corpo. Gesto 10 fica de fora de propósito.
 CORPOS_POR_GESTO: dict[int, CorpoCeleste] = {c.indice_gesto: c for c in CORPOS}
 
 # Diâmetro de referência para a lei de potência de tamanho (ver config.py).

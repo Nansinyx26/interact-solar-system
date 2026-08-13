@@ -184,6 +184,11 @@ class Aplicacao:
             self._voltar_visao_geral()
         elif tecla == pygame.K_c:
             self.mostrar_preview = not self.mostrar_preview
+        elif tecla == pygame.K_l:
+            lua = corpo_por_gesto(9)
+            if lua:
+                self.estabilizador.forcar(9, time.monotonic())
+                self._selecionar(lua)
         elif tecla in _TECLAS_ACELERAR:
             self.escala_tempo = min(
                 TIME_SCALE_MAX, self.escala_tempo * FATOR_AJUSTE_TEMPO
@@ -212,8 +217,7 @@ class Aplicacao:
         # a confirmação viraria quase instantânea, perdendo o efeito de filtro.
         if self.leitura.sequencia != self._ultima_sequencia:
             self._ultima_sequencia = self.leitura.sequencia
-            # 0-8 selecionam um corpo e 10 é o comando "visão geral"; 9 não tem
-            # significado e entra como leitura inválida.
+            # 0-9 selecionam um corpo e 10 é o comando "visão geral".
             contagem = self.leitura.contagem
             valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
             leitura_valida = contagem if valido else None
