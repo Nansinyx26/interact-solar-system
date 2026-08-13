@@ -1,0 +1,15 @@
+# Ignorar arquivos do aplicativo Desktop Python na Vercel
+main.py
+config.py
+build_exe.py
+empacotar_web.py
+dados/
+docs/
+gestos/
+nucleo/
+ui/
+requirements.txt
+ROADMAP.md
+SistemaSolar.exe
+_internal_sistema_solar/
+.venv/
