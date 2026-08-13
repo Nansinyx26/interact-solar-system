@@ -6,9 +6,14 @@ levantados durante o desenvolvimento das versões desktop e web.
 
 Legenda de esforço: **P** (poucas horas) · **M** (um dia) · **G** (vários dias).
 
+> **Concluídas na v1.2.0:** o zoom por pinça na câmera e a narração por voz
+> saíram do backlog e estão em produção nas duas versões. O que foi
+> efetivamente construído, com os desvios em relação ao plano original, está em
+> [TAREFAS.md](TAREFAS.md).
+
 ---
 
-## 1. Zoom por gesto de pinça na câmera — **M**
+## ~~1. Zoom por gesto de pinça na câmera~~ — CONCLUÍDO na v1.2.0
 
 Controlar o zoom aproximando e afastando polegar e indicador **na frente da
 webcam**, sem tocar em nada.
@@ -57,7 +62,7 @@ webcam**, sem tocar em nada.
 
 ---
 
-## 2. Narração por voz (TTS) do corpo focado — **P** (web) / **M** (desktop)
+## ~~2. Narração por voz (TTS) do corpo focado~~ — CONCLUÍDO na v1.2.0
 
 Ao confirmar um gesto, falar em voz alta o nome do planeta e, opcionalmente, a
 ficha resumida ("Saturno. Gigante gasoso. 146 luas conhecidas.").

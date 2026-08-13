@@ -99,9 +99,11 @@ ALTURA_BLOCO_PREVIEW = ALTURA_PREVIEW_CAMERA + 22
 # sobre o mouse, que é a parte descobrível sem ajuda.
 _ATALHOS_COMPLETOS = (
     "0–9 focar   L Lua   V visão geral   ESPAÇO pausa   +/− tempo   "
-    "C câmera   Q sair   ·   arraste com o mouse, roda = zoom"
+    "C câmera   N voz   Q sair   ·   arraste com o mouse, roda = zoom"
 )
-_ATALHOS_CURTOS = "0–9 focar   L Lua   V visão geral   ESPAÇO pausa   +/− tempo   C câmera   Q sair"
+_ATALHOS_CURTOS = (
+    "0–9 focar   L Lua   V visão geral   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
+)
 
 # Rótulo do gesto de comando na legenda.
 _ROTULO_VISAO_GERAL = "visão geral  (tecla V)"
@@ -143,6 +145,8 @@ class EstadoHUD:
     pausado: bool
     escala_tempo: float
     valor_confirmado: int | None = None  # inclui o gesto de comando (10)
+    pinca_ativa: bool = False  # modo zoom pela câmera
+    narracao_ativa: bool = False
 
 
 def desenhar_painel(
@@ -441,10 +445,19 @@ class HUD:
         avisos: list[tuple[str, tuple[int, int, int]]] = []
         leitura = estado.leitura
 
+        if estado.pinca_ativa:
+            # Enquanto a pinça comanda o zoom a seleção por dedos fica suspensa:
+            # sem este aviso o usuário acha que o reconhecimento travou.
+            avisos.append(
+                ("MODO ZOOM — afaste ou aproxime polegar e indicador", COR_SUCESSO)
+            )
+
         if leitura.status in (StatusCamera.INDISPONIVEL, StatusCamera.DESCONECTADA):
             avisos.append((leitura.mensagem or "Webcam indisponível.", COR_ERRO))
         elif leitura.status is StatusCamera.INICIANDO:
             avisos.append(("Abrindo a webcam...", COR_TEXTO_SECUNDARIO))
+        elif estado.pinca_ativa:
+            pass  # em modo zoom, as dicas de contagem só atrapalhariam
         else:
             if leitura.brilho_medio < LIMIAR_BRILHO_BAIXO:
                 avisos.append(

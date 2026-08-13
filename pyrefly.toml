@@ -1,0 +1,20 @@
+# Configuração do Pyrefly (analisador estático usado pelo editor).
+#
+# Sem apontar o interpretador, ele consulta o Python global do sistema — onde
+# mediapipe, pygame, cv2 e pyttsx3 não estão instalados — e sublinha os imports
+# em vermelho mesmo com o programa funcionando. As dependências vivem no .venv
+# do projeto.
+python-interpreter = ".venv/Scripts/python.exe"
+
+project-includes = ["**/*.py"]
+project-excludes = [
+    ".venv/**",
+    "_internal_sistema_solar/**",
+    "build_dist/**",
+    "build_temp/**",
+    "**/__pycache__/**",
+]
+
+# A raiz do projeto é o diretório deste arquivo: é assim que "from config import"
+# e "from ui.hud import" são resolvidos.
+search-path = ["."]

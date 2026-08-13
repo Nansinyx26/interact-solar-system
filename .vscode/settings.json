@@ -1,0 +1,14 @@
+{
+  // O analisador do editor precisa usar o interpretador do .venv do projeto.
+  // Sem isto ele consulta o Python global, onde mediapipe, pygame, cv2 e
+  // pyttsx3 não existem — e sublinha os imports em vermelho mesmo com o
+  // programa funcionando normalmente.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
+  "pyrefly.pythonInterpreter": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/_internal_sistema_solar": true
+  }
+}

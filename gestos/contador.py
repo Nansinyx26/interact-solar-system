@@ -115,20 +115,47 @@ def _polegar_levantado(
 def contar_dedos(landmarks: np.ndarray, lado: str) -> int:
     """Conta quantos dedos de UMA mão estão levantados (0 a 5)."""
     eixo_dedos, eixo_polegar, tamanho = _referencial_da_palma(landmarks, lado)
-    origem = landmarks[PULSO, :2]
 
     total = 0
     for ponta, pip in DEDOS_LONGOS:
         # Projeção no eixo da palma: equivale a "a ponta está acima da junta",
         # só que válido com a mão em qualquer ângulo.
-        projecao_ponta = float(np.dot(landmarks[ponta, :2] - origem, eixo_dedos))
-        projecao_pip = float(np.dot(landmarks[pip, :2] - origem, eixo_dedos))
-        if (projecao_ponta - projecao_pip) > LIMIAR_DEDO_ESTENDIDO * tamanho:
+        if _dedo_estendido(landmarks, ponta, pip, eixo_dedos, tamanho):
             total += 1
 
     if _polegar_levantado(landmarks, eixo_polegar, tamanho):
         total += 1
     return total
+
+
+def _dedo_estendido(
+    landmarks: np.ndarray, ponta: int, pip: int, eixo_dedos: np.ndarray, tamanho: float
+) -> bool:
+    """Projeta ponta e junta no eixo da palma para saber se o dedo está aberto."""
+    origem = landmarks[PULSO, :2]
+    projecao_ponta = float(np.dot(landmarks[ponta, :2] - origem, eixo_dedos))
+    projecao_pip = float(np.dot(landmarks[pip, :2] - origem, eixo_dedos))
+    return (projecao_ponta - projecao_pip) > LIMIAR_DEDO_ESTENDIDO * tamanho
+
+
+def medir_pinca(landmarks: np.ndarray, lado: str) -> float | None:
+    """Distância ponta do polegar <-> ponta do indicador, em palmas.
+
+    Devolve ``None`` quando o indicador está dobrado: numa mão fechada as duas
+    pontas também ficam próximas, e sem esta checagem mostrar 0 dedos (o Sol)
+    seria confundido com uma pinça.
+
+    Dividir pelo tamanho da palma é o que torna a medida independente da
+    distância até a câmera — o mesmo princípio dos limiares de dedo.
+    """
+    eixo_dedos, _eixo_polegar, tamanho = _referencial_da_palma(landmarks, lado)
+    ponta_indicador, pip_indicador = DEDOS_LONGOS[0]
+    if not _dedo_estendido(landmarks, ponta_indicador, pip_indicador, eixo_dedos, tamanho):
+        return None
+    separacao = float(
+        np.linalg.norm(landmarks[POLEGAR_PONTA, :2] - landmarks[ponta_indicador, :2])
+    )
+    return separacao / tamanho
 
 
 def contar_dedos_total(maos: list[tuple[np.ndarray, str]]) -> int | None:

@@ -40,7 +40,7 @@ from config import (
     MAX_MAOS,
     SEGUNDOS_ENTRE_RECONEXOES,
 )
-from gestos.contador import contar_dedos, mao_dentro_do_quadro
+from gestos.contador import contar_dedos, mao_dentro_do_quadro, medir_pinca
 
 try:  # pragma: no cover - depende do ambiente
     import mediapipe as mp
@@ -77,6 +77,9 @@ class LeituraGestos:
     confianca_media: float = 0.0
     brilho_medio: float = 1.0
     descartada_por_borda: bool = False
+    # Separação polegar<->indicador em palmas, da mão de maior confiança.
+    # None = indicador dobrado, ou seja, não é uma pinça.
+    razao_pinca: float | None = None
     preview: np.ndarray | None = field(default=None, repr=False)
     status: StatusCamera = StatusCamera.INICIANDO
     mensagem: str = ""
@@ -343,12 +346,17 @@ class DetectorMaos:
                 )
             contagens.append(contar_dedos(pontos, lado))
 
+        # A pinça é medida na mão de maior confiança (a lista já está ordenada):
+        # com as duas mãos no quadro, uma delas precisa comandar o zoom.
+        razao_pinca = medir_pinca(maos[0][0], maos[0][1]) if maos else None
+
         return LeituraGestos(
             contagem=sum(contagens),
             contagens_por_mao=tuple(contagens),
             maos_visiveis=len(maos),
             confianca_media=confianca,
             brilho_medio=brilho,
+            razao_pinca=razao_pinca,
             status=StatusCamera.ATIVA,
         )
 

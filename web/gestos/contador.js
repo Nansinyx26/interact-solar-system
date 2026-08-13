@@ -125,21 +125,48 @@ function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
   return distanciaPonta > distanciaIp * RAZAO_POLEGAR_ABERTO;
 }
 
+/** Projeta ponta e junta no eixo da palma para saber se o dedo está aberto. */
+function dedoEstendido(landmarks, ponta, pip, eixoDedos, tamanho) {
+  const pulso = landmarks[PULSO];
+  const alvo = landmarks[ponta];
+  const junta = landmarks[pip];
+  const projecaoPonta =
+    (alvo.x - pulso.x) * eixoDedos.x + (alvo.y - pulso.y) * eixoDedos.y;
+  const projecaoPip =
+    (junta.x - pulso.x) * eixoDedos.x + (junta.y - pulso.y) * eixoDedos.y;
+  return projecaoPonta - projecaoPip > LIMIAR_DEDO_ESTENDIDO * tamanho;
+}
+
+/**
+ * Distância ponta do polegar <-> ponta do indicador, em palmas.
+ *
+ * Devolve `null` quando o indicador está dobrado: numa mão fechada as duas
+ * pontas também ficam próximas, e sem esta checagem mostrar 0 dedos (o Sol)
+ * seria confundido com uma pinça.
+ *
+ * Dividir pelo tamanho da palma torna a medida independente da distância até a
+ * câmera — o mesmo princípio dos limiares de dedo.
+ */
+export function medirPinca(landmarks, lado) {
+  const { eixoDedos, tamanho } = referencialDaPalma(landmarks, lado);
+  const [pontaIndicador, pipIndicador] = DEDOS_LONGOS[0];
+  if (!dedoEstendido(landmarks, pontaIndicador, pipIndicador, eixoDedos, tamanho)) {
+    return null;
+  }
+  const polegar = landmarks[POLEGAR_PONTA];
+  const indicador = landmarks[pontaIndicador];
+  return Math.hypot(polegar.x - indicador.x, polegar.y - indicador.y) / tamanho;
+}
+
 /** Conta quantos dedos de UMA mão estão levantados (0 a 5). */
 export function contarDedos(landmarks, lado) {
   const { eixoDedos, eixoPolegar, tamanho } = referencialDaPalma(landmarks, lado);
-  const pulso = landmarks[PULSO];
   let total = 0;
 
   for (const [indicePonta, indicePip] of DEDOS_LONGOS) {
-    const ponta = landmarks[indicePonta];
-    const pip = landmarks[indicePip];
     // Projeção no eixo da palma: equivale a "a ponta está acima da junta", só
     // que válido com a mão em qualquer ângulo.
-    const projecaoPonta =
-      (ponta.x - pulso.x) * eixoDedos.x + (ponta.y - pulso.y) * eixoDedos.y;
-    const projecaoPip = (pip.x - pulso.x) * eixoDedos.x + (pip.y - pulso.y) * eixoDedos.y;
-    if (projecaoPonta - projecaoPip > LIMIAR_DEDO_ESTENDIDO * tamanho) total += 1;
+    if (dedoEstendido(landmarks, indicePonta, indicePip, eixoDedos, tamanho)) total += 1;
   }
 
   if (polegarLevantado(landmarks, eixoPolegar, tamanho)) total += 1;

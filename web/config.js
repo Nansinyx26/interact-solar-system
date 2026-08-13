@@ -12,7 +12,7 @@
 // qualquer uma delas, suba este número aqui E em config.py — o
 // verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
 // regenera o ZIP de download com a versão nova.
-export const VERSAO = "1.1.0";
+export const VERSAO = "1.2.0";
 
 // Destino do botão "Baixar versão desktop".
 //
@@ -171,6 +171,50 @@ export const GESTO_VISAO_GERAL = 10;
 // A partir daqui é impossível com uma mão só — é o que dispara a dica
 // "use as duas mãos" no HUD quando a leitura chega em 5.
 export const GESTO_MINIMO_DUAS_MAOS = 6;
+
+// ---------------------------------------------------------------------------
+// Gesto de pinça — zoom controlado pela câmera
+// ---------------------------------------------------------------------------
+// Distância ponta do polegar <-> ponta do indicador dividida pelo tamanho da
+// palma, o que torna a medida independente da distância até a câmera.
+//
+// Histerese: entra em modo zoom abaixo de ATIVA e só sai acima de SAIDA. Com um
+// limiar único a pinça piscaria na fronteira e o zoom entraria e sairia sozinho.
+export const LIMIAR_PINCA_ATIVA = 0.38;
+export const LIMIAR_PINCA_SAIDA = 0.55;
+// Peso do valor novo na média móvel exponencial: sem filtro o zoom vibra com o
+// tremor natural da mão.
+export const SUAVIZACAO_PINCA = 0.35;
+// Trava saltos quando o rastreio perde a mão por um instante.
+export const FATOR_ZOOM_PINCA_MAX = 1.12;
+// Sair da pinça passa por poses lidas como 1, 2 ou 3 dedos; sem esta pausa o
+// zoom terminaria trocando de planeta.
+export const COOLDOWN_APOS_PINCA_S = 0.6;
+
+// ---------------------------------------------------------------------------
+// Narração por voz (TTS)
+// ---------------------------------------------------------------------------
+export const NARRACAO_ATIVA_PADRAO = true;
+export const IDIOMA_NARRACAO = "pt-BR";
+// A Web Speech API usa 1 como velocidade natural; 175 ppm do pyttsx3 equivale a
+// ~1,05 aqui. A constante compartilhada é a do desktop, convertida no narrador.
+export const VELOCIDADE_NARRACAO = 175;
+export const VOLUME_NARRACAO = 0.9;
+// A narração lê a ficha inteira: nome, tipo, diâmetro, distância, períodos,
+// luas, temperatura e o fato curioso. Desligado, fala só o nome e o tipo.
+export const NARRAR_FICHA_COMPLETA = true;
+
+// --- ElevenLabs (voz neural) ------------------------------------------------
+// A chave da API JAMAIS pode chegar ao navegador: o front é público e qualquer
+// visitante leria o valor. Por isso o site não fala com a ElevenLabs direto —
+// ele chama /api/voz, uma função serverless que guarda a chave no ambiente do
+// servidor (variável ELEVENLABS_API_KEY nas configurações do Vercel).
+//
+// Sem a função publicada (site aberto localmente, por exemplo) ou em caso de
+// erro, o narrador cai para a voz do próprio navegador.
+export const ENDPOINT_VOZ = "/api/voz";
+export const ELEVENLABS_VOZ_NOME = "Brian";
+
 
 // ---------------------------------------------------------------------------
 // Lua (satélite da Terra)

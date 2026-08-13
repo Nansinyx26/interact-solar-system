@@ -13,7 +13,10 @@ build_temp/
 # Release (limite de 2 GB) — veja publicar_release.py.
 web/sistema-solar-gestos.zip
 
+# Áudio da narração gerado sob demanda pela ElevenLabs. É cache: some sem
+# prejuízo e se refaz sozinho na próxima execução.
+cache_voz/
+
 # Variáveis de ambiente e chaves de API
 .env
 .env*.local
-

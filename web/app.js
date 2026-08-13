@@ -22,8 +22,10 @@ import { EstabilizadorGestos } from "./gestos/estabilizador.js";
 import { Camera2D } from "./nucleo/camera.js";
 import { posicoesDoSistema, raioCorpoPx } from "./nucleo/orbita.js";
 import { Renderizador } from "./nucleo/renderizador.js";
+import { ControladorPinca } from "./gestos/pinca.js";
 import { Ficha } from "./ui/ficha.js";
 import { HUD } from "./ui/hud.js";
+import { Narrador, textoDoCorpo } from "./ui/narrador.js";
 
 /** Se o quadro demorar demais (aba em segundo plano), não damos um salto. */
 const DT_MAXIMO = 0.1;
@@ -36,6 +38,8 @@ class Aplicacao {
       document.getElementById("preview"),
     );
     this.estabilizador = new EstabilizadorGestos();
+    this.pinca = new ControladorPinca();
+    this.narrador = new Narrador();
 
     this._ajustarCanvas();
     this.renderizador = new Renderizador(this.canvas);
@@ -148,6 +152,9 @@ class Aplicacao {
     document.getElementById("btn-pausa").addEventListener("click", () => {
       this.pausado = !this.pausado;
     });
+    document.getElementById("btn-narracao").addEventListener("click", () => {
+      this._alternarNarracao();
+    });
     document.getElementById("btn-ajuda").addEventListener("click", () => {
       document.getElementById("ajuda").classList.toggle("aberta");
     });
@@ -229,6 +236,8 @@ class Aplicacao {
       this.escalaTempo = Math.min(TIME_SCALE_MAX, this.escalaTempo * FATOR_AJUSTE_TEMPO);
     } else if (tecla === "-") {
       this.escalaTempo = Math.max(TIME_SCALE_MIN, this.escalaTempo / FATOR_AJUSTE_TEMPO);
+    } else if (tecla === "n" || tecla === "N") {
+      this._alternarNarracao();
     } else if (tecla === "c" || tecla === "C") {
       this._alternarCamera();
     }
@@ -245,6 +254,21 @@ class Aplicacao {
       this.estabilizador.forcar(corpo.indiceGesto, performance.now() / 1000);
       this._selecionar(corpo);
     }
+  }
+
+  /** Liga/desliga a narração e reflete o estado no botão. */
+  _alternarNarracao() {
+    const ativo = this.narrador.alternar();
+    const botao = document.getElementById("btn-narracao");
+    if (!botao) return;
+    botao.classList.toggle("ativo", ativo);
+    botao.textContent = ativo ? "🔊 Voz" : "🔇 Voz";
+    botao.title = ativo
+      ? `Narração ligada (${this.narrador.backend}) — tecla N`
+      : "Narração desligada — tecla N";
+    // Navegadores só liberam áudio depois de um gesto do usuário: ligar pelo
+    // botão é o momento certo de confirmar em voz alta que a voz funciona.
+    if (ativo && this.corpoAlvo) this.narrador.anunciar(textoDoCorpo(this.corpoAlvo));
   }
 
   // ----------------------------------------------------------------- câmera
@@ -288,11 +312,24 @@ class Aplicacao {
     // instantânea, perdendo o efeito de filtro.
     if (leitura.sequencia !== this._ultimaSequencia) {
       this._ultimaSequencia = leitura.sequencia;
+
+      // Pinça primeiro: enquanto ela comanda o zoom, a pose seria contada como
+      // 2 dedos (Vênus) e trocaria o foco no meio do movimento.
+      const estadoPinca = this.pinca.atualizar(leitura.razaoPinca, agora);
+      if (estadoPinca.fatorZoom !== 1) {
+        this.cameraLivre = true;
+        this.camera.aplicarZoom(estadoPinca.fatorZoom);
+      }
+
       // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
       // Qualquer outra contagem entra como leitura inválida.
       const contagem = leitura.contagem;
       const valido = CORPOS_POR_GESTO.has(contagem) || contagem === GESTO_VISAO_GERAL;
-      this.resultadoGesto = this.estabilizador.atualizar(valido ? contagem : null, agora);
+      const bloqueado = this.pinca.bloqueandoGestos(agora);
+      this.resultadoGesto = this.estabilizador.atualizar(
+        valido && !bloqueado ? contagem : null,
+        agora,
+      );
     } else if (this.resultadoGesto.confirmado !== null) {
       this.resultadoGesto = { ...this.resultadoGesto, confirmado: null };
     }
@@ -331,6 +368,7 @@ class Aplicacao {
     this.corpoAlvo = corpo;
     this.camera.focarCorpo(this.posicoes.get(corpo.nome), raioCorpoPx(corpo), true);
     this.ficha.mostrar(corpo);
+    this.narrador.anunciar(textoDoCorpo(corpo));
     // A ficha ocupa o lugar da legenda no canto esquerdo: uma entra, a outra sai.
     document.body.classList.add("com-foco");
   }
@@ -371,6 +409,7 @@ class Aplicacao {
         escalaTempo: this.escalaTempo,
         pausado: this.pausado,
         detector: this.detector,
+        pincaAtiva: this.pinca.ativa,
       });
       requestAnimationFrame(quadro);
     };

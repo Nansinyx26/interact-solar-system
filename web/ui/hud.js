@@ -106,7 +106,8 @@ export class HUD {
    * @param {object} estado leitura, resultado do estabilizador e contexto do app
    */
   atualizar(estado) {
-    const { leitura, resultado, corpoAlvo, fps, escalaTempo, pausado, detector } = estado;
+    const { leitura, resultado, corpoAlvo, fps, escalaTempo, pausado, detector, pincaAtiva } =
+      estado;
 
     this.fps.textContent = `${fps.toFixed(0)} FPS`;
     this.tempo.textContent = `tempo ×${escalaTempo.toFixed(1)}${pausado ? " · PAUSADO" : ""}`;
@@ -136,7 +137,7 @@ export class HUD {
     this._atualizarRodapeAnel(resultado, progresso);
     this._atualizarAtivo(corpoAlvo);
     this._atualizarEstadoCamera(detector, leitura);
-    this._atualizarAvisos(leitura, detector);
+    this._atualizarAvisos(leitura, detector, pincaAtiva);
   }
 
   /**
@@ -218,8 +219,13 @@ export class HUD {
     this.estadoCamera.innerHTML = `<i></i>${texto}`;
   }
 
-  _atualizarAvisos(leitura, detector) {
+  _atualizarAvisos(leitura, detector, pincaAtiva) {
     const avisos = [];
+    if (pincaAtiva) {
+      // Enquanto a pinça comanda o zoom a seleção por dedos fica suspensa: sem
+      // este aviso o usuário acha que o reconhecimento travou.
+      avisos.push(["zoom", "MODO ZOOM — afaste ou aproxime polegar e indicador"]);
+    }
     if (detector.status === StatusCamera.INDISPONIVEL) {
       avisos.push(["erro", detector.mensagem]);
     } else if (detector.status === StatusCamera.INICIANDO) {

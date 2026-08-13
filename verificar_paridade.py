@@ -61,6 +61,10 @@ SO_DESKTOP = {
     # Render: o Canvas resolve com gradiente o que o pygame faz por pixel.
     "PASSO_ANGULO_SOMBRA_GRAUS", "RAIO_ORBITA_MAX_DESENHAVEL_PX", "ALPHA_ANEL_MAX",
     "ALPHA_HALO_SOL", "ALPHA_ROTULO_CORPO", "COR_HALO_SOL",
+    # Narração: o desktop fala direto com a ElevenLabs, a web passa por uma
+    # função serverless (a chave não pode chegar ao navegador). Os parâmetros da
+    # chamada ficam só do lado que a executa.
+    "ELEVENLABS_TIMEOUT_S",
 }
 SO_WEB = {
     "ALTURA_REFERENCIA", "URL_WASM_MEDIAPIPE", "URL_MODELO_MAOS",

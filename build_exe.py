@@ -25,6 +25,15 @@ PASTA_BIBLIOTECAS = "_internal_sistema_solar"
 # sem coletar esses arquivos o executável abre e falha ao criar o Hands.
 COLETAR = ["mediapipe"]
 
+# O pyttsx3 escolhe o driver de voz por import dinâmico (SAPI5 no Windows), algo
+# que o PyInstaller não enxerga sozinho — sem estes nomes o executável sobe sem
+# a voz local de reserva.
+IMPORTES_OCULTOS = [
+    "pyttsx3.drivers",
+    "pyttsx3.drivers.sapi5",
+    "pyttsx3.drivers.dummy",
+]
+
 # Dependências pesadas que o mediapipe declara mas que o caminho do Hands nunca
 # executa (jax/scipy sozinhos passam de 600 MB). ATENÇÃO: matplotlib NÃO pode
 # entrar aqui — mp.solutions.drawing_utils o importa no topo do módulo, e sem
@@ -90,6 +99,8 @@ def construir() -> int:
     ]
     for pacote in COLETAR:
         comando += ["--collect-all", pacote]
+    for modulo in IMPORTES_OCULTOS:
+        comando += ["--hidden-import", modulo]
     for modulo in EXCLUIR:
         comando += ["--exclude-module", modulo]
     comando.append(str(RAIZ / "main.py"))

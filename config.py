@@ -16,7 +16,7 @@ from typing import Final
 # qualquer uma delas, suba este número aqui E em web/config.js — o
 # verificar_paridade.py falha se os dois ficarem diferentes, e o
 # publicar.py regenera o ZIP de download com a versão nova.
-VERSAO: Final[str] = "1.1.0"
+VERSAO: Final[str] = "1.2.0"
 
 # ---------------------------------------------------------------------------
 # Janela e loop principal
@@ -229,6 +229,57 @@ SEGUNDOS_ATE_VISAO_GERAL: Final[float] = 6.0
 GESTO_VISAO_GERAL: Final[int] = 10
 # Primeiro gesto que exige as duas mãos (uma mão sozinha só chega a 5).
 GESTO_MINIMO_DUAS_MAOS: Final[int] = 6
+
+# ---------------------------------------------------------------------------
+# Gesto de pinça — zoom controlado pela câmera
+# ---------------------------------------------------------------------------
+# Medimos a distância ponta do polegar <-> ponta do indicador dividida pelo
+# tamanho da palma. Normalizar pela palma torna a medida independente da
+# distância até a câmera, pelo mesmo motivo dos limiares de dedo.
+#
+# Histerese: entra em modo zoom abaixo de ATIVA e só sai acima de SAIDA. Com um
+# limiar único a pinça piscaria na fronteira e o zoom entraria e sairia sozinho.
+LIMIAR_PINCA_ATIVA: Final[float] = 0.38
+LIMIAR_PINCA_SAIDA: Final[float] = 0.55
+# Peso do valor novo na média móvel exponencial. O tremor da mão é muito maior
+# que o do mouse: sem filtro o zoom vibra a cada frame.
+SUAVIZACAO_PINCA: Final[float] = 0.35
+# Fator máximo de zoom aplicado por leitura — trava saltos quando o rastreio
+# perde a mão por um instante e a razão dá um pulo.
+FATOR_ZOOM_PINCA_MAX: Final[float] = 1.12
+# Sair da pinça passa por poses intermediárias que seriam lidas como 1, 2 ou 3
+# dedos; sem esta pausa o zoom terminaria trocando de planeta.
+COOLDOWN_APOS_PINCA_S: Final[float] = 0.6
+
+# ---------------------------------------------------------------------------
+# Narração por voz (TTS)
+# ---------------------------------------------------------------------------
+NARRACAO_ATIVA_PADRAO: Final[bool] = True
+IDIOMA_NARRACAO: Final[str] = "pt-BR"
+VELOCIDADE_NARRACAO: Final[int] = 175  # palavras por minuto
+VOLUME_NARRACAO: Final[float] = 0.9
+# A narração lê a ficha inteira: nome, tipo, diâmetro, distância, períodos,
+# luas, temperatura e o fato curioso. Desligado, fala só o nome e o tipo.
+NARRAR_FICHA_COMPLETA: Final[bool] = True
+
+# --- ElevenLabs (voz neural) ------------------------------------------------
+# Quando há uma chave configurada, a narração usa a voz "Brian" da ElevenLabs;
+# sem chave, sem rede ou em caso de erro, cai para a voz local do sistema.
+#
+# ATENÇÃO: isto é a única parte do projeto que fala com a internet em execução.
+# O fallback existe justamente para o aplicativo continuar completo offline.
+#
+# A chave sai de ELEVENLABS_API_KEY (arquivo .env ao lado do main.py ou variável
+# de ambiente). Ela NUNCA é embutida no código nem no executável.
+ELEVENLABS_VOZ_ID: Final[str] = "nPczCjzI2devNBz1zQrb"  # Brian
+ELEVENLABS_VOZ_NOME: Final[str] = "Brian"
+ELEVENLABS_MODELO: Final[str] = "eleven_multilingual_v2"  # fala português
+ELEVENLABS_FORMATO: Final[str] = "mp3_44100_128"
+ELEVENLABS_URL: Final[str] = "https://api.elevenlabs.io/v1/text-to-speech"
+ELEVENLABS_TIMEOUT_S: Final[float] = 12.0
+# Cada frase sintetizada custa créditos: guardamos o áudio em disco para que o
+# mesmo planeta só seja gerado uma vez, hoje e nas próximas execuções.
+PASTA_CACHE_VOZ: Final[str] = "cache_voz"
 
 # ---------------------------------------------------------------------------
 # HUD

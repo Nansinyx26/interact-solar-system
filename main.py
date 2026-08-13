@@ -37,10 +37,12 @@ from config import (
 from dados.planetas import CORPOS_POR_GESTO, CorpoCeleste, corpo_por_gesto
 from gestos.detector import MEDIAPIPE_DISPONIVEL, DetectorMaos, LeituraGestos
 from gestos.estabilizador import EstabilizadorGestos, ResultadoEstabilizacao
+from gestos.pinca import ControladorPinca
 from nucleo.camera import Camera2D
 from nucleo.orbita import posicoes_do_sistema, raio_corpo_px
 from nucleo.renderizador import Renderizador
 from ui.ficha_planeta import FichaPlaneta
+from ui.narrador import Narrador, texto_do_corpo
 from ui.hud import (
     ALTURA_BLOCO_PREVIEW,
     HUD,
@@ -65,6 +67,8 @@ _TECLAS_DESACELERAR = (pygame.K_MINUS, pygame.K_KP_MINUS)
 _TECLAS_SAIR = (pygame.K_ESCAPE, pygame.K_q)
 # "V" de visão geral — o equivalente de teclado ao gesto das duas mãos abertas.
 _TECLA_VISAO_GERAL = pygame.K_v
+# "N" de narração: liga/desliga a voz que anuncia o corpo focado.
+_TECLA_NARRACAO = pygame.K_n
 
 
 class Aplicacao:
@@ -77,11 +81,16 @@ class Aplicacao:
         # que a imagem já está pronta quando a janela aparece.
         self.detector = DetectorMaos(indice_camera)
         self.detector.iniciar()
+        # O motor de voz também demora a subir (SAPI no Windows): junto com a
+        # webcam, essa espera corre em paralelo com a montagem da cena.
+        self.narrador = Narrador()
+        self.narrador.iniciar()
         try:
             self._construir()
         except BaseException:
             # Sem isto, uma falha na montagem da cena deixaria a webcam presa.
             self.detector.parar()
+            self.narrador.parar()
             raise
 
     def _construir(self) -> None:
@@ -103,6 +112,7 @@ class Aplicacao:
         self.marca = MarcaDagua(self.fontes, self.largura, self.altura)
         self.camera = Camera2D(self.largura, self.altura)
         self.estabilizador = EstabilizadorGestos()
+        self.pinca = ControladorPinca()
 
         self.tempo_dias: float = 0.0
         self.escala_tempo: float = TIME_SCALE
@@ -137,6 +147,7 @@ class Aplicacao:
         finally:
             # A webcam precisa ser liberada mesmo se algo estourar acima.
             self.detector.parar()
+            self.narrador.parar()
             pygame.quit()
 
     # -------------------------------------------------------------- entrada
@@ -188,6 +199,8 @@ class Aplicacao:
             self.pausado = not self.pausado
         elif tecla == _TECLA_VISAO_GERAL:
             self._voltar_visao_geral()
+        elif tecla == _TECLA_NARRACAO:
+            self.narrador.alternar()
         elif tecla == pygame.K_c:
             self.mostrar_preview = not self.mostrar_preview
         elif tecla == pygame.K_l:
@@ -223,10 +236,20 @@ class Aplicacao:
         # a confirmação viraria quase instantânea, perdendo o efeito de filtro.
         if self.leitura.sequencia != self._ultima_sequencia:
             self._ultima_sequencia = self.leitura.sequencia
+
+            # Pinça primeiro: enquanto ela comanda o zoom, a pose seria contada
+            # como 2 dedos (Vênus) e trocaria o foco no meio do movimento.
+            estado_pinca = self.pinca.atualizar(self.leitura.razao_pinca, agora)
+            if estado_pinca.fator_zoom != 1.0:
+                self.camera_livre = True
+                self.camera.aplicar_zoom(estado_pinca.fator_zoom)
+
             # 0-9 selecionam um corpo e 10 é o comando "visão geral".
             contagem = self.leitura.contagem
             valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
             leitura_valida = contagem if valido else None
+            if self.pinca.bloqueando_gestos(agora):
+                leitura_valida = None
             self.resultado_gesto = self.estabilizador.atualizar(leitura_valida, agora)
         elif self.resultado_gesto.confirmado is not None:
             # Não reconfirma o mesmo evento nos frames seguintes.
@@ -270,6 +293,7 @@ class Aplicacao:
             self.posicoes[corpo.nome], raio_corpo_px(corpo), reiniciar=True
         )
         self.ficha.mostrar(corpo)
+        self.narrador.anunciar(texto_do_corpo(corpo))
 
     def _voltar_visao_geral(self, reiniciar_gesto: bool = True) -> None:
         """Desfaz o foco e reenquadra o sistema inteiro.
@@ -314,6 +338,8 @@ class Aplicacao:
                 pausado=self.pausado,
                 escala_tempo=self.escala_tempo,
                 valor_confirmado=self.estabilizador.valor_confirmado,
+                pinca_ativa=self.pinca.ativa,
+                narracao_ativa=self.narrador.ativo,
             ),
         )
         self.marca.desenhar(self.tela)
@@ -333,7 +359,7 @@ def main() -> int:
     print(TITULO_JANELA)
     print(
         "Teclas: 0-9 focar (9/L = Lua) | V visão geral | ESPAÇO pausa | "
-        "+/- tempo | C câmera | Q sair"
+        "+/- tempo | C câmera | N voz | Q sair"
     )
     print("Mouse: arrastar = pan | roda = zoom | janela redimensionável")
     print(f"Python {sys.version.split()[0]} | webcam pedida: índice {argumentos.camera}")

@@ -15,7 +15,7 @@ import {
   URL_MODELO_MAOS,
   URL_WASM_MEDIAPIPE,
 } from "../config.js";
-import { contarDedosTotal } from "./contador.js";
+import { contarDedosTotal, medirPinca } from "./contador.js";
 
 /** Situação atual da captura de vídeo. */
 export const StatusCamera = {
@@ -49,6 +49,9 @@ export class DetectorMaos {
     this.leitura = {
       contagem: null,
       porMao: [],
+      // Separação polegar<->indicador em palmas, da mão de maior confiança.
+      // null = indicador dobrado, ou seja, não é uma pinça.
+      razaoPinca: null,
       maosVisiveis: 0,
       confiancaMedia: 0,
       descartadaPorBorda: false,
@@ -95,7 +98,13 @@ export class DetectorMaos {
     }
     this.video.srcObject = null;
     if (this.status === StatusCamera.ATIVA) this.status = StatusCamera.PARADA;
-    this.leitura = { ...this.leitura, contagem: null, porMao: [], maosVisiveis: 0 };
+    this.leitura = {
+      ...this.leitura,
+      contagem: null,
+      porMao: [],
+      razaoPinca: null,
+      maosVisiveis: 0,
+    };
   }
 
   get ativa() {
@@ -183,9 +192,15 @@ export class DetectorMaos {
     const selecionadas = maos.slice(0, MAX_MAOS);
 
     const { total, porMao, descartadaPorBorda } = contarDedosTotal(selecionadas);
+    // A pinça é medida na mão de maior confiança (a lista já está ordenada):
+    // com as duas mãos no quadro, uma delas precisa comandar o zoom.
+    const razaoPinca = selecionadas.length
+      ? medirPinca(selecionadas[0].landmarks, selecionadas[0].lado)
+      : null;
     this.leitura = {
       contagem: total,
       porMao,
+      razaoPinca,
       maosVisiveis: selecionadas.length,
       confiancaMedia: selecionadas.length
         ? selecionadas.reduce((soma, m) => soma + m.score, 0) / selecionadas.length

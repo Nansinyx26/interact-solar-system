@@ -9,3 +9,11 @@ mediapipe==0.10.14
 opencv-python==4.10.0.84
 pygame==2.6.1
 numpy==1.26.4
+
+# Narração por voz. A voz neural da ElevenLabs é usada quando há uma chave em
+# ELEVENLABS_API_KEY (arquivo .env); sem chave ou sem internet, o pyttsx3 fala
+# com a voz do próprio sistema e o aplicativo continua completo offline.
+# A chamada à ElevenLabs usa só a biblioteca padrão — nenhum SDK a mais.
+pyttsx3==2.99
+# Só Windows: o driver SAPI5 do pyttsx3 conversa com a voz do sistema por COM.
+pywin32==312; sys_platform == "win32"
