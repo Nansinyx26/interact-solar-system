@@ -1,26 +1,20 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "echo 'Static build'",
-  "outputDirectory": "web",
-  "cleanUrls": true,
-  "headers": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Permissions-Policy", "value": "camera=(self)" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
-      ]
-    },
+      "src": "web/**/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
     {
-      "source": "/sistema-solar-gestos.zip",
-      "headers": [
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"sistema-solar-gestos.zip\""
-        },
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
-      ]
+      "src": "/(.*)",
+      "headers": {
+        "Permissions-Policy": "camera=(self)",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "dest": "/web/$1"
     }
   ]
 }
