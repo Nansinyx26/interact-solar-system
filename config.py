@@ -16,7 +16,7 @@ from typing import Final
 # qualquer uma delas, suba este número aqui E em web/config.js — o
 # verificar_paridade.py falha se os dois ficarem diferentes, e o
 # publicar.py regenera o ZIP de download com a versão nova.
-VERSAO: Final[str] = "1.3.1"
+VERSAO: Final[str] = "1.4.0"
 
 # ---------------------------------------------------------------------------
 # Janela e loop principal

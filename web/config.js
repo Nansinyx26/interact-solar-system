@@ -12,7 +12,7 @@
 // qualquer uma delas, suba este número aqui E em config.py — o
 // verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
 // regenera o ZIP de download com a versão nova.
-export const VERSAO = "1.3.1";
+export const VERSAO = "1.4.0";
 
 // Destino do botão "Baixar versão desktop".
 //
