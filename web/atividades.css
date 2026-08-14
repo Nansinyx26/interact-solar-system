@@ -251,6 +251,36 @@ select option {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 24px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.opcoes-lista::-webkit-scrollbar {
+  width: 6px;
+}
+
+.opcoes-lista::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+}
+
+.opcoes-lista::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
+.opcoes-lista::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+html.tema-claro .opcoes-lista::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html.tema-claro .opcoes-lista::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .opcao-item {

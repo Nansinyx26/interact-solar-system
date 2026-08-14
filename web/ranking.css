@@ -375,12 +375,33 @@ select option {
   border-color: rgba(248, 113, 113, 0.6);
 }
 
-/* ── Tabela de Classificação ───────────────────────────────────────────── */
+/* ── Tabela de Classificação com Scroll ────────────────────────────────── */
 .tabela-wrapper {
+  max-height: 480px;
+  overflow-y: auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tabela-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tabela-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+}
+
+.tabela-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
+.tabela-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .tabela-ranking {
@@ -391,8 +412,12 @@ select option {
 }
 
 .tabela-ranking th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(18, 18, 22, 0.98);
+  backdrop-filter: blur(8px);
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
   color: #a1a1aa;
   font-weight: 600;
   font-size: 0.82rem;
@@ -810,8 +835,20 @@ html.tema-claro .tabela-wrapper {
   border-color: rgba(0, 0, 0, 0.1);
 }
 
-html.tema-claro .tabela-ranking th {
+html.tema-claro .tabela-wrapper::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.03);
+}
+
+html.tema-claro .tabela-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+html.tema-claro .tabela-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+html.tema-claro .tabela-ranking th {
+  background: rgba(255, 255, 255, 0.98);
   color: #4b5563;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
