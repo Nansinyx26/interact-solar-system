@@ -120,6 +120,9 @@
 
             <div class="grupo-busca">
               <input type="search" id="busca-nome" placeholder="🔍 Buscar por aluno..." />
+              <button type="button" id="btn-limpar-ranking" class="btn-apagar-tudo" title="Exige código de autorização 4400">
+                🗑️ Limpar
+              </button>
             </div>
           </div>
 
@@ -133,11 +136,12 @@
                   <th>Pontuação</th>
                   <th>Acertos</th>
                   <th>Data</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody id="tabela-corpo">
                 <tr>
-                  <td colspan="6" class="carregando">Carregando classificação...</td>
+                  <td colspan="7" class="carregando">Carregando classificação...</td>
                 </tr>
               </tbody>
             </table>

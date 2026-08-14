@@ -286,3 +286,35 @@ select option {
   padding: 30px;
   color: var(--texto-fraco);
 }
+
+.btn-apagar-tudo {
+  background: rgba(255, 110, 110, 0.15);
+  border: 1px solid rgba(255, 110, 110, 0.4);
+  color: var(--erro);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-apagar-tudo:hover {
+  background: rgba(255, 110, 110, 0.3);
+}
+
+.btn-excluir-item {
+  background: transparent;
+  border: 1px solid rgba(255, 110, 110, 0.3);
+  color: var(--erro);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-excluir-item:hover {
+  background: var(--erro);
+  color: #ffffff;
+}

@@ -147,6 +147,57 @@ app.post("/api/ranking", async (req, res) => {
   }
 });
 
+const CODIGO_AUTORIZACAO = "4400";
+
+app.delete("/api/ranking", async (req, res) => {
+  try {
+    const client = await obterClienteMongo();
+    if (!client) {
+      return res.status(503).json({ erro: "Banco de dados indisponível." });
+    }
+
+    const db = client.db("sistema_solar");
+    const colecao = db.collection("ranking");
+    const dados = req.body ?? {};
+    const codigoFornecido = String(dados.codigo ?? req.query.codigo ?? "").trim();
+
+    if (codigoFornecido !== CODIGO_AUTORIZACAO) {
+      return res.status(403).json({
+        erro: "Código de autorização inválido. Exclusão não permitida.",
+      });
+    }
+
+    if (dados.limparTudo === true || req.query.limparTudo === "true") {
+      await colecao.deleteMany({});
+      return res.status(200).json({
+        ok: true,
+        mensagem: "Todos os registros do ranking foram apagados com sucesso.",
+      });
+    }
+
+    const idAlvo = String(dados.id ?? req.query.id ?? "").trim();
+    if (!idAlvo) {
+      return res.status(400).json({
+        erro: "Informe o ID do registro a ser apagado ou limparTudo: true.",
+      });
+    }
+
+    const { ObjectId } = await import("mongodb");
+    const resDelete = await colecao.deleteOne({ _id: new ObjectId(idAlvo) });
+    if (resDelete.deletedCount === 0) {
+      return res.status(404).json({ erro: "Registro não encontrado." });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      mensagem: "Registro do ranking apagado com sucesso.",
+    });
+  } catch (erro) {
+    console.error("[Render Server] Erro ao apagar registro do ranking:", erro);
+    return res.status(500).json({ erro: "Falha ao apagar registro." });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Endpoint de Telemetria (/api/telemetria)
 // ---------------------------------------------------------------------------

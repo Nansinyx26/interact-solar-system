@@ -1,17 +1,21 @@
 /**
  * Endpoint de Ranking / Placar de Usuários (MongoDB Atlas).
  *
- * Suporta POST para cadastrar pontuação e GET para listar o ranking (com filtro por série).
+ * Suporta POST para cadastrar pontuação, GET para listar o ranking e DELETE para apagar (exige código 4400).
  *
  * USO:
  *   POST /api/ranking
- *   Body: { nome: "Renan", serie: "7º Ano A", pontuacao: 950, acertos: 9, tempoSegundos: 45 }
+ *   Body: { nome: "Renan", serie: "5º Ano A", pontuacao: 950, acertos: 9, tempoSegundos: 45 }
  *
- *   GET /api/ranking?serie=7º%20Ano%20A&limit=50
+ *   GET /api/ranking?serie=5º%20Ano%20A&limit=50
+ *
+ *   DELETE /api/ranking
+ *   Body: { codigo: "4400", id: "<ID_DO_REGISTRO>" } OU { codigo: "4400", limparTudo: true }
  */
 
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
+const CODIGO_AUTORIZACAO = "4400";
 let clientCached = null;
 
 async function obterClienteMongo() {
@@ -33,7 +37,7 @@ async function obterClienteMongo() {
 export default async function handler(pedido, resposta) {
   // CORS Headers
   resposta.setHeader("Access-Control-Allow-Origin", "*");
-  resposta.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  resposta.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   resposta.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (pedido.method === "OPTIONS") {
@@ -123,5 +127,49 @@ export default async function handler(pedido, resposta) {
     }
   }
 
-  return resposta.status(405).json({ erro: "Método não permitido. Use GET ou POST." });
+  // -------------------------------------------------------------------------
+  // DELETE: Apagar Informações (Exige Código 4400)
+  // -------------------------------------------------------------------------
+  if (pedido.method === "DELETE") {
+    try {
+      const dados = pedido.body ?? {};
+      const codigoFornecido = String(dados.codigo ?? pedido.query?.codigo ?? "").trim();
+
+      if (codigoFornecido !== CODIGO_AUTORIZACAO) {
+        return resposta.status(403).json({
+          erro: "Código de autorização inválido. Exclusão não permitida.",
+        });
+      }
+
+      if (dados.limparTudo === true || pedido.query?.limparTudo === "true") {
+        await colecao.deleteMany({});
+        return resposta.status(200).json({
+          ok: true,
+          mensagem: "Todos os registros do ranking foram apagados com sucesso.",
+        });
+      }
+
+      const idAlvo = String(dados.id ?? pedido.query?.id ?? "").trim();
+      if (!idAlvo) {
+        return resposta.status(400).json({
+          erro: "Informe o ID do registro a ser apagado ou limparTudo: true.",
+        });
+      }
+
+      const resDelete = await colecao.deleteOne({ _id: new ObjectId(idAlvo) });
+      if (resDelete.deletedCount === 0) {
+        return resposta.status(404).json({ erro: "Registro não encontrado." });
+      }
+
+      return resposta.status(200).json({
+        ok: true,
+        mensagem: "Registro do ranking apagado com sucesso.",
+      });
+    } catch (erro) {
+      console.error("Erro ao apagar registro do ranking:", erro);
+      return resposta.status(500).json({ erro: "Falha ao apagar registro." });
+    }
+  }
+
+  return resposta.status(405).json({ erro: "Método não permitido. Use GET, POST ou DELETE." });
 }

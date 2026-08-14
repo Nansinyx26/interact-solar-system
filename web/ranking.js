@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const filtroSerie = document.getElementById("filtro-serie");
   const buscaNome = document.getElementById("busca-nome");
   const formRanking = document.getElementById("form-ranking");
+  const btnLimpar = document.getElementById("btn-limpar-ranking");
 
   if (filtroSerie) {
     filtroSerie.addEventListener("change", () => {
@@ -28,6 +29,12 @@ document.addEventListener("DOMContentLoaded", () => {
       await cadastrarResultado(formRanking);
     });
   }
+
+  if (btnLimpar) {
+    btnLimpar.addEventListener("click", () => {
+      apagarRegistros(null, true);
+    });
+  }
 });
 
 /**
@@ -36,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function carregarRanking(serie = "Todas") {
   const corpoTabela = document.getElementById("tabela-corpo");
   if (corpoTabela) {
-    corpoTabela.innerHTML = `<tr><td colspan="6" class="carregando">Carregando classificação...</td></tr>`;
+    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando">Carregando classificação...</td></tr>`;
   }
 
   let url = `${ENDPOINT_RANKING}?limit=100`;
@@ -106,7 +113,7 @@ function renderizarTabela(lista) {
   if (!corpoTabela) return;
 
   if (lista.length === 0) {
-    corpoTabela.innerHTML = `<tr><td colspan="6" class="carregando">Nenhum resultado registrado ainda.</td></tr>`;
+    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando">Nenhum resultado registrado ainda.</td></tr>`;
     return;
   }
 
@@ -135,12 +142,25 @@ function renderizarTabela(lista) {
         <td><strong>${item.pontuacao} pts</strong></td>
         <td>${item.acertos} / 10</td>
         <td><small style="color: var(--texto-fraco);">${dataFormatada}</small></td>
+        <td>
+          <button type="button" class="btn-excluir-item" data-id="${item.id}" title="Apagar este registro">
+            🗑️ Excluir
+          </button>
+        </td>
       </tr>
     `;
     })
     .join("");
 
   corpoTabela.innerHTML = html;
+
+  // Associa manipuladores para os botões de excluir item individual
+  corpoTabela.querySelectorAll(".btn-excluir-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      apagarRegistros(id, false);
+    });
+  });
 }
 
 /**
@@ -215,6 +235,58 @@ async function cadastrarResultado(form) {
     setTimeout(() => {
       if (msgEl) msgEl.textContent = "";
     }, 4000);
+  }
+}
+
+/**
+ * Apaga registros exigindo o código de autorização "4400"
+ */
+async function apagarRegistros(idItem = null, limparTudo = false) {
+  const mensagemPrompt = limparTudo
+    ? "⚠️ AVISO: Isso vai apagar TODO o ranking!\nDigite o código de autorização (4 dígitos) para confirmar:"
+    : "Digite o código de autorização (4 dígitos) para apagar este registro:";
+
+  const codigo = prompt(mensagemPrompt);
+  if (!codigo) return;
+
+  if (codigo.trim() !== "4400") {
+    alert("❌ Código de autorização incorreto! Exclusão não permitida.");
+    return;
+  }
+
+  const payload = { codigo: "4400" };
+  if (limparTudo) {
+    payload.limparTudo = true;
+  } else if (idItem) {
+    payload.id = idItem;
+  }
+
+  try {
+    let resposta = await fetch(ENDPOINT_RANKING, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resposta.ok && URL_SERVIDOR_RENDER) {
+      resposta = await fetch(`${URL_SERVIDOR_RENDER}/api/ranking`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    if (resposta.ok) {
+      alert("✅ Exclusão realizada com sucesso!");
+      const serieFiltro = document.getElementById("filtro-serie")?.value ?? "Todas";
+      await carregarRanking(serieFiltro);
+    } else {
+      const json = await resposta.json().catch(() => ({}));
+      alert(`❌ Falha ao excluir: ${json.erro || "Código de autorização inválido."}`);
+    }
+  } catch (erro) {
+    console.error("Erro ao excluir do ranking:", erro);
+    alert("❌ Erro ao comunicar com o servidor.");
   }
 }
 

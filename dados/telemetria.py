@@ -200,3 +200,33 @@ class TelemetriaMongo:
         except Exception as erro:
             print(f"[ranking] Erro ao buscar top ranking: {erro}", flush=True)
             return []
+
+    def remover_ranking(self, id_registro: str, codigo: str = "4400") -> bool:
+        """Remove um registro do ranking pelo ID (requer código 4400)."""
+        if codigo != "4400":
+            print("[ranking] Código de autorização incorreto! Exclusão negada.", flush=True)
+            return False
+        if not self._disponivel or not self._conectar():
+            return False
+        try:
+            from bson.objectid import ObjectId
+            res = self._colecao_ranking.delete_one({"_id": ObjectId(id_registro)})
+            return res.deleted_count > 0
+        except Exception as erro:
+            print(f"[ranking] Erro ao remover registro: {erro}", flush=True)
+            return False
+
+    def limpar_ranking(self, codigo: str = "4400") -> bool:
+        """Limpa todo o ranking (requer código 4400)."""
+        if codigo != "4400":
+            print("[ranking] Código de autorização incorreto! Exclusão negada.", flush=True)
+            return False
+        if not self._disponivel or not self._conectar():
+            return False
+        try:
+            self._colecao_ranking.delete_many({})
+            print("[ranking] Todo o ranking foi limpo.", flush=True)
+            return True
+        except Exception as erro:
+            print(f"[ranking] Erro ao limpar ranking: {erro}", flush=True)
+            return False
