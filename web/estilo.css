@@ -723,12 +723,14 @@ body.com-foco .painel-legenda {
 
   .barra {
     padding: 6px 8px;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
   .marca {
     flex-shrink: 0;
     gap: 6px;
+    width: 100%;
   }
 
   .marca strong {
@@ -748,16 +750,10 @@ body.com-foco .painel-legenda {
 
   .acoes {
     display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    max-width: calc(100vw - 130px);
+    flex-wrap: wrap;
     gap: 5px;
-    padding-bottom: 2px;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .acoes::-webkit-scrollbar {
-    display: none;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .acoes button,
@@ -804,7 +800,7 @@ body.com-foco .painel-legenda {
 
   /* Painel de gesto compacto no alto, sem competir com a barra superior. */
   .painel-gesto {
-    top: 46px;
+    top: 76px;
     bottom: auto;
     left: var(--margem);
     padding: 6px 10px;
@@ -829,7 +825,7 @@ body.com-foco .painel-legenda {
   }
 
   .painel-camera {
-    top: 46px;
+    top: 76px;
     bottom: auto;
     right: var(--margem);
     width: 112px;
