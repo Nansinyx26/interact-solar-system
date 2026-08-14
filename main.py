@@ -250,10 +250,16 @@ class Aplicacao:
         elif tecla == pygame.K_c:
             self.mostrar_preview = not self.mostrar_preview
         elif tecla == pygame.K_l:
-            lua = corpo_por_gesto(9)
-            if lua:
-                self.estabilizador.forcar(9, time.monotonic())
-                self._selecionar(lua)
+            # "L" abre o MODO LUAS, espelhando o gesto de mão de mesmo nome.
+            # Antes esta tecla focava a Lua, mas isso duplicava a tecla 9 — que
+            # continua fazendo exatamente isso.
+            if self.maquina_gestos.alternar_modo_luas():
+                self.luas_visiveis = True
+                alvo = self.planeta_selecionado or self.corpo_alvo
+                nome = alvo.nome if alvo else "nenhum planeta"
+                self.aviso_luas = f"Modo luas: {nome}. Mostre um número."
+            else:
+                self.aviso_luas = "Modo luas desligado."
         elif tecla in _TECLAS_ACELERAR:
             self.escala_tempo = min(
                 TIME_SCALE_MAX, self.escala_tempo * FATOR_AJUSTE_TEMPO
@@ -264,8 +270,13 @@ class Aplicacao:
             )
         elif tecla in _TECLAS_NUMERICAS:
             indice = _TECLAS_NUMERICAS[tecla]
-            self.estabilizador.forcar(indice, time.monotonic())
-            self._selecionar(corpo_por_gesto(indice))
+            if self.maquina_gestos.modo_luas:
+                # No modo luas o número é índice de lua, tanto na mão quanto na
+                # tecla: o teclado precisa significar a mesma coisa que o gesto.
+                self._selecionar_lua(indice)
+            else:
+                self.estabilizador.forcar(indice, time.monotonic())
+                self._selecionar(corpo_por_gesto(indice))
 
     # ---------------------------------------------------------- atualização
     def _atualizar(self, dt: float) -> None:
@@ -468,6 +479,15 @@ class Aplicacao:
                 valor_confirmado=self.estabilizador.valor_confirmado,
                 pinca_ativa=self.pinca.ativa,
                 narracao_ativa=self.narrador.ativo,
+                modo_luas=self.maquina_gestos.modo_luas,
+                l_detectado=self.intencao.l_detectado,
+                progresso_modo=self.intencao.progresso_modo,
+                # O planeta do modo luas é o SELECIONADO, não o corpo em foco:
+                # focar uma lua não pode fazer a lista trocar debaixo do dedo.
+                planeta_luas=self.planeta_selecionado,
+                lua_selecionada=(
+                    self.lua_selecionada.nome if self.lua_selecionada else None
+                ),
             ),
         )
         self.marca.desenhar(self.tela)

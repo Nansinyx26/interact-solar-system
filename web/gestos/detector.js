@@ -208,6 +208,11 @@ export class DetectorMaos {
         ? selecionadas.reduce((soma, m) => soma + m.score, 0) / selecionadas.length
         : 0,
       descartadaPorBorda,
+      // As mãos cruas seguem no resultado MESMO com o frame descartado pela
+      // borda: quem lê formato (o "L") filtra mão por mão e ainda aproveita a
+      // que está inteira. Sem isso, uma segunda mão encostando na borda zerava
+      // o modo luas — e o polegar do L encosta na borda com frequência.
+      maos: selecionadas.map(({ landmarks, lado }) => ({ landmarks, lado })),
       sequencia: this._sequencia,
     };
     return true;

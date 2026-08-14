@@ -356,6 +356,12 @@ class DetectorMaos:
                     confianca_media=confianca,
                     brilho_medio=brilho,
                     descartada_por_borda=True,
+                    # As mãos SEGUEM no resultado mesmo com o frame descartado:
+                    # quem lê formato (o "L") filtra mão por mão e ainda
+                    # aproveita a que está inteira. Sem isso, uma segunda mão
+                    # encostando na borda zerava o modo luas — e o polegar do L
+                    # encosta na borda com frequência.
+                    maos=tuple((pontos, lado) for pontos, lado, _ in maos),
                     status=StatusCamera.ATIVA,
                 )
             contagens.append(contar_dedos(pontos, lado))

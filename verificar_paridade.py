@@ -102,6 +102,8 @@ MODULOS_ESPELHADOS = {
     "gestos/contador.py": "gestos/contador.js",
     "gestos/estabilizador.py": "gestos/estabilizador.js",
     "gestos/detector.py": "gestos/detector.js",
+    "gestos/formatos_mao.py": "gestos/formatos_mao.js",
+    "gestos/estado_gesto.py": "gestos/estado_gesto.js",
     "ui/hud.py": "ui/hud.js",
     "ui/ficha_planeta.py": "ui/ficha.js",
 }

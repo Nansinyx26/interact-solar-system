@@ -25,6 +25,18 @@ from config import (
     COR_TEXTO_SECUNDARIO,
 )
 from ui.hud import Fontes, desenhar_painel
+from ui.icones import (
+    desenhar_chapeu_formatura,
+    desenhar_check,
+    desenhar_cronometro,
+    desenhar_estrela,
+    desenhar_lapis,
+    desenhar_nuvem_upload,
+    desenhar_recarregar,
+    desenhar_trofeu,
+    desenhar_usuario,
+    desenhar_x,
+)
 
 if TYPE_CHECKING:
     from dados.telemetria import TelemetriaMongo
@@ -393,8 +405,7 @@ class QuizDesktop:
         ret_fechar = pygame.Rect(x_painel + largura_painel - 42, y_painel + 14, 28, 28)
         self._ret_botoes["btn_fechar"] = ret_fechar
         pygame.draw.rect(tela, (255, 255, 255, 20), ret_fechar, border_radius=6)
-        surf_x = self.fontes.pequena.render("✕", True, COR_TEXTO_SECUNDARIO)
-        tela.blit(surf_x, surf_x.get_rect(center=ret_fechar.center))
+        desenhar_x(tela, ret_fechar.center, tamanho=14, cor=COR_TEXTO_SECUNDARIO)
 
         # Desenha a tela específica
         self._ret_opcoes.clear()
@@ -408,12 +419,11 @@ class QuizDesktop:
     def _desenhar_identificacao(self, tela: pygame.Surface, rect_p: pygame.Rect) -> None:
         """Desenha a tela de entrada: Nome + Série."""
         cx = rect_p.centerx
-        topo = rect_p.y + 45
+        topo = rect_p.y + 40
 
-        # Título
-        surf_icone = self.fontes.grande.render("★", True, COR_AVISO)
-        tela.blit(surf_icone, surf_icone.get_rect(center=(cx, topo)))
-        topo += 36
+        # Ícone do Topo (Chapéu de Formatura / Desafio)
+        desenhar_chapeu_formatura(tela, (cx, topo), tamanho=36, cor=COR_DESTAQUE)
+        topo += 32
 
         surf_tit = self.fontes.grande.render("Desafio Astronômico", True, COR_DESTAQUE)
         tela.blit(surf_tit, surf_tit.get_rect(center=(cx, topo)))
@@ -425,14 +435,15 @@ class QuizDesktop:
             COR_TEXTO_SECUNDARIO,
         )
         tela.blit(surf_sub, surf_sub.get_rect(center=(cx, topo)))
-        topo += 50
+        topo += 48
 
         # Campo Nome do Aluno
         largura_campo = min(480, rect_p.width - 80)
         x_campo = cx - largura_campo // 2
 
+        desenhar_usuario(tela, (x_campo + 10, topo + 8), tamanho=16, cor=COR_DESTAQUE)
         lbl_nome = self.fontes.pequena.render("Seu Nome Completo:", True, COR_TEXTO)
-        tela.blit(lbl_nome, (x_campo, topo))
+        tela.blit(lbl_nome, (x_campo + 24, topo))
         topo += 26
 
         ret_nome = pygame.Rect(x_campo, topo, largura_campo, 46)
@@ -452,8 +463,9 @@ class QuizDesktop:
         topo += 65
 
         # Campo Série / Turma
+        desenhar_chapeu_formatura(tela, (x_campo + 10, topo + 8), tamanho=16, cor=COR_DESTAQUE)
         lbl_serie = self.fontes.pequena.render("Sua Série / Turma:", True, COR_TEXTO)
-        tela.blit(lbl_serie, (x_campo, topo))
+        tela.blit(lbl_serie, (x_campo + 24, topo))
         topo += 26
 
         ret_serie = pygame.Rect(x_campo, topo, largura_campo, 46)
@@ -487,8 +499,9 @@ class QuizDesktop:
         pygame.draw.rect(tela, (40, 110, 225), ret_iniciar, border_radius=10)
         pygame.draw.rect(tela, (90, 160, 255), ret_iniciar, width=2, border_radius=10)
 
+        desenhar_lapis(tela, (ret_iniciar.centerx - 110, ret_iniciar.centery), tamanho=20, cor=(255, 255, 255))
         surf_btn = self.fontes.media.render("Iniciar Atividade (ENTER)", True, (255, 255, 255))
-        tela.blit(surf_btn, surf_btn.get_rect(center=ret_iniciar.center))
+        tela.blit(surf_btn, (ret_iniciar.centerx - 90, ret_iniciar.centery - 12))
 
         # Dica de rodapé
         surf_dica = self.fontes.mini.render(
@@ -524,9 +537,11 @@ class QuizDesktop:
         mins = segs // 60
         segs_rest = segs % 60
         surf_timer = self.fontes.pequena.render(
-            f"⏱ Tempo: {mins:02d}:{segs_rest:02d}", True, COR_TEXTO_SECUNDARIO
+            f"Tempo: {mins:02d}:{segs_rest:02d}", True, COR_TEXTO_SECUNDARIO
         )
-        tela.blit(surf_timer, (x_barra + largura_barra - surf_timer.get_width(), topo))
+        x_timer = x_barra + largura_barra - surf_timer.get_width()
+        desenhar_cronometro(tela, (x_timer - 12, topo + 9), tamanho=15, cor=COR_TEXTO_SECUNDARIO)
+        tela.blit(surf_timer, (x_timer, topo))
         topo += 35
 
         # Título da Questão (com quebra de linha se necessário)
@@ -622,9 +637,8 @@ class QuizDesktop:
         cx = rect_p.centerx
         topo = rect_p.y + 25
 
-        # Ícone Troféu
-        surf_trofeu = self.fontes.grande.render("🏆", True, COR_AVISO)
-        tela.blit(surf_trofeu, surf_trofeu.get_rect(center=(cx, topo)))
+        # Ícone Troféu Vetorial Estilo Bootstrap
+        desenhar_trofeu(tela, (cx, topo), tamanho=38, cor=COR_AVISO)
         topo += 32
 
         # Título
@@ -646,19 +660,27 @@ class QuizDesktop:
         x_bloco_inicio = cx - largura_total_blocos // 2
 
         blocos = [
-            ("★ PONTUAÇÃO", f"{self.pontuacao} pts", COR_DESTAQUE),
-            ("✔ ACERTOS", f"{self.acertos} / 10", COR_SUCESSO if self.acertos >= 6 else COR_AVISO),
-            ("⏱ TEMPO", f"{int(self.tempo_total_segundos)}s", COR_TEXTO),
+            ("PONTUAÇÃO", f"{self.pontuacao} pts", COR_DESTAQUE, "estrela"),
+            ("ACERTOS", f"{self.acertos} / 10", COR_SUCESSO if self.acertos >= 6 else COR_AVISO, "check"),
+            ("TEMPO", f"{int(self.tempo_total_segundos)}s", COR_TEXTO, "tempo"),
         ]
 
-        for i, (rotulo, valor, cor_val) in enumerate(blocos):
+        for i, (rotulo, valor, cor_val, tipo_ico) in enumerate(blocos):
             x_b = x_bloco_inicio + i * (largura_bloco + espaco_blocos)
             ret_b = pygame.Rect(x_b, topo, largura_bloco, 60)
             pygame.draw.rect(tela, (20, 25, 45), ret_b, border_radius=8)
             pygame.draw.rect(tela, (45, 55, 85), ret_b, width=1, border_radius=8)
 
+            # Ícone do bloco
+            if tipo_ico == "estrela":
+                desenhar_estrela(tela, (ret_b.x + 22, ret_b.y + 16), tamanho=14, cor=COR_DESTAQUE)
+            elif tipo_ico == "check":
+                desenhar_check(tela, (ret_b.x + 22, ret_b.y + 16), tamanho=14, cor=cor_val)
+            elif tipo_ico == "tempo":
+                desenhar_cronometro(tela, (ret_b.x + 22, ret_b.y + 16), tamanho=14, cor=COR_TEXTO_SECUNDARIO)
+
             surf_rot = self.fontes.mini.render(rotulo, True, COR_TEXTO_SECUNDARIO)
-            tela.blit(surf_rot, surf_rot.get_rect(center=(ret_b.centerx, ret_b.y + 16)))
+            tela.blit(surf_rot, (ret_b.x + 36, ret_b.y + 9))
 
             surf_v = self.fontes.media.render(valor, True, cor_val)
             tela.blit(surf_v, surf_v.get_rect(center=(ret_b.centerx, ret_b.y + 40)))
@@ -666,10 +688,10 @@ class QuizDesktop:
 
         # Mensagem de Envio ao Ranking
         if self.status_envio_ranking == "sucesso":
-            msg_rank = "✔ Pontuação salva no Ranking com sucesso!"
+            msg_rank = "Pontuação salva no Ranking com sucesso!"
             cor_rank = COR_SUCESSO
         elif self.status_envio_ranking == "erro":
-            msg_rank = "✖ Falha ao conectar ao servidor de ranking."
+            msg_rank = "Falha ao conectar ao servidor de ranking."
             cor_rank = COR_ERRO
         elif self.status_envio_ranking == "enviando":
             msg_rank = "Enviando pontuação para o servidor..."
@@ -694,21 +716,25 @@ class QuizDesktop:
         pode_enviar = self.status_envio_ranking != "sucesso"
         cor_bg_rank = (190, 120, 20) if pode_enviar else (40, 50, 70)
         pygame.draw.rect(tela, cor_bg_rank, ret_rank, border_radius=8)
-        txt_rank = "Salvar no Ranking" if pode_enviar else "✔ Salvo no Ranking"
+        
+        desenhar_nuvem_upload(tela, (ret_rank.x + 24, ret_rank.centery), tamanho=18, cor=(255, 255, 255))
+        txt_rank = "Salvar no Ranking" if pode_enviar else "Salvo no Ranking"
         surf_btn_r = self.fontes.pequena.render(txt_rank, True, (255, 255, 255))
-        tela.blit(surf_btn_r, surf_btn_r.get_rect(center=ret_rank.center))
+        tela.blit(surf_btn_r, (ret_rank.x + 44, ret_rank.centery - 10))
 
         # Botão Refazer Atividade
         ret_reinicio = pygame.Rect(x_btn2, topo, largura_btn_acao, 44)
         self._ret_botoes["btn_reiniciar"] = ret_reinicio
         pygame.draw.rect(tela, (30, 40, 70), ret_reinicio, border_radius=8)
         pygame.draw.rect(tela, (60, 80, 120), ret_reinicio, width=1, border_radius=8)
-        surf_btn_re = self.fontes.pequena.render("🔄 Refazer Atividade", True, COR_TEXTO)
-        tela.blit(surf_btn_re, surf_btn_re.get_rect(center=ret_reinicio.center))
+        
+        desenhar_recarregar(tela, (ret_reinicio.x + 24, ret_reinicio.centery), tamanho=18, cor=COR_TEXTO)
+        surf_btn_re = self.fontes.pequena.render("Refazer Atividade", True, COR_TEXTO)
+        tela.blit(surf_btn_re, (ret_reinicio.x + 44, ret_reinicio.centery - 10))
         topo += 56
 
         # Área de Gabarito / Correção das Questões
-        lbl_gab = self.fontes.pequena.render("📌 Resumo das Respostas (Role para ver mais):", True, COR_DESTAQUE)
+        lbl_gab = self.fontes.pequena.render("Resumo das Respostas (Role para ver mais):", True, COR_DESTAQUE)
         tela.blit(lbl_gab, (rect_p.x + 40, topo))
         topo += 22
 
@@ -730,9 +756,13 @@ class QuizDesktop:
             pygame.draw.rect(surf_gab, cor_bg_item, ret_item, border_radius=6)
             pygame.draw.rect(surf_gab, cor_borda_item, ret_item, width=1, border_radius=6)
 
-            simb = "✔" if acertou else "✖"
-            surf_s = self.fontes.pequena.render(f"{simb} Q{idx+1}:", True, cor_borda_item)
-            surf_gab.blit(surf_s, (10, y_item + 12))
+            if acertou:
+                desenhar_check(surf_gab, (20, y_item + 21), tamanho=16, cor=COR_SUCESSO)
+            else:
+                desenhar_x(surf_gab, (20, y_item + 21), tamanho=14, cor=COR_ERRO)
+
+            surf_s = self.fontes.pequena.render(f"Q{idx+1}:", True, cor_borda_item)
+            surf_gab.blit(surf_s, (36, y_item + 12))
 
             resp_str = q.opcoes[resp] if resp is not None else "Nenhuma"
             if acertou:
@@ -741,7 +771,7 @@ class QuizDesktop:
                 txt_item = f"Sua resposta: {resp_str}  |  Certa: {q.opcoes[q.correta]}"
 
             surf_txt = self.fontes.mini.render(txt_item, True, COR_TEXTO)
-            surf_gab.blit(surf_txt, (70, y_item + 14))
+            surf_gab.blit(surf_txt, (82, y_item + 14))
 
             y_item += 48
 

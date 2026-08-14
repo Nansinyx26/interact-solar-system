@@ -50,7 +50,7 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 36 | Gesto de mão para as luas (pinça dupla) | ✅ | ✅ | pronto |
 | 37 | Aviso `has-symbols` no npm | — | ✅ | investigado: sem ação |
 | 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
-| 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
+| 39 | Gesto "L" como modificador: selecionar lua individual | ✅ | ✅ | pronto |
 | 40 | BUG: órbita da Lua colidia com Vênus e Marte | ✅ | ✅ | corrigido |
 | 41 | Ver as luas em volta dos planetas na visão geral | ✅ | ✅ | pronto |
 | 42 | Luas ligadas por padrão + rebuild v1.4.0 | ✅ | ✅ | publicado |
@@ -221,8 +221,8 @@ que o renderizador não desenha. A numeração precisa sair de
 1. ✅ publicar a v1.3.1 (baseline, com a pinça dupla)
 2. ✅ catálogo ampliado de 11 para 22 luas — commit isolado (`5da8fbf`)
 3. ✅ máquina de estados do "L" + testes com landmarks sintéticos (`6148cc8`)
-4. ⬜ HUD do modo luas, numerando a partir do catálogo
-5. ⬜ espelhar o gesto "L" no site (hoje só existe no desktop)
+4. ✅ HUD do modo luas, numerando a partir do catálogo
+5. ✅ espelhar o gesto "L" no site (desktop e web sincronizados)
 
 ### 43 · Velocidade das luas — corrigido
 

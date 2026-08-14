@@ -58,7 +58,7 @@ from config import (
     TAM_FONTE_PEQUENA,
     TAM_FONTE_TITULO,
 )
-from dados.planetas import CORPOS, CorpoCeleste
+from dados.planetas import CORPOS, CorpoCeleste, luas_do_planeta
 from gestos.detector import LeituraGestos, StatusCamera
 from gestos.estabilizador import ResultadoEstabilizacao
 
@@ -74,6 +74,16 @@ _PADDING_LEGENDA = 12
 # Painel de status (canto superior esquerdo).
 _LARGURA_PAINEL_STATUS = 232
 _ALTURA_PAINEL_STATUS = 78
+
+# Painel do modo luas (topo, centralizado). Fica na faixa central porque é o
+# único bloco que aparece e some durante o uso: nos cantos ele seria confundido
+# com o HUD fixo, e no meio ele avisa que o significado dos números mudou.
+_LARGURA_PAINEL_LUAS = 280
+_ALTURA_LINHA_LUA = 19
+_PADDING_LUAS = 12
+# Acima disso a lista é truncada com "+N": Júpiter e Saturno têm 5 luas cada,
+# mas a lista é gerada do catálogo e ele pode crescer sem quebrar o layout.
+_MAXIMO_LUAS_LISTADAS = 6
 
 _MAXIMO_DEDOS_UMA_MAO = GESTO_MINIMO_DUAS_MAOS - 1
 
@@ -98,11 +108,11 @@ ALTURA_BLOCO_PREVIEW = ALTURA_PREVIEW_CAMERA + 22
 # Texto da barra de atalhos, em duas versões: a janela estreita perde a cauda
 # sobre o mouse, que é a parte descobrível sem ajuda.
 _ATALHOS_COMPLETOS = (
-    "0–9 focar   L Lua   V visão geral   A Quiz   ESPAÇO pausa   +/− tempo   "
+    "0–9 focar   L modo luas   V visão geral   A Quiz   R Ranking   ESPAÇO pausa   +/− tempo   "
     "C câmera   N voz   Q sair   ·   arraste com o mouse, roda = zoom"
 )
 _ATALHOS_CURTOS = (
-    "0–9 focar   L Lua   V visão geral   A Quiz   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
+    "0–9 focar   L modo luas   V visão geral   A Quiz   R Ranking   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
 )
 
 # Rótulo do gesto de comando na legenda.
@@ -147,6 +157,12 @@ class EstadoHUD:
     valor_confirmado: int | None = None  # inclui o gesto de comando (10)
     pinca_ativa: bool = False  # modo zoom pela câmera
     narracao_ativa: bool = False
+    # --- modo luas (gesto "L") ---
+    modo_luas: bool = False
+    l_detectado: bool = False  # há um "L" na tela, mesmo antes de confirmar
+    progresso_modo: float = 0.0  # 0 a 1: quanto falta para o modo trocar
+    planeta_luas: CorpoCeleste | None = None  # de quem as luas estão listadas
+    lua_selecionada: str | None = None
 
 
 def desenhar_painel(
@@ -238,7 +254,13 @@ class HUD:
         if estado.corpo_alvo is None and self._altura >= ALTURA_MINIMA_LEGENDA:
             self._desenhar_legenda(superficie, estado)
         self._desenhar_barra_atalhos(superficie)
-        self._desenhar_avisos(superficie, estado)
+        # Antes dos avisos: o painel é o contexto que explica o aviso, e os dois
+        # disputam a mesma faixa central do topo — por isso o painel devolve
+        # onde termina, e os avisos começam abaixo dele.
+        topo_avisos = MARGEM_HUD
+        if estado.modo_luas or estado.l_detectado:
+            topo_avisos = self._desenhar_painel_luas(superficie, estado) + 8
+        self._desenhar_avisos(superficie, estado, topo_avisos)
         if estado.mostrar_preview:
             self._desenhar_preview(superficie, estado.leitura)
 
@@ -440,7 +462,99 @@ class HUD:
             (MARGEM_HUD + 4, self._altura - MARGEM_HUD - 14),
         )
 
-    def _desenhar_avisos(self, superficie: pygame.Surface, estado: EstadoHUD) -> None:
+    def _desenhar_painel_luas(
+        self, superficie: pygame.Surface, estado: EstadoHUD
+    ) -> int:
+        """Painel do modo luas: crachá, planeta, lista numerada e confirmação.
+
+        A lista sai de ``luas_do_planeta()`` — a MESMA função que o renderizador
+        usa para desenhar. Com um dicionário próprio aqui, o HUD poderia numerar
+        uma lua que não existe na cena, e o usuário mostraria o número para nada.
+        """
+        planeta = estado.planeta_luas
+        luas = luas_do_planeta(planeta.nome) if planeta else ()
+        visiveis = luas[:_MAXIMO_LUAS_LISTADAS]
+        restantes = len(luas) - len(visiveis)
+
+        linhas = len(visiveis) + (1 if restantes > 0 else 0)
+        altura = _PADDING_LUAS * 2 + 40 + max(1, linhas) * _ALTURA_LINHA_LUA
+        if estado.progresso_modo > 0.0 and not estado.modo_luas:
+            altura += 10
+        retangulo = pygame.Rect(
+            (self._largura - _LARGURA_PAINEL_LUAS) // 2,
+            MARGEM_HUD,
+            _LARGURA_PAINEL_LUAS,
+            altura,
+        )
+        desenhar_painel(superficie, retangulo)
+
+        x = retangulo.x + _PADDING_LUAS
+        y = retangulo.y + _PADDING_LUAS
+
+        # Crachá: aceso quando o modo está ativo, apagado enquanto confirma.
+        cor_cracha = COR_DESTAQUE if estado.modo_luas else COR_TEXTO_SECUNDARIO
+        icone = self._fontes.media.render("L", True, cor_cracha)
+        moldura = pygame.Rect(x, y, 22, 22)
+        pygame.draw.rect(superficie, cor_cracha, moldura, width=2, border_radius=5)
+        superficie.blit(icone, icone.get_rect(center=moldura.center))
+
+        rotulo = "MODO LUAS" if estado.modo_luas else "reconhecendo L..."
+        superficie.blit(
+            self._fontes.pequena.render(rotulo, True, cor_cracha), (x + 30, y + 2)
+        )
+        y += 26
+
+        if planeta is None:
+            superficie.blit(
+                self._fontes.mini.render(
+                    "escolha um planeta primeiro", True, COR_AVISO
+                ),
+                (x, y),
+            )
+        else:
+            superficie.blit(
+                self._fontes.pequena.render(planeta.nome, True, COR_TEXTO), (x, y)
+            )
+        y += 20
+
+        if planeta is not None and not luas:
+            superficie.blit(
+                self._fontes.mini.render("não tem luas conhecidas", True, COR_AVISO),
+                (x, y),
+            )
+        for indice, lua in enumerate(visiveis, start=1):
+            escolhida = lua.nome == estado.lua_selecionada
+            cor = COR_DESTAQUE if escolhida else COR_TEXTO_SECUNDARIO
+            if escolhida:
+                pygame.draw.circle(superficie, lua.cor, (x + 5, y + 7), 4)
+            superficie.blit(
+                self._fontes.mini.render(f"{indice}  {lua.nome}", True, cor),
+                (x + 14, y),
+            )
+            y += _ALTURA_LINHA_LUA
+        if restantes > 0:
+            superficie.blit(
+                self._fontes.mini.render(
+                    f"+{restantes} no catálogo", True, COR_TEXTO_SECUNDARIO
+                ),
+                (x + 14, y),
+            )
+            y += _ALTURA_LINHA_LUA
+
+        # Barra de confirmação: sem ela o usuário repete o gesto achando que
+        # não pegou, e a repetição atrapalha justamente a contagem de frames.
+        if not estado.modo_luas and estado.progresso_modo > 0.0:
+            trilho = pygame.Rect(x, y + 2, retangulo.width - _PADDING_LUAS * 2, 4)
+            pygame.draw.rect(superficie, (255, 255, 255, 40), trilho, border_radius=2)
+            preenchido = trilho.copy()
+            preenchido.width = int(trilho.width * min(1.0, estado.progresso_modo))
+            pygame.draw.rect(superficie, COR_DESTAQUE, preenchido, border_radius=2)
+
+        return retangulo.bottom
+
+    def _desenhar_avisos(
+        self, superficie: pygame.Surface, estado: EstadoHUD, topo: int = MARGEM_HUD
+    ) -> None:
         """Mensagens de webcam, iluminação e dica das duas mãos."""
         avisos: list[tuple[str, tuple[int, int, int]]] = []
         leitura = estado.leitura
@@ -479,7 +593,7 @@ class HUD:
 
         if not avisos:
             return
-        y = MARGEM_HUD
+        y = topo
         for texto, cor in avisos:
             renderizado = self._fontes.pequena.render(texto, True, cor)
             largura = renderizado.get_width() + 32

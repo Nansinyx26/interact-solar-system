@@ -19,15 +19,15 @@ import {
 
 // Índices dos 21 landmarks do MediaPipe Hands.
 const PULSO = 0;
-const POLEGAR_MCP = 2;
+export const POLEGAR_MCP = 2;
 const POLEGAR_IP = 3;
-const POLEGAR_PONTA = 4;
-const INDICADOR_MCP = 5;
+export const POLEGAR_PONTA = 4;
+export const INDICADOR_MCP = 5;
 const MEDIO_MCP = 9;
 const MINIMO_MCP = 17;
 
 /** (ponta, PIP) dos quatro dedos longos. */
-const DEDOS_LONGOS = [
+export const DEDOS_LONGOS = [
   [8, 6],
   [12, 10],
   [16, 14],
@@ -68,7 +68,7 @@ export function maoDentroDoQuadro(landmarks) {
  * - tamanho: escala que normaliza os limiares, deixando a contagem independente
  *   da distância até a câmera.
  */
-function referencialDaPalma(landmarks, lado) {
+export function referencialDaPalma(landmarks, lado) {
   const pulso = landmarks[PULSO];
   const medio = landmarks[MEDIO_MCP];
   const vetorX = medio.x - pulso.x;
@@ -109,7 +109,7 @@ function referencialDaPalma(landmarks, lado) {
  * ambígua entra o segundo critério: comparar a distância da PONTA e da junta IP
  * até a base do dedo mínimo — abrindo o polegar a ponta se afasta.
  */
-function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
+export function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
   const ponta = landmarks[POLEGAR_PONTA];
   const mcp = landmarks[POLEGAR_MCP];
   const projecao =
@@ -126,7 +126,7 @@ function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
 }
 
 /** Projeta ponta e junta no eixo da palma para saber se o dedo está aberto. */
-function dedoEstendido(landmarks, ponta, pip, eixoDedos, tamanho) {
+export function dedoEstendido(landmarks, ponta, pip, eixoDedos, tamanho) {
   const pulso = landmarks[PULSO];
   const alvo = landmarks[ponta];
   const junta = landmarks[pip];

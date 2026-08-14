@@ -45,6 +45,24 @@
       </div>
     </header>
 
+    <!--
+      Painel do modo luas (gesto "L" ou tecla L). Fica na faixa central do topo
+      porque é o único bloco que aparece e some durante o uso: nos cantos ele
+      seria confundido com o HUD fixo, e no meio ele avisa que o significado
+      dos números mudou. A lista é preenchida a partir de luasDoPlaneta().
+    -->
+    <div class="painel-luas" data-painel-luas hidden>
+      <div class="painel-luas-topo">
+        <span class="icone-l" data-icone-l>L</span>
+        <span data-rotulo-luas>MODO LUAS</span>
+      </div>
+      <p class="painel-luas-planeta" data-planeta-luas></p>
+      <ol class="painel-luas-lista" data-lista-luas></ol>
+      <div class="painel-luas-barra" data-barra-luas hidden>
+        <span data-barra-luas-preenchida></span>
+      </div>
+    </div>
+
     <!-- Avisos centrais (câmera, iluminação, dica das duas mãos) -->
     <div class="avisos" data-avisos role="status" aria-live="polite"></div>
 

@@ -225,6 +225,26 @@ export const ALPHA_ASTEROIDE_MAX = 0.67;
 export const PERIODO_CINTURAO_DIAS = 1680.0;
 
 // ---------------------------------------------------------------------------
+// Gesto "L" — modificador de modo (seleção de luas)
+// ---------------------------------------------------------------------------
+// Uma mão em "L" faz o número da OUTRA mão significar índice de lua em vez de
+// planeta. Foi a saída para um limite duro: a contagem vai de 0 a 10 e todos os
+// valores já estão ocupados — não sobrava número, mas sobrava forma.
+//
+// Faixa angular entre polegar e indicador. Abaixo de 50° o gesto vira "apontar"
+// e acima de 130° a mão está praticamente aberta; nos dois casos não é um L.
+export const ANGULO_L_MINIMO_GRAUS = 50.0;
+export const ANGULO_L_MAXIMO_GRAUS = 130.0;
+// Histerese ASSIMÉTRICA de propósito: entrar devagar incomoda menos que sair
+// sem querer no meio de uma seleção.
+export const FRAMES_PARA_ENTRAR_MODO_LUAS = 6;
+export const FRAMES_PARA_SAIR_MODO_LUAS = 8;
+// Votação da lua escolhida, no mesmo espírito do estabilizador de planetas.
+export const BUFFER_SELECAO_LUA = 6;
+export const VOTOS_SELECAO_LUA = 5;
+export const COOLDOWN_SELECAO_LUA_S = 0.4;
+
+// ---------------------------------------------------------------------------
 // Gesto de pinça — zoom controlado pela câmera
 // ---------------------------------------------------------------------------
 // Distância ponta do polegar <-> ponta do indicador dividida pelo tamanho da

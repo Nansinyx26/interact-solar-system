@@ -188,6 +188,107 @@ button.ativo {
 }
 
 /* ----------------------------------------------------------------- avisos */
+/* --------------------------------------------------------------------------
+   Painel do modo luas (gesto "L")
+   -------------------------------------------------------------------------- */
+/* Divide a faixa central do topo com os avisos: quando este painel aparece,
+   os avisos descem para não sobreporem o painel. Altura fixa seria frágil
+   (a lista varia de 0 a 5 luas). Medindo em JS, como no desktop. */
+.painel-luas {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(88vw, 280px);
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  pointer-events: none;
+  z-index: 5;
+}
+.painel-luas[hidden] {
+  display: none;
+}
+.painel-luas-topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--texto-fraco);
+}
+.painel-luas.ativo .painel-luas-topo {
+  color: var(--destaque);
+}
+.icone-l {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.painel-luas-planeta {
+  margin: 8px 0 6px;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+.painel-luas-planeta.vazio {
+  color: var(--aviso);
+  font-size: 0.82rem;
+}
+.painel-luas-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.painel-luas-lista li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--texto-fraco);
+}
+.painel-luas-lista li.escolhida {
+  color: var(--destaque);
+}
+.painel-luas-lista .marcador {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  opacity: 0;
+}
+.painel-luas-lista li.escolhida .marcador {
+  opacity: 1;
+}
+.painel-luas-lista .indice {
+  min-width: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* Barra de confirmação: sem ela o usuário repete o gesto achando que não
+   pegou, e a repetição atrapalha justamente a contagem de frames. */
+.painel-luas-barra {
+  margin-top: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.painel-luas-barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--destaque);
+  transition: width 80ms linear;
+}
+
 .avisos {
   position: fixed;
   top: 58px;
@@ -199,7 +300,11 @@ button.ativo {
   align-items: center;
   pointer-events: none;
   max-width: min(92vw, 560px);
+  transition: top 120ms ease;
 }
+/* Com o painel do modo luas aberto, os avisos descem para não ficarem por
+   baixo dele. Altura fixa seria frágil (a lista varia de 0 a 5 luas). Medindo
+   em JS, como no desktop: o deslocamento é aplicado dinamicamente. */
 .avisos p {
   margin: 0;
   padding: 7px 14px;

@@ -20,6 +20,7 @@ import {
 import { CORPOS, CORPOS_POR_GESTO, corpoPorGesto } from "./dados/planetas.js";
 import { DetectorMaos, StatusCamera } from "./gestos/detector.js";
 import { EstabilizadorGestos } from "./gestos/estabilizador.js";
+import { MaquinaGestos } from "./gestos/estado_gesto.js";
 import { Camera2D } from "./nucleo/camera.js";
 import { posicoesDoSistema, raioCorpoPx } from "./nucleo/orbita.js";
 import { Renderizador } from "./nucleo/renderizador.js";
@@ -57,6 +58,20 @@ class Aplicacao {
     // Não há número de dedos livre (0-10 estão todos ocupados), então as luas
     // menores entram e saem pela tecla M ou pelo botão do HUD.
     this.luasVisiveis = LUAS_VISIVEIS_PADRAO;
+    // Estado do modo luas, separado do foco da câmera de propósito: focar uma
+    // lua não pode fazer a lista de luas trocar debaixo do dedo do usuário.
+    this.maquinaGestos = new MaquinaGestos();
+    this.planetaSelecionado = null;
+    this.luaSelecionada = null;
+    this.avisoLuas = "";
+    this.intencao = {
+      modoLuas: false,
+      numero: null,
+      progressoModo: 0,
+      modoMudou: false,
+      lDetectado: false,
+      luaConfirmada: null,
+    };
     this.cameraLivre = false;
     this.posicoes = posicoesDoSistema(0);
     this.resultadoGesto = { confirmado: null, candidato: null, progresso: 0 };
@@ -233,13 +248,24 @@ class Aplicacao {
     const tecla = evento.key;
     if (tecla >= "0" && tecla <= "9") {
       const indice = Number(tecla);
-      this.estabilizador.forcar(indice, performance.now() / 1000);
-      this._selecionar(corpoPorGesto(indice));
+      if (this.maquinaGestos.modoLuas) {
+        // No modo luas o número é índice de lua, tanto na mão quanto na tecla:
+        // o teclado precisa significar a mesma coisa que o gesto.
+        this._selecionarLua(indice);
+      } else {
+        this.estabilizador.forcar(indice, performance.now() / 1000);
+        this._selecionar(corpoPorGesto(indice));
+      }
     } else if (tecla === "l" || tecla === "L") {
-      const lua = corpoPorGesto(9);
-      if (lua) {
-        this.estabilizador.forcar(9, performance.now() / 1000);
-        this._selecionar(lua);
+      // "L" abre o MODO LUAS, espelhando o gesto de mão de mesmo nome. Antes
+      // esta tecla focava a Lua, mas isso duplicava a tecla 9 — que continua
+      // fazendo exatamente isso.
+      if (this.maquinaGestos.alternarModoLuas()) {
+        this.luasVisiveis = true;
+        const alvo = this.planetaSelecionado ?? this.corpoAlvo;
+        this.avisoLuas = `Modo luas: ${alvo ? alvo.nome : "nenhum planeta"}. Mostre um número.`;
+      } else {
+        this.avisoLuas = "Modo luas desligado.";
       }
     } else if (tecla === "v" || tecla === "V") {
       this._voltarVisaoGeral();
@@ -341,15 +367,29 @@ class Aplicacao {
         this.camera.aplicarZoom(estadoPinca.fatorZoom);
       }
 
-      // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
-      // Qualquer outra contagem entra como leitura inválida.
-      const contagem = leitura.contagem;
-      const valido = CORPOS_POR_GESTO.has(contagem) || contagem === GESTO_VISAO_GERAL;
-      const bloqueado = this.pinca.bloqueandoGestos(agora);
-      this.resultadoGesto = this.estabilizador.atualizar(
-        valido && !bloqueado ? contagem : null,
-        agora,
-      );
+      // A FORMA da mão vem antes da contagem: o "L" consome dois dedos e não
+      // pode entrar na soma (viraria 2 = Vênus).
+      this.intencao = this.maquinaGestos.atualizar(leitura.maos ?? [], agora);
+
+      if (this.intencao.modoLuas) {
+        // No modo luas o número significa índice de lua, não planeta: o
+        // estabilizador de corpos fica de fora.
+        if (this.intencao.luaConfirmada !== null) {
+          this._selecionarLua(this.intencao.luaConfirmada);
+        }
+        this.resultadoGesto = { ...this.resultadoGesto, confirmado: null };
+      } else {
+        // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
+        // Qualquer outra contagem entra como leitura inválida.
+        const contagem = leitura.contagem;
+        const valido =
+          CORPOS_POR_GESTO.has(contagem) || contagem === GESTO_VISAO_GERAL;
+        const bloqueado = this.pinca.bloqueandoGestos(agora);
+        this.resultadoGesto = this.estabilizador.atualizar(
+          valido && !bloqueado ? contagem : null,
+          agora,
+        );
+      }
     } else if (this.resultadoGesto.confirmado !== null) {
       this.resultadoGesto = { ...this.resultadoGesto, confirmado: null };
     }
@@ -386,6 +426,12 @@ class Aplicacao {
     if (corpo === this.corpoAlvo && !this.cameraLivre) return;
     this.cameraLivre = false;
     this.corpoAlvo = corpo;
+    if (!corpo.ehSatelite) {
+      // Guarda o contexto: é este planeta que o modo luas vai consultar.
+      this.planetaSelecionado = corpo;
+      this.luaSelecionada = null;
+      this.avisoLuas = "";
+    }
     this.camera.focarCorpo(this.posicoes.get(corpo.nome), raioCorpoPx(corpo), true);
     this.ficha.mostrar(corpo);
     this.narrador.anunciar(textoDoCorpo(corpo));
@@ -394,10 +440,65 @@ class Aplicacao {
     document.body.classList.add("com-foco");
   }
 
+  /**
+   * Aplica o número recebido no modo luas como índice de lua.
+   *
+   * O alvo é o planeta em contexto. Sem planeta (Sol ou visão geral) a Terra
+   * assume, que é o caso mais provável de quem está começando a explorar.
+   */
+  _selecionarLua(indice) {
+    let alvo = this.planetaSelecionado;
+    if (!alvo || alvo.ehSol) {
+      alvo = corpoPorGesto(3); // Terra
+      this.planetaSelecionado = alvo;
+    }
+    if (!alvo) return;
+
+    const luas = luasDoPlaneta(alvo.nome);
+    if (!luas.length) {
+      this.avisoLuas = `${alvo.nome} não tem luas conhecidas.`;
+      this.luaSelecionada = null;
+      return;
+    }
+
+    this.luasVisiveis = true;
+    if (indice === 0) {
+      // Zero mostra TODAS: é a única forma de voltar à visão do sistema de
+      // luas sem largar o modificador.
+      this.luaSelecionada = null;
+      this.avisoLuas = `${alvo.nome}: todas as ${luas.length} luas.`;
+      return;
+    }
+    if (indice > luas.length) {
+      // Número maior que a quantidade não troca nada — só avisa. A lista do
+      // HUD sai do catálogo, então ela nunca promete o que não existe.
+      const plural = luas.length > 1 ? "luas" : "lua";
+      this.avisoLuas = `${alvo.nome} tem ${luas.length} ${plural}.`;
+      return;
+    }
+
+    // O foco vem ANTES de gravar a lua: _selecionar() limpa luaSelecionada (é
+    // o que faz escolher um planeta desfazer a lua), então inverter a ordem
+    // apagaria a escolha no mesmo frame em que ela foi feita.
+    //
+    // A câmera fica no PLANETA: a lua é destacada, mas o planeta continua como
+    // referência de escala, que é o ponto de olhar para uma lua.
+    if (this.corpoAlvo !== alvo) {
+      this._selecionar(alvo);
+      this.planetaSelecionado = alvo;
+    }
+    this.luaSelecionada = luas[indice - 1];
+    this.avisoLuas = "";
+  }
+
   _voltarVisaoGeral(reiniciarGesto = true) {
     if (!this.corpoAlvo && !this.cameraLivre) return;
     this.cameraLivre = false;
     this.corpoAlvo = null;
+    // O gesto 10 e a tecla V sempre zeram o modo luas, como combinado.
+    this.maquinaGestos.reiniciar();
+    this.luaSelecionada = null;
+    this.avisoLuas = "";
     this.camera.voltarVisaoGeral();
     this.ficha.ocultar();
     document.body.classList.remove("com-foco");
@@ -433,6 +534,12 @@ class Aplicacao {
         pausado: this.pausado,
         detector: this.detector,
         pincaAtiva: this.pinca.ativa,
+        modoLuas: this.maquinaGestos.modoLuas,
+        lDetectado: this.intencao.lDetectado,
+        progressoModo: this.intencao.progressoModo,
+        planetaSelecionado: this.planetaSelecionado ?? this.corpoAlvo,
+        luaSelecionada: this.luaSelecionada,
+        avisoLuas: this.avisoLuas,
       });
       requestAnimationFrame(quadro);
     };

@@ -16,7 +16,7 @@ import {
   URL_DOWNLOAD_EXECUTAVEL,
   VERSAO,
 } from "../config.js";
-import { CORPOS } from "../dados/planetas.js";
+import { CORPOS, luasDoPlaneta } from "../dados/planetas.js";
 import { StatusCamera } from "../gestos/detector.js";
 
 /** Maior contagem alcançável com uma mão só. */
@@ -45,8 +45,15 @@ export class HUD {
     this.legenda = raiz.querySelector("[data-legenda]");
     this.notaLegenda = raiz.querySelector("[data-nota-legenda]");
     this.estadoCamera = raiz.querySelector("[data-estado-camera]");
+    this.painelLuas = raiz.querySelector("[data-painel-luas]");
+    this.rotuloLuas = raiz.querySelector("[data-rotulo-luas]");
+    this.planetaLuas = raiz.querySelector("[data-planeta-luas]");
+    this.listaLuas = raiz.querySelector("[data-lista-luas]");
+    this.barraLuas = raiz.querySelector("[data-barra-luas]");
+    this.barraLuasPreenchida = raiz.querySelector("[data-barra-luas-preenchida]");
     this._estadoCameraAtual = "";
     this._rodapeAtual = "";
+    this._estadoLuasAtual = "";
     this._ativoAtual = null;
     this._botoes = null;
 
@@ -137,6 +144,7 @@ export class HUD {
     this._atualizarRodapeAnel(resultado, progresso);
     this._atualizarAtivo(corpoAlvo);
     this._atualizarEstadoCamera(detector, leitura);
+    this._atualizarPainelLuas(estado);
     this._atualizarAvisos(leitura, detector, pincaAtiva);
   }
 
@@ -253,5 +261,87 @@ export class HUD {
     this.avisos.innerHTML = avisos
       .map(([tipo, mensagem]) => `<p class="${tipo}">${mensagem}</p>`)
       .join("");
+  }
+
+  /**
+   * Painel superior central do modo luas: lista as luas do planeta focado
+   * a partir de luasDoPlaneta() e indica a barra de progresso da histerese.
+   */
+  _atualizarPainelLuas(estado) {
+    if (!this.painelLuas) return;
+    const mostrar = Boolean(estado.modoLuas || estado.lDetectado);
+    if (!mostrar) {
+      if (!this.painelLuas.hidden) {
+        this.painelLuas.hidden = true;
+        this.avisos.style.top = "";
+        this._estadoLuasAtual = "";
+      }
+      return;
+    }
+
+    this.painelLuas.hidden = false;
+    this.painelLuas.classList.toggle("ativo", Boolean(estado.modoLuas));
+
+    const planeta = estado.planetaSelecionado && !estado.planetaSelecionado.ehSol ? estado.planetaSelecionado : null;
+    const luas = planeta ? luasDoPlaneta(planeta.nome) : [];
+    const MAXIMO_LUAS = 5;
+    const visiveis = luas.slice(0, MAXIMO_LUAS);
+    const restantes = luas.length - visiveis.length;
+    const luaAtiva = estado.luaSelecionada ? (estado.luaSelecionada.nome ?? estado.luaSelecionada) : null;
+    const rotulo = estado.modoLuas ? "MODO LUAS" : "reconhecendo L...";
+    const progresso = estado.progressoModo ?? 0;
+    const mostrarBarra = !estado.modoLuas && progresso > 0;
+
+    const assinatura = `${estado.modoLuas}|${planeta?.nome}|${luaAtiva}|${progresso.toFixed(2)}|${rotulo}|${mostrarBarra}`;
+    if (assinatura !== this._estadoLuasAtual) {
+      this._estadoLuasAtual = assinatura;
+
+      if (this.rotuloLuas) this.rotuloLuas.textContent = rotulo;
+
+      if (this.planetaLuas) {
+        if (!planeta) {
+          this.planetaLuas.textContent = "escolha um planeta primeiro";
+          this.planetaLuas.className = "painel-luas-planeta vazio";
+        } else {
+          this.planetaLuas.textContent = planeta.nome;
+          this.planetaLuas.className = "painel-luas-planeta";
+        }
+      }
+
+      if (this.listaLuas) {
+        if (planeta && !luas.length) {
+          this.listaLuas.innerHTML = `<li class="vazio">não tem luas conhecidas</li>`;
+        } else {
+          let html = visiveis
+            .map((lua, i) => {
+              const escolhida = lua.nome === luaAtiva;
+              const cor = Array.isArray(lua.cor) ? `rgb(${lua.cor.join(",")})` : rgb(lua.corBase || "200,200,200");
+              return (
+                `<li class="${escolhida ? "escolhida" : ""}">` +
+                `<span class="marcador" style="background:${cor}"></span>` +
+                `<b class="indice">${i + 1}</b>` +
+                `<span>${lua.nome}</span></li>`
+              );
+            })
+            .join("");
+          if (restantes > 0) {
+            html += `<li class="restantes"><span class="marcador"></span><span class="indice"></span><span>+${restantes} no catálogo</span></li>`;
+          }
+          this.listaLuas.innerHTML = html;
+        }
+      }
+
+      if (this.barraLuas) {
+        this.barraLuas.hidden = !mostrarBarra;
+        if (this.barraLuasPreenchida) {
+          this.barraLuasPreenchida.style.width = `${Math.round(Math.min(1, Math.max(0, progresso)) * 100)}%`;
+        }
+      }
+
+      const rect = this.painelLuas.getBoundingClientRect();
+      if (rect.height > 0) {
+        this.avisos.style.top = `${Math.round(rect.bottom + 8)}px`;
+      }
+    }
   }
 }

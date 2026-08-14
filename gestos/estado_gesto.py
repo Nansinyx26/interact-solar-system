@@ -66,6 +66,19 @@ class MaquinaGestos:
         self._buffer_lua.clear()
         self._lua_confirmada = None
 
+    def alternar_modo_luas(self) -> bool:
+        """Liga/desliga o modo pela tecla, sem passar pela histerese.
+
+        Existe para dar um caminho sem câmera ao mesmo estado que o gesto "L"
+        alcança — teclado é o plano B quando a webcam não colabora, e também é
+        o que torna o modo testável sem mãos na frente da tela.
+        """
+        self.modo_luas = not self.modo_luas
+        self._frames_com_l = 0
+        self._frames_sem_l = 0
+        self._buffer_lua.clear()
+        return self.modo_luas
+
     def atualizar(
         self, maos: list[tuple[np.ndarray, str]], agora: float
     ) -> IntencaoGesto:
