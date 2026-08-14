@@ -157,6 +157,7 @@ function renderizarTabela(lista) {
         <td>${posTag}</td>
         <td><strong>${escaparHtml(item.nome)}</strong></td>
         <td><span class="serie-aluno">${escaparHtml(item.serie)}</span></td>
+        <td><span class="sala-aluno">${escaparHtml(item.sala ?? "—")}</span></td>
         <td><strong>${item.pontuacao} pts</strong></td>
         <td>${item.acertos} / 10</td>
         <td><small style="color: #a1a1aa;">${dataFormatada}</small></td>

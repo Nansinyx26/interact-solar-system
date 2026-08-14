@@ -186,11 +186,44 @@ export class Narrador {
     this._neuralDisponivel = typeof fetch === "function";
     this.ativo = (this.disponivel || this._neuralDisponivel) && this._preferenciaSalva();
     this._voz = null;
-    this._audio = null;
     // Contador de pedidos: descarta o áudio que chega depois de o usuário já
     // ter escolhido outro planeta.
     this._pedidoAtual = 0;
+
+    // UM único elemento de áudio, reaproveitado em todas as falas.
+    //
+    // A política de autoplay dos navegadores bloqueia `play()` em um Audio
+    // criado fora de um gesto do usuário — e um gesto de MÃO não conta, só
+    // clique/toque/tecla. Criando o elemento uma vez e destravando-o na
+    // primeira interação real, as falas seguintes tocam sem pedir licença.
+    // Sem isto o `play()` rejeitava, o código caía no fallback e o usuário
+    // ouvia a voz do navegador achando que a ElevenLabs não estava ativa.
+    this._audio = typeof Audio === "function" ? new Audio() : null;
+    if (this._audio) this._audio.preload = "auto";
+    this._destravado = false;
+
     if (this.disponivel) this._carregarVozes();
+  }
+
+  /**
+   * Libera o áudio para tocar sem gesto do usuário.
+   *
+   * Chamado no primeiro clique/toque/tecla da página: toca um MP3 silencioso
+   * de alguns milissegundos, o que marca o elemento como "autorizado" para o
+   * resto da sessão.
+   */
+  destravarAudio() {
+    if (this._destravado || !this._audio) return;
+    this._destravado = true;
+    const silencio =
+      "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVCg0da1a3tW1rTdW9nZmZmZnZ2ZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmY=";
+    try {
+      this._audio.src = silencio;
+      const promessa = this._audio.play();
+      if (promessa?.catch) promessa.catch(() => {});
+    } catch {
+      // Navegador ainda mais restritivo: a voz local segue como reserva.
+    }
   }
 
   /** Nome do backend em uso, para o HUD mostrar. */
@@ -288,12 +321,22 @@ export class Narrador {
       const blob = await resposta.blob();
       // Outro planeta foi escolhido enquanto o áudio baixava: este já não vale.
       if (pedido !== this._pedidoAtual || !this.ativo) return;
-      const audio = new Audio(URL.createObjectURL(blob));
-      audio.volume = VOLUME_NARRACAO;
-      audio.addEventListener("ended", () => URL.revokeObjectURL(audio.src));
-      this._audio = audio;
-      await audio.play();
-    } catch {
+      if (!this._audio) throw new Error("sem elemento de áudio");
+
+      // Reaproveita o MESMO elemento (já destravado por um gesto do usuário)
+      // em vez de criar um novo, que a política de autoplay bloquearia.
+      const anterior = this._audio.src;
+      const url = URL.createObjectURL(blob);
+      this._audio.src = url;
+      this._audio.volume = VOLUME_NARRACAO;
+      if (anterior.startsWith("blob:")) URL.revokeObjectURL(anterior);
+      await this._audio.play();
+    } catch (erro) {
+      // Autoplay bloqueado é o caso mais comum aqui: sem um clique prévio na
+      // página o navegador recusa o play() e a voz do sistema assume.
+      if (erro?.name === "NotAllowedError") {
+        console.warn("[narrador] áudio bloqueado até a primeira interação:", erro.message);
+      }
       if (pedido === this._pedidoAtual && this.ativo) this._falarLocal(texto);
     }
   }
@@ -315,10 +358,9 @@ export class Narrador {
     // Sem o cancel as falas empilham: trocando de planeta rápido o usuário
     // ouviria uma fila inteira de nomes antigos.
     if (this.disponivel) window.speechSynthesis.cancel();
-    if (this._audio) {
-      this._audio.pause();
-      this._audio = null;
-    }
+    // Pausa sem descartar o elemento: ele carrega a autorização de autoplay
+    // conquistada na primeira interação, e criar outro perderia esse direito.
+    if (this._audio) this._audio.pause();
   }
 
   /** Silencia imediatamente (usado ao sair da página). */

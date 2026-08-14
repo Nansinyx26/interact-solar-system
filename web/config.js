@@ -12,7 +12,7 @@
 // qualquer uma delas, suba este número aqui E em config.py — o
 // verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
 // regenera o ZIP de download com a versão nova.
-export const VERSAO = "1.2.0";
+export const VERSAO = "1.3.0";
 
 // Destino do botão "Baixar versão desktop".
 //
@@ -171,6 +171,38 @@ export const GESTO_VISAO_GERAL = 10;
 // A partir daqui é impossível com uma mão só — é o que dispara a dica
 // "use as duas mãos" no HUD quando a leitura chega em 5.
 export const GESTO_MINIMO_DUAS_MAOS = 6;
+
+// ---------------------------------------------------------------------------
+// Luas dos demais planetas ("modo luas")
+// ---------------------------------------------------------------------------
+// Os gestos de 0 a 10 estão todos ocupados, então as luas menores não têm
+// número próprio: aparecem em bloco quando o modo é ligado — pela tecla M ou
+// pelo gesto das DUAS mãos em pinça, o único ainda livre.
+export const LUAS_VISIVEIS_PADRAO = false;
+// Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
+// proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
+export const RAIO_LUA_MENOR_PX = 2.2;
+// As luas só aparecem com o planeta grande o bastante na tela; abaixo disto
+// viram um borrão de pontos em cima do disco.
+export const ZOOM_MINIMO_PARA_LUAS = 1.6;
+export const COR_ORBITA_LUA = "150, 160, 190";
+export const ALPHA_ORBITA_LUA = 0.18;
+
+// ---------------------------------------------------------------------------
+// Cinturão de asteroides
+// ---------------------------------------------------------------------------
+// Fica entre Marte (1,52 UA) e Júpiter (5,20 UA). Como o raio orbital do
+// projeto é logarítmico, a faixa é calculada em nucleo/orbita.js a partir
+// destas distâncias reais.
+export const CINTURAO_UA_INTERNO = 2.06;
+export const CINTURAO_UA_EXTERNO = 3.27;
+export const ASTEROIDES_DESENHADOS = 340;
+export const COR_ASTEROIDE = "150, 138, 120";
+export const ALPHA_ASTEROIDE_MIN = 0.24;
+export const ALPHA_ASTEROIDE_MAX = 0.67;
+// O cinturão gira devagar, como um corpo só: seguir o período real de cada
+// asteroide não mudaria nada visualmente e custaria uma volta por partícula.
+export const PERIODO_CINTURAO_DIAS = 1680.0;
 
 // ---------------------------------------------------------------------------
 // Gesto de pinça — zoom controlado pela câmera

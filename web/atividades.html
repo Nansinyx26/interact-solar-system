@@ -77,13 +77,33 @@
             />
           </div>
           <div class="campo">
-            <label for="serie-aluno"><i class="bi bi-mortarboard-fill"></i> Sua Série / Turma:</label>
+            <label for="serie-aluno"><i class="bi bi-mortarboard-fill"></i> Sua Série:</label>
             <select id="serie-aluno" required>
-              <option value="5º Ano A">5º Ano A</option>
-              <option value="5º Ano B">5º Ano B</option>
-              <option value="5º Ano C">5º Ano C</option>
-              <option value="5º Ano D">5º Ano D</option>
-              <option value="Geral" selected>Geral / Outro</option>
+              <option value="" disabled selected>Selecione a série...</option>
+              <option value="1º Ano">1º Ano</option>
+              <option value="2º Ano">2º Ano</option>
+              <option value="3º Ano">3º Ano</option>
+              <option value="4º Ano">4º Ano</option>
+              <option value="5º Ano">5º Ano</option>
+              <option value="6º Ano">6º Ano</option>
+              <option value="7º Ano">7º Ano</option>
+              <option value="8º Ano">8º Ano</option>
+              <option value="9º Ano">9º Ano</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <!-- Sala separada da série: a classificação é comparada por sala, e
+               juntar as duas num campo só impediria esse agrupamento. -->
+          <div class="campo">
+            <label for="sala-aluno"><i class="bi bi-door-open-fill"></i> Sua Sala:</label>
+            <select id="sala-aluno" required>
+              <option value="" disabled selected>Selecione a sala...</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
+              <option value="Única">Única / Outra</option>
             </select>
           </div>
           <button type="submit" class="btn-iniciar"><i class="bi bi-controller"></i> Iniciar Atividade</button>

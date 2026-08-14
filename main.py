@@ -28,6 +28,7 @@ from config import (
     INDICE_CAMERA,
     LARGURA_JANELA,
     LARGURA_MINIMA_JANELA,
+    LUAS_VISIVEIS_PADRAO,
     MARGEM_HUD,
     SEGUNDOS_ATE_VISAO_GERAL,
     TIME_SCALE,
@@ -72,6 +73,8 @@ _TECLAS_SAIR = (pygame.K_ESCAPE, pygame.K_q)
 _TECLA_VISAO_GERAL = pygame.K_v
 # "N" de narração: liga/desliga a voz que anuncia o corpo focado.
 _TECLA_NARRACAO = pygame.K_n
+# "M" de luas (moons): mostra/esconde as luas dos demais planetas.
+_TECLA_LUAS = pygame.K_m
 
 
 class Aplicacao:
@@ -128,6 +131,7 @@ class Aplicacao:
         self.executando: bool = True
         # Modo livre: o usuário assumiu a câmera com o mouse e o rastreamento
         # automático do alvo fica suspenso até o próximo gesto/atalho.
+        self.luas_visiveis: bool = LUAS_VISIVEIS_PADRAO
         self.camera_livre: bool = False
         self._arrastando: bool = False
 
@@ -211,6 +215,10 @@ class Aplicacao:
             self._voltar_visao_geral()
         elif tecla == _TECLA_NARRACAO:
             self.narrador.alternar()
+        elif tecla == _TECLA_LUAS:
+            # Não há número de dedos livre (0-10 estão todos ocupados), então as
+            # luas menores entram e saem por tecla.
+            self.luas_visiveis = not self.luas_visiveis
         elif tecla == pygame.K_r:
             webbrowser.open("https://sistema-solar-gestos.vercel.app/ranking.html")
         elif tecla == pygame.K_a:
@@ -343,7 +351,12 @@ class Aplicacao:
     def _desenhar(self) -> None:
         """Compõe o frame: cena, ficha, HUD e assinatura, nessa ordem."""
         self.renderizador.desenhar(
-            self.tela, self.camera, self.posicoes, self.tempo_dias, self.corpo_alvo
+            self.tela,
+            self.camera,
+            self.posicoes,
+            self.tempo_dias,
+            self.corpo_alvo,
+            self.luas_visiveis,
         )
         # A ficha vive na coluna esquerda e só pode descer até onde o painel de
         # gesto começa — a coluna direita é da webcam e da assinatura.

@@ -16,7 +16,7 @@ from typing import Final
 # qualquer uma delas, suba este número aqui E em web/config.js — o
 # verificar_paridade.py falha se os dois ficarem diferentes, e o
 # publicar.py regenera o ZIP de download com a versão nova.
-VERSAO: Final[str] = "1.2.0"
+VERSAO: Final[str] = "1.3.0"
 
 # ---------------------------------------------------------------------------
 # Janela e loop principal
@@ -229,6 +229,38 @@ SEGUNDOS_ATE_VISAO_GERAL: Final[float] = 6.0
 GESTO_VISAO_GERAL: Final[int] = 10
 # Primeiro gesto que exige as duas mãos (uma mão sozinha só chega a 5).
 GESTO_MINIMO_DUAS_MAOS: Final[int] = 6
+
+# ---------------------------------------------------------------------------
+# Luas dos demais planetas ("modo luas")
+# ---------------------------------------------------------------------------
+# Os gestos de 0 a 10 estão todos ocupados, então as luas menores não têm número
+# próprio: elas aparecem em bloco quando o modo é ligado — pela tecla M ou pelo
+# gesto das DUAS mãos em pinça, o único ainda livre.
+LUAS_VISIVEIS_PADRAO: Final[bool] = False
+# Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
+# proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
+RAIO_LUA_MENOR_PX: Final[float] = 2.2
+# As luas só aparecem quando o planeta está grande o bastante na tela; abaixo
+# disto elas viram um borrão de pontos em cima do disco.
+ZOOM_MINIMO_PARA_LUAS: Final[float] = 1.6
+COR_ORBITA_LUA: Final[tuple[int, int, int]] = (150, 160, 190)
+ALPHA_ORBITA_LUA: Final[int] = 45
+
+# ---------------------------------------------------------------------------
+# Cinturão de asteroides
+# ---------------------------------------------------------------------------
+# Fica entre Marte (1,52 UA) e Júpiter (5,20 UA). Como o raio orbital do projeto
+# é logarítmico, o cinturão ocupa a faixa correspondente a essas duas distâncias
+# — os limites são calculados em nucleo/orbita.py, não fixados aqui.
+CINTURAO_UA_INTERNO: Final[float] = 2.06   # borda interna real do cinturão
+CINTURAO_UA_EXTERNO: Final[float] = 3.27   # borda externa real
+ASTEROIDES_DESENHADOS: Final[int] = 340
+COR_ASTEROIDE: Final[tuple[int, int, int]] = (150, 138, 120)
+ALPHA_ASTEROIDE_MIN: Final[int] = 60
+ALPHA_ASTEROIDE_MAX: Final[int] = 170
+# O cinturão gira devagar, como um corpo só: seguir o período real de cada
+# asteroide não mudaria nada visualmente e custaria uma volta por partícula.
+PERIODO_CINTURAO_DIAS: Final[float] = 1680.0
 
 # ---------------------------------------------------------------------------
 # Gesto de pinça — zoom controlado pela câmera

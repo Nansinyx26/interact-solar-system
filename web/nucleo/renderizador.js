@@ -9,6 +9,10 @@
 
 import {
   ACHATAMENTO_ANEL,
+  ALPHA_ASTEROIDE_MAX,
+  ALPHA_ASTEROIDE_MIN,
+  ALPHA_ORBITA_LUA,
+  ASTEROIDES_DESENHADOS,
   ACHATAMENTO_ANEL_URANO,
   ALPHA_CORPO_ESMAECIDO,
   ALPHA_ORBITA_FOCADA,
@@ -20,9 +24,11 @@ import {
   COR_ANEL_DESTAQUE,
   COR_ANEL_SATURNO,
   COR_ANEL_URANO,
+  COR_ASTEROIDE,
   COR_FUNDO,
   COR_ORBITA,
   COR_ORBITA_FOCADA,
+  COR_ORBITA_LUA,
   ESCALA_RUIDO_TEXTURA,
   ESTRELAS_POR_CAMADA,
   FAIXAS_GIGANTE_GASOSO,
@@ -39,12 +45,17 @@ import {
   INTENSIDADE_TURBULENCIA,
   LARGURA_TIRA_EM_RAIOS,
   QUADROS_ROTACAO,
+  RAIO_LUA_MENOR_PX,
   RAIO_TEXTURA_PX,
   SEMENTE_ALEATORIA,
+  ZOOM_MINIMO_PARA_LUAS,
 } from "../config.js";
-import { CORPOS, ehSol } from "../dados/planetas.js";
+import { CORPOS, ehSol, luasDoPlaneta } from "../dados/planetas.js";
 import {
+  anguloDoCinturao,
   anguloIluminacao,
+  faixaDoCinturao,
+  posicaoDaLuaMenor,
   faseRotacao,
   raioCorpoPx,
   raioOrbitalPx,
@@ -356,12 +367,39 @@ export class Renderizador {
         },
       ],
     ]);
+    this.asteroides = this._criarAsteroides();
     this.estrelas = this._criarEstrelas();
   }
 
   redimensionar(largura, altura) {
     this.largura = largura;
     this.altura = altura;
+  }
+
+  /**
+   * Sorteia (raio, ângulo, brilho, tamanho) de cada asteroide.
+   *
+   * Semente fixa, como o campo de estrelas: o cinturão precisa ser o mesmo em
+   * toda execução. A densidade cai perto das bordas — no cinturão real as
+   * lacunas de Kirkwood e o próprio espalhamento deixam o miolo mais cheio.
+   */
+  _criarAsteroides() {
+    const aleatorio = criarAleatorio(SEMENTE_ALEATORIA + 977);
+    const [interno, externo] = faixaDoCinturao();
+    const meio = (interno + externo) / 2;
+    const largura = (externo - interno) / 2;
+    const lista = [];
+    for (let i = 0; i < ASTEROIDES_DESENHADOS; i += 1) {
+      // Distribuição triangular: mais denso no meio da faixa.
+      const desvio = (aleatorio() + aleatorio() - 1) * largura;
+      lista.push([
+        meio + desvio,
+        aleatorio() * 2 * Math.PI,
+        aleatorio() ** 1.4,
+        aleatorio() < 0.75 ? 1 : 2,
+      ]);
+    }
+    return lista;
   }
 
   /** Camadas de estrelas normalizadas: sobrevivem a qualquer redimensionamento. */
@@ -387,16 +425,100 @@ export class Renderizador {
   }
 
   /** Desenha um frame completo da cena (fundo, órbitas e corpos). */
-  desenhar(camera, posicoes, tempoDias, corpoFocado) {
+  desenhar(camera, posicoes, tempoDias, corpoFocado, luasVisiveis = false) {
     const { ctx } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = COR_FUNDO;
     ctx.fillRect(0, 0, this.largura, this.altura);
 
     this._desenharEstrelas(camera);
+    this._desenharCinturao(camera, tempoDias, corpoFocado);
     this._desenharOrbitas(camera, posicoes, corpoFocado);
     for (const corpo of CORPOS) {
       this._desenharCorpo(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
+      if (luasVisiveis) {
+        this._desenharLuas(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
+      }
+    }
+  }
+
+  /**
+   * Cinturão de asteroides entre Marte e Júpiter.
+   *
+   * Pontos com raio e brilho sorteados uma vez (semente fixa) e girados em
+   * bloco. Simular a órbita de cada asteroide não mudaria nada na tela e
+   * custaria uma volta trigonométrica por partícula por frame.
+   */
+  _desenharCinturao(camera, tempoDias, corpoFocado) {
+    const { ctx } = this;
+    const giro = anguloDoCinturao(tempoDias);
+    // Durante o foco em um corpo, o cinturão recua junto com as órbitas.
+    const alphaMax = corpoFocado ? ALPHA_ASTEROIDE_MIN : ALPHA_ASTEROIDE_MAX;
+    for (const [raio, angulo, brilho, tamanho] of this.asteroides) {
+      const a = angulo + giro;
+      const tela = camera.mundoParaTela({
+        x: raio * Math.cos(a),
+        y: raio * Math.sin(a),
+      });
+      if (
+        tela.x < -8 ||
+        tela.x > this.largura + 8 ||
+        tela.y < -8 ||
+        tela.y > this.altura + 8
+      ) {
+        continue;
+      }
+      const alpha = ALPHA_ASTEROIDE_MIN + brilho * (alphaMax - ALPHA_ASTEROIDE_MIN);
+      ctx.fillStyle = `rgba(${COR_ASTEROIDE}, ${alpha.toFixed(3)})`;
+      const lado = Math.max(1, tamanho * Math.min(2, camera.zoom));
+      ctx.fillRect(tela.x, tela.y, lado, lado);
+    }
+  }
+
+  /**
+   * Luas menores em volta de um planeta, com a órbita esboçada.
+   *
+   * Só aparecem com zoom suficiente: de longe viram um borrão de pontos colado
+   * no disco do planeta.
+   */
+  _desenharLuas(camera, corpo, posicao, tempoDias, corpoFocado) {
+    const luas = luasDoPlaneta(corpo.nome);
+    if (!luas.length || camera.zoom < ZOOM_MINIMO_PARA_LUAS) return;
+
+    const { ctx } = this;
+    const raioPlaneta = raioCorpoPx(corpo);
+    const centro = camera.mundoParaTela(posicao);
+    const esmaecido = Boolean(corpoFocado) && corpoFocado.nome !== corpo.nome;
+    const alphaLua = esmaecido ? ALPHA_CORPO_ESMAECIDO : 1;
+
+    for (const lua of luas) {
+      const raioOrbita = camera.escalar(raioPlaneta * lua.raioOrbitaPx);
+      if (raioOrbita > 3) {
+        ctx.strokeStyle = `rgba(${COR_ORBITA_LUA}, ${esmaecido ? 0.08 : ALPHA_ORBITA_LUA})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(centro.x, centro.y, raioOrbita, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      const posicaoLua = posicaoDaLuaMenor(lua, posicao, raioPlaneta, tempoDias);
+      const tela = camera.mundoParaTela(posicaoLua);
+      const raioDesenho = Math.max(1.5, camera.escalar(RAIO_LUA_MENOR_PX));
+      ctx.globalAlpha = alphaLua;
+      ctx.fillStyle = `rgb(${lua.cor})`;
+      ctx.beginPath();
+      ctx.arc(tela.x, tela.y, raioDesenho, 0, Math.PI * 2);
+      ctx.fill();
+
+      // O nome só cabe quando o planeta está realmente próximo.
+      if (!esmaecido && camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6) {
+        ctx.globalAlpha = 0.67;
+        ctx.fillStyle = "#96a0b9";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.fillText(lua.nome, tela.x + raioDesenho + 4, tela.y);
+      }
+      ctx.globalAlpha = 1;
     }
   }
 

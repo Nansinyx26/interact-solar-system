@@ -8,6 +8,8 @@ consulta esse estado — nunca espera por ela.
 
 from __future__ import annotations
 
+from typing import Any
+
 import os
 import sys
 import threading
@@ -50,7 +52,9 @@ try:  # pragma: no cover - depende do ambiente
 except ImportError as _erro:  # pragma: no cover
     # Inclui a falha de DLL no Windows (falta do VC++ Redistributable), que
     # também chega aqui como ImportError. A mensagem exata vai para o log.
-    mp = None  # type: ignore[assignment]
+    # Any (e não None puro) para o verificador de tipos aceitar mp.solutions:
+    # o acesso é sempre protegido por MEDIAPIPE_DISPONIVEL.
+    mp: Any = None
     MEDIAPIPE_DISPONIVEL = False
     ERRO_IMPORT_MEDIAPIPE = f"{type(_erro).__name__}: {_erro}"
 

@@ -17,23 +17,29 @@ from config import (
     ACHATAMENTO_ANEL,
     ACHATAMENTO_ANEL_URANO,
     ALPHA_ANEL_MAX,
+    ALPHA_ASTEROIDE_MAX,
+    ALPHA_ASTEROIDE_MIN,
     ALPHA_CORPO_ESMAECIDO,
     ALPHA_HALO_SOL,
     ALPHA_ORBITA_FOCADA,
+    ALPHA_ORBITA_LUA,
     ALPHA_ORBITA_NORMAL,
     ALPHA_ORBITA_TENUE,
     ALPHA_ROTULO_CORPO,
     ALPHA_SOMBRA_MAX,
     ALTURA_JANELA,
+    ASTEROIDES_DESENHADOS,
     CAMADAS_ESTRELAS,
     COMPRIMENTO_EIXO_URANO,
     COR_ANEL_DESTAQUE,
     COR_ANEL_SATURNO,
     COR_ANEL_URANO,
+    COR_ASTEROIDE,
     COR_FUNDO,
     COR_HALO_SOL,
     COR_ORBITA,
     COR_ORBITA_FOCADA,
+    COR_ORBITA_LUA,
     COR_TEXTO_SECUNDARIO,
     ESCALA_RUIDO_TEXTURA,
     ESTRELAS_POR_CAMADA,
@@ -53,15 +59,20 @@ from config import (
     LARGURA_TIRA_EM_RAIOS,
     PASSO_ANGULO_SOMBRA_GRAUS,
     QUADROS_ROTACAO,
+    RAIO_LUA_MENOR_PX,
     RAIO_ORBITA_MAX_DESENHAVEL_PX,
     RAIO_TEXTURA_PX,
     SEMENTE_ALEATORIA,
+    ZOOM_MINIMO_PARA_LUAS,
 )
-from dados.planetas import CORPOS, CorpoCeleste
+from dados.planetas import CORPOS, CorpoCeleste, luas_do_planeta
 from nucleo.camera import Camera2D
 from nucleo.orbita import (
+    angulo_do_cinturao,
     angulo_iluminacao,
+    faixa_do_cinturao,
     fase_rotacao,
+    posicao_da_lua_menor,
     raio_corpo_px,
     raio_orbital_px,
 )
@@ -156,7 +167,10 @@ def _tira_equirretangular(corpo: CorpoCeleste) -> np.ndarray:
         distancia = ((latitude + 0.30) / 0.16) ** 2 + ((longitude - 0.35) / 0.09) ** 2
         peso = np.clip(1.0 - distancia, 0.0, 1.0) ** 0.5
         tempestade = np.array(corpo.cor_tempestade, dtype=np.float64)
-        cor = cor * (1.0 - peso[..., None]) + tempestade[None, None, :] * peso[..., None]
+        cor = (
+            cor * (1.0 - peso[..., None])
+            + tempestade[None, None, :] * peso[..., None]
+        )
 
     # Calotas polares.
     if corpo.nome in _CORPOS_COM_CALOTAS:
@@ -341,6 +355,7 @@ class Renderizador:
                 "vertical",
             ),
         }
+        self._asteroides = self._criar_asteroides()
         self._estrelas_normalizadas = self._criar_estrelas()
         self._estrelas: list[list[tuple[int, int, int, tuple[int, int, int]]]] = []
         self._camada_orbitas = pygame.Surface((largura, altura), pygame.SRCALPHA)
@@ -353,6 +368,28 @@ class Renderizador:
             self._rotulos[corpo.nome] = rotulo
 
     # ------------------------------------------------------------- recursos
+    def _criar_asteroides(self) -> list[tuple[float, float, float, int]]:
+        """Sorteia (raio, ângulo, brilho, tamanho) de cada asteroide.
+
+        Semente fixa, como o campo de estrelas: o cinturão precisa ser o mesmo
+        em toda execução. A densidade cai perto das bordas — no cinturão real as
+        lacunas de Kirkwood e o próprio espalhamento deixam o miolo mais cheio.
+        """
+        rng = np.random.default_rng(SEMENTE_ALEATORIA + 977)
+        interno, externo = faixa_do_cinturao()
+        meio = (interno + externo) / 2.0
+        largura = (externo - interno) / 2.0
+        asteroides: list[tuple[float, float, float, int]] = []
+        for _ in range(ASTEROIDES_DESENHADOS):
+            # Distribuição triangular: mais denso no meio da faixa.
+            desvio = (rng.random() + rng.random() - 1.0) * largura
+            raio = meio + desvio
+            angulo = rng.random() * 2.0 * math.pi
+            brilho = rng.random() ** 1.4
+            tamanho = 1 if rng.random() < 0.75 else 2
+            asteroides.append((raio, angulo, brilho, tamanho))
+        return asteroides
+
     def _criar_estrelas(
         self,
     ) -> list[list[tuple[float, float, int, tuple[int, int, int]]]]:
@@ -414,15 +451,130 @@ class Renderizador:
         posicoes: dict[str, tuple[float, float]],
         tempo_dias: float,
         corpo_focado: CorpoCeleste | None,
+        luas_visiveis: bool = False,
     ) -> None:
         """Desenha um frame completo da cena."""
         superficie.fill(COR_FUNDO)
         self._desenhar_estrelas(superficie, camera)
+        self._desenhar_cinturao(superficie, camera, tempo_dias, corpo_focado)
         self._desenhar_orbitas(superficie, camera, posicoes, corpo_focado)
         for corpo in CORPOS:
             self._desenhar_corpo(
-                superficie, camera, corpo, posicoes[corpo.nome], tempo_dias, corpo_focado
+                superficie,
+                camera,
+                corpo,
+                posicoes[corpo.nome],
+                tempo_dias,
+                corpo_focado,
             )
+            if luas_visiveis:
+                self._desenhar_luas(
+                    superficie,
+                    camera,
+                    corpo,
+                    posicoes[corpo.nome],
+                    tempo_dias,
+                    corpo_focado,
+                )
+
+    def _desenhar_cinturao(
+        self,
+        superficie: pygame.Surface,
+        camera: Camera2D,
+        tempo_dias: float,
+        corpo_focado: CorpoCeleste | None,
+    ) -> None:
+        """Cinturão de asteroides entre Marte e Júpiter.
+
+        Desenhado como pontos com raio e brilho sorteados uma vez (semente fixa)
+        e girados em bloco. Simular a órbita de cada asteroide não mudaria nada
+        na tela e custaria uma volta trigonométrica por partícula por frame.
+        """
+        giro = angulo_do_cinturao(tempo_dias)
+        # Durante o foco em um corpo, o cinturão recua junto com as órbitas.
+        alpha_max = ALPHA_ASTEROIDE_MAX if corpo_focado is None else ALPHA_ASTEROIDE_MIN
+        for raio, angulo, brilho, tamanho in self._asteroides:
+            a = angulo + giro
+            tela = camera.mundo_para_tela((raio * math.cos(a), raio * math.sin(a)))
+            fora_x = not (-8 <= tela[0] <= self._largura + 8)
+            fora_y = not (-8 <= tela[1] <= self._altura + 8)
+            if fora_x or fora_y:
+                continue
+            faixa = alpha_max - ALPHA_ASTEROIDE_MIN
+            alpha = int(ALPHA_ASTEROIDE_MIN + brilho * faixa)
+            cor = (*COR_ASTEROIDE, max(0, min(255, alpha)))
+            lado = max(1, int(tamanho * min(2.0, camera.zoom)))
+            pastilha = pygame.Surface((lado, lado), pygame.SRCALPHA)
+            pastilha.fill(cor)
+            superficie.blit(pastilha, (int(tela[0]), int(tela[1])))
+
+    def _desenhar_luas(
+        self,
+        superficie: pygame.Surface,
+        camera: Camera2D,
+        corpo: CorpoCeleste,
+        posicao: tuple[float, float],
+        tempo_dias: float,
+        corpo_focado: CorpoCeleste | None,
+    ) -> None:
+        """Luas menores em volta de um planeta, com a órbita esboçada.
+
+        Só aparecem com zoom suficiente: de longe viram um borrão de pontos
+        colado no disco do planeta.
+        """
+        luas = luas_do_planeta(corpo.nome)
+        if not luas or camera.zoom < ZOOM_MINIMO_PARA_LUAS:
+            return
+        raio_planeta = raio_corpo_px(corpo)
+        centro = camera.mundo_para_tela(posicao)
+        esmaecido = corpo_focado is not None and corpo_focado.nome != corpo.nome
+        alpha_lua = ALPHA_CORPO_ESMAECIDO if esmaecido else 255
+
+        for lua in luas:
+            raio_orbita = camera.escalar(raio_planeta * lua.raio_orbita_px)
+            if raio_orbita > 3:
+                camada = pygame.Surface(
+                    (int(raio_orbita * 2) + 4, int(raio_orbita * 2) + 4),
+                    pygame.SRCALPHA,
+                )
+                pygame.draw.circle(
+                    camada,
+                    (*COR_ORBITA_LUA, ALPHA_ORBITA_LUA if not esmaecido else 20),
+                    (int(raio_orbita) + 2, int(raio_orbita) + 2),
+                    int(raio_orbita),
+                    width=1,
+                )
+                superficie.blit(
+                    camada,
+                    (centro[0] - raio_orbita - 2, centro[1] - raio_orbita - 2),
+                )
+
+            posicao_lua = posicao_da_lua_menor(lua, posicao, raio_planeta, tempo_dias)
+            tela = camera.mundo_para_tela(posicao_lua)
+            raio_desenho = max(1.5, camera.escalar(RAIO_LUA_MENOR_PX))
+            disco = pygame.Surface(
+                (int(raio_desenho * 2) + 2, int(raio_desenho * 2) + 2), pygame.SRCALPHA
+            )
+            pygame.draw.circle(
+                disco,
+                (*lua.cor, alpha_lua),
+                (int(raio_desenho) + 1, int(raio_desenho) + 1),
+                int(raio_desenho),
+            )
+            superficie.blit(
+                disco, (tela[0] - raio_desenho - 1, tela[1] - raio_desenho - 1)
+            )
+
+            # O nome só cabe quando o planeta está realmente próximo.
+            if not esmaecido and camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6:
+                rotulo = self._fonte_rotulo.render(
+                    lua.nome, True, COR_TEXTO_SECUNDARIO
+                )
+                rotulo.set_alpha(170)
+                superficie.blit(
+                    rotulo,
+                    (tela[0] + raio_desenho + 4, tela[1] - rotulo.get_height() / 2),
+                )
 
     def _desenhar_estrelas(self, superficie: pygame.Surface, camera: Camera2D) -> None:
         """Campo de estrelas com deslocamento proporcional à profundidade."""
@@ -451,7 +603,10 @@ class Renderizador:
                 continue
 
             if corpo.eh_satelite:
-                pos_pai = posicoes.get(corpo.orbita_em_torno_de)
+                # `orbita_em_torno_de` é str | None no catálogo; o `or ""` evita
+                # passar None para o dict.get (que o verificador de tipos recusa)
+                # e cai no `continue` logo abaixo, que já é o comportamento certo.
+                pos_pai = posicoes.get(corpo.orbita_em_torno_de or "")
                 if not pos_pai:
                     continue
                 centro = camera.mundo_para_tela(pos_pai)
@@ -521,9 +676,12 @@ class Renderizador:
 
         # Disco com a fase de rotação corrente.
         quadros = self._quadros[corpo.nome]
-        indice = int(fase_rotacao(corpo, tempo_dias) * QUADROS_ROTACAO) % QUADROS_ROTACAO
+        fase = fase_rotacao(corpo, tempo_dias)
+        indice = int(fase * QUADROS_ROTACAO) % QUADROS_ROTACAO
         disco = self._escalar(
-            ("corpo", corpo.nome, indice, diametro), quadros[indice], (diametro, diametro)
+            ("corpo", corpo.nome, indice, diametro),
+            quadros[indice],
+            (diametro, diametro),
         )
         disco.set_alpha(alpha)
         superficie.blit(disco, (centro[0] - diametro / 2, centro[1] - diametro / 2))
@@ -538,7 +696,9 @@ class Renderizador:
                 (diametro, diametro),
             )
             sombra.set_alpha(alpha)
-            superficie.blit(sombra, (centro[0] - diametro / 2, centro[1] - diametro / 2))
+            superficie.blit(
+                sombra, (centro[0] - diametro / 2, centro[1] - diametro / 2)
+            )
 
         if anel is not None:
             self._desenhar_anel(

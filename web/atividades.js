@@ -68,6 +68,8 @@ const QUESTOES = [
 let estadoQuiz = {
   nomeAluno: "",
   serieAluno: "",
+  // Sala separada da série: a classificação agrupa por sala.
+  salaAluno: "",
   indiceQuestao: 0,
   respostasUsuario: Array(QUESTOES.length).fill(null),
   tempoInicio: 0,
@@ -122,9 +124,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function iniciarQuiz() {
   const inputNome = document.getElementById("nome-aluno");
   const selectSerie = document.getElementById("serie-aluno");
+  const selectSala = document.getElementById("sala-aluno");
 
   estadoQuiz.nomeAluno = inputNome.value.trim();
   estadoQuiz.serieAluno = selectSerie.value;
+  estadoQuiz.salaAluno = selectSala.value;
   estadoQuiz.indiceQuestao = 0;
   estadoQuiz.respostasUsuario = Array(QUESTOES.length).fill(null);
   estadoQuiz.tempoInicio = Date.now();
@@ -240,7 +244,7 @@ function finalizarQuiz() {
 
   document.getElementById(
     "subtitulo-resultado"
-  ).textContent = `Parabéns, ${estadoQuiz.nomeAluno} (${estadoQuiz.serieAluno})! Seu resultado foi gravado.`;
+  ).textContent = `Parabéns, ${estadoQuiz.nomeAluno} — ${estadoQuiz.serieAluno}, sala ${estadoQuiz.salaAluno}! Seu resultado foi gravado.`;
 
   gerarGabarito();
 }
@@ -284,6 +288,7 @@ async function enviarParaRanking() {
   const payload = {
     nome: estadoQuiz.nomeAluno,
     serie: estadoQuiz.serieAluno,
+    sala: estadoQuiz.salaAluno,
     pontuacao,
     acertos,
     tempoSegundos: estadoQuiz.tempoTotalSegundos,

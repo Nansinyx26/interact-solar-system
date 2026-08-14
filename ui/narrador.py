@@ -13,6 +13,8 @@ inativo — nada quebra, o aplicativo segue mudo.
 
 from __future__ import annotations
 
+from typing import Any
+
 import io
 import queue
 import threading
@@ -37,7 +39,9 @@ try:  # pragma: no cover - depende do ambiente
     PYTTSX3_DISPONIVEL = True
     ERRO_IMPORT_PYTTSX3 = ""
 except ImportError as _erro:  # pragma: no cover
-    pyttsx3 = None  # type: ignore[assignment]
+    # Any pelo mesmo motivo do mediapipe: o uso é protegido por
+    # PYTTSX3_DISPONIVEL, mas o verificador não enxerga a ligação.
+    pyttsx3: Any = None
     PYTTSX3_DISPONIVEL = False
     ERRO_IMPORT_PYTTSX3 = f"{type(_erro).__name__}: {_erro}"
 

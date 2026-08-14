@@ -895,3 +895,17 @@ html.tema-claro .carregando {
   color: #6b7280;
 }
 
+
+/* Sala do aluno na tabela: mesmo tratamento visual da série, que é a coluna
+   vizinha — as duas são recortes de turma, não dados numéricos. */
+.sala-aluno {
+  display: inline-block;
+  min-width: 2.2em;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(120, 200, 255, 0.12);
+  border: 1px solid rgba(120, 200, 255, 0.28);
+  font-size: 0.85em;
+  font-weight: 600;
+}

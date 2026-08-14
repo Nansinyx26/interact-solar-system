@@ -7,12 +7,15 @@
  */
 
 import {
+  CINTURAO_UA_EXTERNO,
+  CINTURAO_UA_INTERNO,
   EXPOENTE_RAIO_CORPO,
   FATOR_ROTACAO_PROPRIA,
   RAIO_LUA_PX,
   RAIO_ORBITA_LUA_PX,
   RAIO_ORBITA_MAX_PX,
   RAIO_ORBITA_MIN_PX,
+  PERIODO_CINTURAO_DIAS,
   RAIO_PLANETA_BASE_PX,
   RAIO_SOL_PX,
 } from "../config.js";
@@ -113,4 +116,38 @@ export function faseRotacao(corpo, tempoDias) {
 export function anguloIluminacao(posicao) {
   if (posicao.x === 0 && posicao.y === 0) return 0;
   return Math.atan2(posicao.y, posicao.x);
+}
+
+/**
+ * Posição de uma lua menor, em unidades de mundo.
+ *
+ * O raio da órbita é múltiplo do raio DESENHADO do planeta, não da distância
+ * real: em escala fiel Fobos ficaria dentro do disco de Marte e Calisto a 26
+ * raios de Júpiter, fora da tela em qualquer zoom útil.
+ */
+export function posicaoDaLuaMenor(lua, posicaoPlaneta, raioPlaneta, tempoDias) {
+  const angulo =
+    lua.periodoOrbitalDias === 0
+      ? lua.faseInicial
+      : lua.faseInicial + 2 * Math.PI * (tempoDias / lua.periodoOrbitalDias);
+  const raio = raioPlaneta * lua.raioOrbitaPx;
+  return {
+    x: posicaoPlaneta.x + raio * Math.cos(angulo),
+    y: posicaoPlaneta.y + raio * Math.sin(angulo),
+  };
+}
+
+/**
+ * Raios interno e externo do cinturão de asteroides, em unidades de mundo.
+ *
+ * Passam pela mesma compressão logarítmica das órbitas, então o cinturão cai
+ * exatamente entre Marte e Júpiter na tela — como acontece de verdade.
+ */
+export function faixaDoCinturao() {
+  return [raioOrbitalPx(CINTURAO_UA_INTERNO), raioOrbitalPx(CINTURAO_UA_EXTERNO)];
+}
+
+/** Rotação do cinturão inteiro, tratado como um corpo só. */
+export function anguloDoCinturao(tempoDias) {
+  return 2 * Math.PI * (tempoDias / PERIODO_CINTURAO_DIAS);
 }

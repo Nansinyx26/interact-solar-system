@@ -8,6 +8,7 @@
 
 import {
   DETECTAR_A_CADA_N_FRAMES,
+  LUAS_VISIVEIS_PADRAO,
   FATOR_AJUSTE_TEMPO,
   FATOR_ZOOM_RODA,
   GESTO_VISAO_GERAL,
@@ -53,6 +54,9 @@ class Aplicacao {
     this.escalaTempo = TIME_SCALE;
     this.pausado = false;
     this.corpoAlvo = null;
+    // Não há número de dedos livre (0-10 estão todos ocupados), então as luas
+    // menores entram e saem pela tecla M ou pelo botão do HUD.
+    this.luasVisiveis = LUAS_VISIVEIS_PADRAO;
     this.cameraLivre = false;
     this.posicoes = posicoesDoSistema(0);
     this.resultadoGesto = { confirmado: null, candidato: null, progresso: 0 };
@@ -143,6 +147,14 @@ class Aplicacao {
   }
 
   _ligarEventos() {
+    // A política de autoplay exige um gesto REAL (clique/toque/tecla) antes de
+    // liberar áudio — um gesto de mão para a câmera não conta. Registramos o
+    // primeiro que aparecer para o narrador poder falar depois disso.
+    const destravar = () => this.narrador.destravarAudio();
+    for (const evento of ["pointerdown", "keydown", "touchstart"]) {
+      window.addEventListener(evento, destravar, { once: true, passive: true });
+    }
+
     window.addEventListener("resize", () => this._redimensionar());
     window.addEventListener("orientationchange", () => this._redimensionar());
 
@@ -238,6 +250,8 @@ class Aplicacao {
       this.escalaTempo = Math.min(TIME_SCALE_MAX, this.escalaTempo * FATOR_AJUSTE_TEMPO);
     } else if (tecla === "-") {
       this.escalaTempo = Math.max(TIME_SCALE_MIN, this.escalaTempo / FATOR_AJUSTE_TEMPO);
+    } else if (tecla === "m" || tecla === "M") {
+      this.luasVisiveis = !this.luasVisiveis;
     } else if (tecla === "n" || tecla === "N") {
       this._alternarNarracao();
     } else if (tecla === "c" || tecla === "C") {
@@ -401,6 +415,7 @@ class Aplicacao {
         this.posicoes,
         this.tempoDias,
         this.corpoAlvo,
+        this.luasVisiveis,
       );
       this.hud.atualizar({
         leitura: this.detector.leitura,

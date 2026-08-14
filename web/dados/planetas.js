@@ -251,3 +251,48 @@ export function ehSatelite(corpo) {
 /** Referência rápida à Lua. */
 export const LUA = CORPOS.find((c) => c.nome === "Lua");
 
+// ---------------------------------------------------------------------------
+// Luas dos demais planetas
+// ---------------------------------------------------------------------------
+// Ficam FORA de CORPOS de propósito: os gestos vão de 0 a 10 e já estão todos
+// ocupados (0-8 Sol e planetas, 9 Lua, 10 visão geral). Estas luas não são
+// selecionáveis por contagem de dedos — elas aparecem em bloco quando o "modo
+// luas" é ligado, e podem ser focadas por toque/clique.
+//
+// Só as principais de cada planeta: Júpiter sozinho tem 95 luas conhecidas, e
+// desenhar todas viraria ruído em volta do disco.
+//
+// ATENÇÃO à escala: `raioOrbitaPx` é VISUAL (múltiplo do raio do planeta), não
+// proporcional. Em escala real Calisto ficaria a 26 raios de Júpiter e Fobos a
+// 1,4 raios de Marte — as luas internas sumiriam dentro do planeta. O que
+// preservamos é a ordem e o espaçamento relativo dentro de cada sistema.
+export const LUAS_MENORES = [
+  // --- Marte ---
+  { nome: "Fobos", planeta: "Marte", diametroKm: 22.5, distanciaKm: 9376, periodoOrbitalDias: 0.319, raioOrbitaPx: 2.2, cor: [150, 140, 130], faseInicial: 0.0, fatoCurioso: "Está tão perto de Marte que nasce a oeste e se põe a leste." },
+  { nome: "Deimos", planeta: "Marte", diametroKm: 12.4, distanciaKm: 23463, periodoOrbitalDias: 1.263, raioOrbitaPx: 3.2, cor: [170, 158, 145], faseInicial: 2.1, fatoCurioso: "A menor lua do Sistema Solar entre as bem conhecidas." },
+  // --- Júpiter: as quatro galileanas ---
+  { nome: "Io", planeta: "Júpiter", diametroKm: 3643, distanciaKm: 421700, periodoOrbitalDias: 1.769, raioOrbitaPx: 1.9, cor: [232, 214, 120], faseInicial: 0.4, fatoCurioso: "O corpo com mais atividade vulcânica do Sistema Solar." },
+  { nome: "Europa", planeta: "Júpiter", diametroKm: 3122, distanciaKm: 671034, periodoOrbitalDias: 3.551, raioOrbitaPx: 2.5, cor: [216, 206, 190], faseInicial: 2.0, fatoCurioso: "Sob a crosta de gelo há um oceano de água líquida." },
+  { nome: "Ganimedes", planeta: "Júpiter", diametroKm: 5268, distanciaKm: 1070412, periodoOrbitalDias: 7.155, raioOrbitaPx: 3.2, cor: [168, 156, 140], faseInicial: 3.7, fatoCurioso: "É a maior lua do Sistema Solar — maior que Mercúrio." },
+  { nome: "Calisto", planeta: "Júpiter", diametroKm: 4821, distanciaKm: 1882709, periodoOrbitalDias: 16.689, raioOrbitaPx: 4.0, cor: [128, 118, 108], faseInicial: 5.2, fatoCurioso: "A superfície mais craterada que se conhece." },
+  // --- Saturno ---
+  { nome: "Titã", planeta: "Saturno", diametroKm: 5150, distanciaKm: 1221870, periodoOrbitalDias: 15.945, raioOrbitaPx: 3.1, cor: [214, 168, 92], faseInicial: 1.2, fatoCurioso: "Tem atmosfera densa e rios de metano líquido." },
+  { nome: "Encélado", planeta: "Saturno", diametroKm: 504, distanciaKm: 237948, periodoOrbitalDias: 1.37, raioOrbitaPx: 2.5, cor: [236, 240, 244], faseInicial: 4.4, fatoCurioso: "Lança gêiseres de água pelo polo sul." },
+  // --- Urano ---
+  { nome: "Titânia", planeta: "Urano", diametroKm: 1578, distanciaKm: 435910, periodoOrbitalDias: 8.706, raioOrbitaPx: 2.4, cor: [176, 166, 158], faseInicial: 0.9, fatoCurioso: "A maior lua de Urano, com cânions de centenas de quilômetros." },
+  { nome: "Oberon", planeta: "Urano", diametroKm: 1523, distanciaKm: 583520, periodoOrbitalDias: 13.463, raioOrbitaPx: 3.1, cor: [150, 142, 136], faseInicial: 3.4, fatoCurioso: "A mais externa das grandes luas de Urano." },
+  // --- Netuno ---
+  { nome: "Tritão", planeta: "Netuno", diametroKm: 2707, distanciaKm: 354759, periodoOrbitalDias: -5.877, raioOrbitaPx: 2.6, cor: [198, 206, 210], faseInicial: 1.7, fatoCurioso: "Orbita ao contrário: foi capturado, não se formou ali." },
+];
+
+/** Índice por planeta, para o renderizador não filtrar a lista a cada frame. */
+export const LUAS_POR_PLANETA = LUAS_MENORES.reduce((mapa, lua) => {
+  (mapa[lua.planeta] ??= []).push(lua);
+  return mapa;
+}, {});
+
+/** Luas desenhadas ao redor de um planeta (vazio se não houver). */
+export function luasDoPlaneta(nomePlaneta) {
+  return LUAS_POR_PLANETA[nomePlaneta] ?? [];
+}
+

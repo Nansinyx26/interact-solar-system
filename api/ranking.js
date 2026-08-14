@@ -5,9 +5,9 @@
  *
  * USO:
  *   POST /api/ranking
- *   Body: { nome: "Renan", serie: "5º Ano A", pontuacao: 950, acertos: 9, tempoSegundos: 45 }
+ *   Body: { nome, serie, sala, pontuacao, acertos, tempoSegundos }
  *
- *   GET /api/ranking?serie=5º%20Ano%20A&limit=50
+ *   GET /api/ranking?serie=5º%20Ano&sala=A&limit=50
  *
  *   DELETE /api/ranking
  *   Body: { codigo: "4400", id: "<ID_DO_REGISTRO>" } OU { codigo: "4400", limparTudo: true }
@@ -58,11 +58,16 @@ export default async function handler(pedido, resposta) {
   if (pedido.method === "GET") {
     try {
       const serieFiltro = String(pedido.query?.serie ?? "").trim();
+      const salaFiltro = String(pedido.query?.sala ?? "").trim();
       const limite = Math.min(Math.max(parseInt(pedido.query?.limit ?? "50", 10), 1), 100);
 
       const filtro = {};
       if (serieFiltro && serieFiltro !== "Todas") {
         filtro.serie = serieFiltro;
+      }
+      // A classificação pode ser vista por sala: é o recorte que a turma usa.
+      if (salaFiltro && salaFiltro !== "Todas") {
+        filtro.sala = salaFiltro;
       }
 
       const resultados = await colecao
@@ -76,6 +81,7 @@ export default async function handler(pedido, resposta) {
         id: item._id.toString(),
         nome: item.nome ?? "Anônimo",
         serie: item.serie ?? "Geral",
+        sala: item.sala ?? "—",
         pontuacao: item.pontuacao ?? 0,
         acertos: item.acertos ?? 0,
         tempoSegundos: item.tempoSegundos ?? 0,
@@ -97,6 +103,7 @@ export default async function handler(pedido, resposta) {
       const dados = pedido.body ?? {};
       const nome = String(dados.nome ?? "").trim().slice(0, 50);
       const serie = String(dados.serie ?? "Geral").trim().slice(0, 30);
+      const sala = String(dados.sala ?? "").trim().slice(0, 20);
       const pontuacao = Math.max(0, parseInt(dados.pontuacao ?? 0, 10));
       const acertos = Math.max(0, parseInt(dados.acertos ?? 0, 10));
       const tempoSegundos = Math.max(0, parseFloat(dados.tempoSegundos ?? 0));
@@ -108,6 +115,7 @@ export default async function handler(pedido, resposta) {
       const doc = {
         nome,
         serie: serie || "Geral",
+        sala: sala || "Única",
         pontuacao,
         acertos,
         tempoSegundos,
