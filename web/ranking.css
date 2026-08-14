@@ -2,6 +2,15 @@
    Estilos da Página de Ranking — Tema Dark Monocromático (Preto & Branco)
    ========================================================================== */
 
+/* Override do overflow:hidden do estilo.css (necessário para o simulador,
+   mas bloqueia rolagem nesta página) */
+html, body {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100%;
+}
+
 .ranking-container,
 .ranking-container * {
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
