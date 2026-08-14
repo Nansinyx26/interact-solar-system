@@ -52,10 +52,55 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
 | 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
 | 40 | BUG: órbita da Lua colidia com Vênus e Marte | ✅ | ✅ | corrigido |
+| 41 | **Ver as luas em volta dos planetas na visão geral** | ⬜ | ⬜ | **medido, precisa de escala adaptativa** |
 
 ---
 
 ## O que falta, em detalhe
+
+### 41 · Ver as luas na visão geral — precisa de escala adaptativa
+
+Pedido: as luas devem aparecer em volta dos planetas **também na visão geral**,
+não só com a câmera aproximada.
+
+**Do jeito atual é impossível.** O raio orbital das luas vai até 4,1 vezes o
+raio do planeta, e nessa escala o espaço não existe:
+
+```
+planeta    raio    folga até o vizinho    luas precisam de
+Marte       7.8         41.5                  24.9   cabe
+Júpiter    26.3         70.1                 105.2   NÃO cabe
+Saturno    24.6         69.3                 100.7   NÃO cabe
+Urano      17.4         50.7                  64.5   NÃO cabe
+Netuno     17.2         51.0                  65.4   NÃO cabe
+```
+
+Pior: **dois pares de planetas já se sobrepõem entre si** nessa escala, sem
+nenhuma lua envolvida — Júpiter+Saturno somam 50,8 px de disco para 45,6 px de
+separação, e Urano+Netuno somam 34,6 para 33,5. Quando as fases orbitais os
+alinham, eles encostam. É uma consequência da compressão logarítmica que o
+projeto assume desde o início.
+
+**Solução: raio orbital adaptativo ao zoom.** As luas ficam num anel compacto
+colado ao planeta na visão geral e se abrem conforme a câmera aproxima:
+
+- zoom baixo → fator entre 1,15 e 1,45 do raio do planeta
+- zoom ≥ `ZOOM_MINIMO_PARA_LUAS` → interpola até a configuração atual (1,7–4,1)
+
+Com teto de 1,45 tudo cabe: Júpiter precisaria de 38,1 px contra 70,1 de folga,
+Netuno de 24,9 contra 51,0, e a Lua da Terra de 14,5 contra 34,0. Na visão geral
+o resultado é "pontinhos ao redor do planeta" — não é a órbita real, mas informa
+que o planeta tem luas, que é o que se quer enxergar de longe.
+
+**Ponto de atenção:** os anéis de Saturno vão até 2,3 raios. Com o fator
+compacto as luas cairiam *dentro* dos anéis. Ou Saturno ganha um piso próprio
+(começar depois de 2,3), ou as luas dele ficam de fora na visão geral.
+
+Isso **substitui** parte da correção do item 40: em vez de esconder os satélites
+abaixo do limiar, eles passam a ser desenhados sempre, com raio comprimido. O
+resultado para a Lua é o mesmo — ela deixa de invadir Vênus —, mas ela volta a
+aparecer de longe.
+
 
 ### 40 · BUG — a órbita da Lua invade Vênus e Marte
 
