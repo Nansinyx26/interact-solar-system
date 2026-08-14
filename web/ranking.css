@@ -172,6 +172,11 @@
   transition: border-color 0.2s;
 }
 
+select option {
+  background-color: #121628;
+  color: #e8ecf5;
+}
+
 .campo input:focus,
 .campo select:focus,
 .grupo-filtro select:focus,
