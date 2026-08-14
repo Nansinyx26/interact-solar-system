@@ -44,9 +44,9 @@ async function obterClienteMongo() {
 }
 
 // ---------------------------------------------------------------------------
-// Healthcheck & Boas-vindas
+// Healthcheck & Status da API
 // ---------------------------------------------------------------------------
-app.get("/", (req, res) => {
+app.get("/api/status", (req, res) => {
   res.json({
     status: "online",
     servidor: "Render",
