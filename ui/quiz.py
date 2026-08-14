@@ -747,6 +747,20 @@ class QuizDesktop:
 
         tela.blit(surf_gab, rect_area_gab.topleft)
 
+        # Barra de Rolagem Visual (Scrollbar)
+        altura_total_conteudo = len(QUESTOES_QUIZ) * 48
+        if altura_total_conteudo > altura_gabarito:
+            x_scroll = rect_area_gab.right - 8
+            ret_trilho = pygame.Rect(x_scroll, rect_area_gab.y, 6, altura_gabarito)
+            pygame.draw.rect(tela, (25, 30, 50), ret_trilho, border_radius=3)
+
+            tam_polegar = max(24, int(altura_gabarito * (altura_gabarito / altura_total_conteudo)))
+            max_offset = altura_total_conteudo - altura_gabarito
+            progresso_scroll = self.offset_scroll_gabarito / max(1, max_offset)
+            y_polegar = rect_area_gab.y + int((altura_gabarito - tam_polegar) * progresso_scroll)
+            ret_polegar = pygame.Rect(x_scroll, y_polegar, 6, tam_polegar)
+            pygame.draw.rect(tela, COR_DESTAQUE, ret_polegar, border_radius=3)
+
         # Dica final
         surf_dica = self.fontes.mini.render(
             "Pressione ESC para voltar ao Simulador do Sistema Solar", True, COR_TEXTO_SECUNDARIO

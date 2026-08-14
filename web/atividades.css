@@ -451,11 +451,17 @@ select option {
 }
 
 /* ── Gabarito ──────────────────────────────────────────────────────────── */
+.gabarito-container {
+  margin-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 20px;
+}
+
 .gabarito-container h3 {
   font-size: 1.15rem;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -466,12 +472,39 @@ select option {
   font-size: 1.2rem;
 }
 
+.gabarito-lista {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 8px;
+  border-radius: 8px;
+}
+
+/* Custom Scrollbar elegante */
+.gabarito-lista::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gabarito-lista::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+}
+
+.gabarito-lista::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+.gabarito-lista::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
 .gabarito-item {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: 16px 18px;
-  margin-bottom: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
   font-size: 0.95rem;
   line-height: 1.6;
   transition: border-color 0.2s;
