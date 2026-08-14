@@ -1,0 +1,29 @@
+{
+  // Sem este arquivo o editor infere a configuração sozinho e marca em vermelho
+  // sintaxe que é perfeitamente válida aqui: `import`/`export` entre módulos,
+  // `import()` dinâmico, `??=`, campos privados e `import.meta`.
+  //
+  // É um projeto de JavaScript puro (nenhum passo de build, nenhum TypeScript):
+  // o navegador carrega os .js como módulos ES nativos, e as funções de
+  // `api/` rodam no Node do Vercel, que também usa ESM ("type": "module" no
+  // package.json).
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "checkJs": false,
+    "allowJs": true,
+    "noEmit": true,
+    "strict": false,
+    "baseUrl": "."
+  },
+  "include": ["web/**/*.js", "api/**/*.js", "server.js"],
+  "exclude": [
+    "node_modules",
+    ".venv",
+    "_internal_sistema_solar",
+    "build_dist",
+    "build_temp"
+  ]
+}
