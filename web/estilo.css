@@ -718,19 +718,58 @@ body.com-foco .painel-legenda {
    ========================================================================= */
 @media (max-width: 900px), (max-height: 560px) {
   :root {
-    --margem: 10px;
+    --margem: 8px;
+  }
+
+  .barra {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .marca {
+    flex-shrink: 0;
+    gap: 6px;
   }
 
   .marca strong {
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
   }
+
+  .marca span[data-versao],
+  .marca span[data-fps],
   .marca span[data-escala-tempo] {
     display: none;
   }
+
+  .estado-camera {
+    font-size: 10px;
+  }
+
+  .acoes {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: calc(100vw - 130px);
+    gap: 5px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .acoes::-webkit-scrollbar {
+    display: none;
+  }
+
   .acoes button,
   .acoes .download {
-    padding: 6px 11px;
-    font-size: 12px;
+    padding: 5px 9px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  /* Não faz sentido oferecer download do .exe dentro do celular */
+  .acoes a[data-download] {
+    display: none !important;
   }
 
   /* A legenda completa vive no painel de ajuda; aqui ela só ocuparia a tela. */
@@ -749,53 +788,59 @@ body.com-foco .painel-legenda {
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 46vh;
-    padding: 14px 16px calc(80px + var(--seguro-baixo));
+    max-height: 48vh;
+    padding: 14px 16px calc(76px + var(--seguro-baixo));
     border-radius: 16px 16px 0 0;
     transform: translateY(28px);
+    z-index: 30;
   }
   .ficha .dados {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
   .ficha h2 {
-    font-size: 24px;
-  }
-
-  /* Painel de gesto compacto no alto, sem competir com a ficha. */
-  .painel-gesto {
-    top: 58px;
-    bottom: auto;
-    left: var(--margem);
-    padding: 8px 12px;
-    gap: 10px;
-  }
-  .anel {
-    width: 56px;
-    height: 56px;
-  }
-  .anel span {
     font-size: 22px;
   }
+
+  /* Painel de gesto compacto no alto, sem competir com a barra superior. */
+  .painel-gesto {
+    top: 46px;
+    bottom: auto;
+    left: var(--margem);
+    padding: 6px 10px;
+    gap: 8px;
+    z-index: 10;
+  }
+  .anel {
+    width: 44px;
+    height: 44px;
+  }
+  .anel span {
+    font-size: 18px;
+  }
   .leitura {
-    min-width: 92px;
+    min-width: 72px;
   }
   .leitura b {
-    font-size: 20px;
+    font-size: 16px;
+  }
+  .leitura .maos {
+    font-size: 10px;
   }
 
   .painel-camera {
-    top: 58px;
+    top: 46px;
     bottom: auto;
     right: var(--margem);
-    width: 200px;
-    padding: 6px 6px 3px;
+    width: 112px;
+    padding: 4px 4px 2px;
     z-index: 15;
   }
   .painel-camera span {
     display: none;
   }
 
-  /* Botões grandes o suficiente para o dedo, roláveis na horizontal. */
+  /* Botões de planetas na base: fixados e roláveis sem colidir com watermark */
   .botoes-gesto {
     left: 0;
     right: 0;
@@ -806,14 +851,38 @@ body.com-foco .painel-legenda {
     border-right: 0;
     border-bottom: 0;
     justify-content: flex-start;
-    padding: 8px var(--margem) calc(8px + var(--seguro-baixo));
+    padding: 6px var(--margem) calc(6px + var(--seguro-baixo));
+    z-index: 20;
+    background: rgba(14, 17, 30, 0.95);
   }
   .botoes-gesto button {
-    min-width: 52px;
-    padding: 8px 10px;
+    min-width: 46px;
+    padding: 6px 8px;
   }
   .botoes-gesto button b {
-    font-size: 17px;
+    font-size: 15px;
+  }
+  .botoes-gesto button span {
+    font-size: 9px;
+  }
+
+  /* Marca d'água posicionada discretamente ACIMA da barra de planetas */
+  .nandev-watermark {
+    font-size: 10px;
+    padding: 4px 8px;
+    gap: 6px;
+    bottom: calc(52px + var(--seguro-baixo));
+    right: 8px;
+    min-width: auto;
+    height: 24px;
+    z-index: 25;
+    background: rgba(14, 17, 30, 0.9);
+  }
+  .nandev-watermark .cube-container {
+    display: none;
+  }
+  .nandev-watermark .geometric-particles {
+    display: none;
   }
 }
 
@@ -821,141 +890,72 @@ body.com-foco .painel-legenda {
    Celular em pé (≤ 480px)
    ------------------------------------------------------------------------- */
 @media (max-width: 480px) {
-  .marca span[data-fps] {
-    display: none; /* o FPS interessa em depuração, não no celular */
-  }
   .marca strong {
-    font-size: 12px;
-  }
-  .estado-camera {
     font-size: 11px;
-  }
-  .acoes {
-    gap: 6px;
-  }
-  .acoes button,
-  .acoes .download {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-  .painel-camera {
-    width: 132px;
   }
   .ficha .dados {
-    grid-template-columns: 1fr; /* duas colunas cortariam os valores longos */
+    grid-template-columns: 1fr; /* 1 coluna no celular estreito */
   }
   .ficha {
     max-height: 52vh;
   }
   .avisos {
-    top: 52px;
+    top: 48px;
     max-width: calc(100vw - 2 * var(--margem));
   }
   .avisos p {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-}
-
-/* -------------------------------------------------------------------------
-   Celular pequeno (≤ 360px) — aqui cada pixel de largura conta
-   ------------------------------------------------------------------------- */
-@media (max-width: 360px) {
-  :root {
-    --margem: 8px;
-  }
-  /* O título vira redundante: o favicon e a própria cena já identificam o app. */
-  .marca strong,
-  .estado-camera {
-    display: none;
-  }
-  .acoes button,
-  .acoes .download {
-    padding: 5px 9px;
     font-size: 11px;
-  }
-  /* Só o essencial fica: ligar a câmera e pedir ajuda. */
-  #btn-pausa {
-    display: none;
-  }
-  .painel-gesto {
-    padding: 6px 10px;
-    gap: 8px;
-  }
-  .anel {
-    width: 48px;
-    height: 48px;
-  }
-  .anel span {
-    font-size: 19px;
-  }
-  .leitura {
-    min-width: 76px;
-  }
-  .leitura .maos {
-    font-size: 10px;
-  }
-  .painel-camera {
-    width: 108px;
-  }
-  .botoes-gesto button {
-    min-width: 46px;
-    padding: 7px 8px;
-  }
-  .botoes-gesto button span {
-    display: none; /* fica só o número, que é o que importa */
+    padding: 5px 10px;
   }
 }
 
 /* -------------------------------------------------------------------------
-   Celular deitado (paisagem): sobra largura e falta altura, então a ficha
-   volta a ser um painel lateral — uma folha de baixo comeria a cena inteira.
+   Celular deitado (paisagem): sobra largura e falta altura
    ------------------------------------------------------------------------- */
 @media (max-height: 560px) and (orientation: landscape) {
   .ficha {
-    top: 50px;
+    top: 44px;
     left: auto;
     right: var(--margem);
     bottom: auto;
-    width: min(300px, 42vw);
-    max-height: calc(100dvh - 60px - var(--seguro-baixo));
-    padding: 12px 14px;
+    width: min(280px, 38vw);
+    max-height: calc(100dvh - 50px - var(--seguro-baixo));
+    padding: 10px 12px;
     border-radius: var(--raio);
     transform: translateX(20px);
+    z-index: 25;
   }
   .ficha .dados {
     grid-template-columns: 1fr;
-    gap: 7px;
+    gap: 6px;
   }
   .ficha h2 {
-    font-size: 20px;
+    font-size: 18px;
   }
   .ficha .legenda {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  /* Com a ficha na direita, o preview volta para baixo dela, à esquerda. */
+
+  /* Na paisagem, a webcam fica no canto inferior esquerdo */
   .painel-camera {
     top: auto;
-    bottom: calc(56px + var(--seguro-baixo));
+    bottom: calc(52px + var(--seguro-baixo));
     right: auto;
     left: var(--margem);
-    width: 116px;
+    width: 100px;
   }
   .painel-gesto {
-    top: 50px;
+    top: 44px;
   }
   .botoes-gesto {
-    padding: 5px var(--margem) calc(5px + var(--seguro-baixo));
+    padding: 4px var(--margem) calc(4px + var(--seguro-baixo));
   }
   .botoes-gesto button {
-    padding: 6px 9px;
+    padding: 5px 7px;
   }
-  .botoes-gesto button span {
-    display: none;
-  }
-  .ajuda .conteudo {
-    max-height: 92vh;
-    padding: 18px;
+  .nandev-watermark {
+    bottom: calc(48px + var(--seguro-baixo));
+    right: var(--margem);
   }
 }
 
