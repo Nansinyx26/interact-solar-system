@@ -168,9 +168,9 @@ class TelemetriaMongo:
                 doc = {
                     "nome": nome.strip()[:50],
                     "serie": serie.strip()[:30] or "Geral",
-                    "pontuacao": max(0, int(pontuacao)),
-                    "acertos": max(0, int(acertos)),
-                    "tempoSegundos": max(0.0, float(tempo_segundos)),
+                    "pontuacao": max(0, pontuacao),
+                    "acertos": max(0, acertos),
+                    "tempoSegundos": max(0.0, tempo_segundos),
                     "origem": origem,
                     "versao": VERSAO,
                     "data_hora": datetime.now(timezone.utc),
