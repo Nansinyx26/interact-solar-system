@@ -459,6 +459,15 @@ class Renderizador:
         self._desenhar_cinturao(superficie, camera, tempo_dias, corpo_focado)
         self._desenhar_orbitas(superficie, camera, posicoes, corpo_focado)
         for corpo in CORPOS:
+            # Satélites seguem a regra das luas menores: sumem na visão geral,
+            # onde seriam 4 px em cima do planeta — e onde a órbita colidiria
+            # com o vizinho. Quando o próprio satélite é o alvo, sempre aparece.
+            if (
+                corpo.eh_satelite
+                and camera.zoom < ZOOM_MINIMO_PARA_LUAS
+                and (corpo_focado is None or corpo_focado.nome != corpo.nome)
+            ):
+                continue
             self._desenhar_corpo(
                 superficie,
                 camera,
@@ -603,6 +612,12 @@ class Renderizador:
                 continue
 
             if corpo.eh_satelite:
+                # Só com a câmera aproximada. Na visão geral a órbita da Lua
+                # (raio 28) invadiria Vênus, que fica a 24,2 px da Terra —
+                # e não há raio que resolva: a folga entre os discos é de ~4 px,
+                # menor que o raio desenhado da própria Terra.
+                if camera.zoom < ZOOM_MINIMO_PARA_LUAS:
+                    continue
                 # `orbita_em_torno_de` é str | None no catálogo; o `or ""` evita
                 # passar None para o dict.get (que o verificador de tipos recusa)
                 # e cai no `continue` logo abaixo, que já é o comportamento certo.

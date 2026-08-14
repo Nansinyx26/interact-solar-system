@@ -46,6 +46,7 @@ import {
   LARGURA_TIRA_EM_RAIOS,
   QUADROS_ROTACAO,
   RAIO_LUA_MENOR_PX,
+  RAIO_ORBITA_LUA_PX,
   RAIO_TEXTURA_PX,
   SEMENTE_ALEATORIA,
   ZOOM_MINIMO_PARA_LUAS,
@@ -435,6 +436,16 @@ export class Renderizador {
     this._desenharCinturao(camera, tempoDias, corpoFocado);
     this._desenharOrbitas(camera, posicoes, corpoFocado);
     for (const corpo of CORPOS) {
+      // Satélites seguem a regra das luas menores: somem na visão geral, onde
+      // seriam 4 px em cima do planeta — e onde a órbita colidiria com o
+      // vizinho. Quando o próprio satélite é o alvo, sempre aparece.
+      if (
+        corpo.orbitaEmTornoDe &&
+        camera.zoom < ZOOM_MINIMO_PARA_LUAS &&
+        corpoFocado?.nome !== corpo.nome
+      ) {
+        continue;
+      }
       this._desenharCorpo(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
       if (luasVisiveis) {
         this._desenharLuas(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
@@ -549,11 +560,15 @@ export class Renderizador {
       let raioMundo = 0;
 
       if (corpo.orbitaEmTornoDe) {
-        // Satélite (ex: Lua ao redor da Terra)
+        // Satélite (ex.: Lua ao redor da Terra). Só com a câmera aproximada:
+        // na visão geral a órbita da Lua (raio 28) invadiria Vênus, que fica a
+        // 24,2 px da Terra — e não há raio que resolva, já que a folga entre os
+        // discos é de ~4 px, menor que o raio desenhado da própria Terra.
+        if (camera.zoom < ZOOM_MINIMO_PARA_LUAS) continue;
         const posPai = posicoes.get(corpo.orbitaEmTornoDe);
         if (!posPai) continue;
         centro = camera.mundoParaTela(posPai);
-        raioMundo = 28; // RAIO_ORBITA_LUA_PX
+        raioMundo = RAIO_ORBITA_LUA_PX;
       } else {
         raioMundo = raioOrbitalPx(corpo.distanciaUa);
       }

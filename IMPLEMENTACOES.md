@@ -51,7 +51,7 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 37 | Aviso `has-symbols` no npm | — | ✅ | investigado: sem ação |
 | 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
 | 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
-| 40 | **BUG: órbita da Lua colide com Vênus e Marte** | ⬜ | ⬜ | **diagnosticado, a corrigir** |
+| 40 | BUG: órbita da Lua colidia com Vênus e Marte | ✅ | ✅ | corrigido |
 
 ---
 
@@ -79,16 +79,24 @@ encostar, a órbita dela teria que ter raio ≈ 7 px — **menor que o raio dese
 da própria Terra (10 px)**, ou seja, a Lua ficaria dentro do planeta. Não existe
 valor que resolva na visão geral.
 
-**Correção proposta:** aplicar à Lua a mesma regra que as luas menores já
-seguem — só desenhar acima de `ZOOM_MINIMO_PARA_LUAS`. Na visão geral a Lua e
+**Correção aplicada:** a Lua passou a seguir a mesma regra que as luas menores
+já seguiam — só desenhar acima de `ZOOM_MINIMO_PARA_LUAS`. Na visão geral a Lua e
 sua órbita somem (onde de qualquer forma seriam 4 px indistinguíveis); com a
 câmera aproximada na Terra, Vênus está fora do enquadramento e não há
 sobreposição possível. Isso também deixa o comportamento da Lua coerente com o
 das outras 21, em vez de ser um caso especial.
 
-Vale conferir junto: Netuno↔Urano (33,5 px) e Saturno↔Júpiter (45,6 px) têm
-folga parecida, então as luas **menores** desses planetas só não colidem hoje
-porque já respeitam o zoom mínimo — o que reforça que essa é a regra certa.
+Netuno↔Urano (33,5 px) e Saturno↔Júpiter (45,6 px) têm folga parecida — as luas
+**menores** desses planetas nunca colidiram justamente porque já respeitavam o
+zoom mínimo. A Lua era o único caso especial, e era o que quebrava.
+
+Uma exceção necessária: **quando o próprio satélite é o alvo em foco, ele
+sempre aparece**, mesmo abaixo do limiar. Sem isso, selecionar a Lua com zoom
+baixo (pelo gesto 9 durante uma transição de câmera) faria o alvo sumir.
+
+Verificado: na visão geral (zoom 0,90) a Lua e sua órbita não são desenhadas; ao
+focá-la (zoom 6,00) ela aparece; e com a Lua como alvo em zoom baixo, ela
+continua visível.
 
 
 ### 39 · Gesto "L" como modificador de modo — especificado, aguarda decisão
