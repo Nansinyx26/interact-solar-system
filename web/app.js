@@ -17,7 +17,7 @@ import {
   TIME_SCALE_MAX,
   TIME_SCALE_MIN,
 } from "./config.js";
-import { CORPOS, CORPOS_POR_GESTO, corpoPorGesto } from "./dados/planetas.js";
+import { CORPOS, CORPOS_POR_GESTO, corpoPorGesto, luasDoPlaneta } from "./dados/planetas.js";
 import { DetectorMaos, StatusCamera } from "./gestos/detector.js";
 import { EstabilizadorGestos } from "./gestos/estabilizador.js";
 import { MaquinaGestos } from "./gestos/estado_gesto.js";

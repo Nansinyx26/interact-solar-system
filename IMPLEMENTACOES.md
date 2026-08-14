@@ -55,6 +55,7 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 41 | Ver as luas em volta dos planetas na visão geral | ✅ | ✅ | pronto |
 | 42 | Luas ligadas por padrão + rebuild v1.4.0 | ✅ | ✅ | publicado |
 | 43 | Luas giravam rápido demais para ler o nome | ✅ | ✅ | corrigido |
+| 44 | Gesto/tecla L travava sistema na web (falta de import) | ✅ | ✅ | corrigido (v1.4.2) |
 
 ---
 
@@ -355,3 +356,4 @@ passo que impede o site anunciar uma versão e entregar outra no download.
 | Mercúrio: 58,6 no desktop e 58,7 na web | Python arredonda half-even, JavaScript half-up | `Decimal` com `ROUND_HALF_UP` no Python |
 | Voz do Brian não tocava no site | `new Audio()` fora de gesto do usuário é bloqueado pelo autoplay; o `play()` rejeitava e caía na voz do navegador | um único elemento de áudio, destravado no primeiro clique/toque/tecla |
 | Executável "sem" as novidades | o `.exe` é uma fotografia do código e não tinha sido reconstruído | rebuild; `publicar.py --com-exe` |
+| Gesto L travava o sistema na web | `luasDoPlaneta` não importado em `web/app.js` | adicionado import e bump v1.4.2 |
