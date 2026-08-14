@@ -270,19 +270,30 @@ export const LUAS_MENORES = [
   // --- Marte ---
   { nome: "Fobos", planeta: "Marte", diametroKm: 22.5, distanciaKm: 9376, periodoOrbitalDias: 0.319, raioOrbitaPx: 2.2, cor: [150, 140, 130], faseInicial: 0.0, fatoCurioso: "Está tão perto de Marte que nasce a oeste e se põe a leste." },
   { nome: "Deimos", planeta: "Marte", diametroKm: 12.4, distanciaKm: 23463, periodoOrbitalDias: 1.263, raioOrbitaPx: 3.2, cor: [170, 158, 145], faseInicial: 2.1, fatoCurioso: "A menor lua do Sistema Solar entre as bem conhecidas." },
-  // --- Júpiter: as quatro galileanas ---
-  { nome: "Io", planeta: "Júpiter", diametroKm: 3643, distanciaKm: 421700, periodoOrbitalDias: 1.769, raioOrbitaPx: 1.9, cor: [232, 214, 120], faseInicial: 0.4, fatoCurioso: "O corpo com mais atividade vulcânica do Sistema Solar." },
-  { nome: "Europa", planeta: "Júpiter", diametroKm: 3122, distanciaKm: 671034, periodoOrbitalDias: 3.551, raioOrbitaPx: 2.5, cor: [216, 206, 190], faseInicial: 2.0, fatoCurioso: "Sob a crosta de gelo há um oceano de água líquida." },
+  // --- Júpiter ---
+  { nome: "Amalteia", planeta: "Júpiter", diametroKm: 167, distanciaKm: 181366, periodoOrbitalDias: 0.498, raioOrbitaPx: 1.7, cor: [196, 120, 96], faseInicial: 1.1, fatoCurioso: "É avermelhada e tem formato irregular, como uma batata." },
+  { nome: "Io", planeta: "Júpiter", diametroKm: 3643, distanciaKm: 421700, periodoOrbitalDias: 1.769, raioOrbitaPx: 2.1, cor: [232, 214, 120], faseInicial: 0.4, fatoCurioso: "O corpo com mais atividade vulcânica do Sistema Solar." },
+  { nome: "Europa", planeta: "Júpiter", diametroKm: 3122, distanciaKm: 671034, periodoOrbitalDias: 3.551, raioOrbitaPx: 2.6, cor: [216, 206, 190], faseInicial: 2.0, fatoCurioso: "Sob a crosta de gelo há um oceano de água líquida." },
   { nome: "Ganimedes", planeta: "Júpiter", diametroKm: 5268, distanciaKm: 1070412, periodoOrbitalDias: 7.155, raioOrbitaPx: 3.2, cor: [168, 156, 140], faseInicial: 3.7, fatoCurioso: "É a maior lua do Sistema Solar — maior que Mercúrio." },
   { nome: "Calisto", planeta: "Júpiter", diametroKm: 4821, distanciaKm: 1882709, periodoOrbitalDias: 16.689, raioOrbitaPx: 4.0, cor: [128, 118, 108], faseInicial: 5.2, fatoCurioso: "A superfície mais craterada que se conhece." },
   // --- Saturno ---
-  { nome: "Titã", planeta: "Saturno", diametroKm: 5150, distanciaKm: 1221870, periodoOrbitalDias: 15.945, raioOrbitaPx: 3.1, cor: [214, 168, 92], faseInicial: 1.2, fatoCurioso: "Tem atmosfera densa e rios de metano líquido." },
-  { nome: "Encélado", planeta: "Saturno", diametroKm: 504, distanciaKm: 237948, periodoOrbitalDias: 1.37, raioOrbitaPx: 2.5, cor: [236, 240, 244], faseInicial: 4.4, fatoCurioso: "Lança gêiseres de água pelo polo sul." },
+  { nome: "Encélado", planeta: "Saturno", diametroKm: 504, distanciaKm: 237948, periodoOrbitalDias: 1.37, raioOrbitaPx: 1.8, cor: [236, 240, 244], faseInicial: 4.4, fatoCurioso: "Lança gêiseres de água pelo polo sul." },
+  { nome: "Dione", planeta: "Saturno", diametroKm: 1123, distanciaKm: 377396, periodoOrbitalDias: 2.737, raioOrbitaPx: 2.2, cor: [206, 204, 198], faseInicial: 1.9, fatoCurioso: "Tem penhascos de gelo que chegam a centenas de metros." },
+  { nome: "Reia", planeta: "Saturno", diametroKm: 1527, distanciaKm: 527108, periodoOrbitalDias: 4.518, raioOrbitaPx: 2.7, cor: [194, 192, 186], faseInicial: 3.1, fatoCurioso: "A segunda maior lua de Saturno, feita quase toda de gelo." },
+  { nome: "Titã", planeta: "Saturno", diametroKm: 5150, distanciaKm: 1221870, periodoOrbitalDias: 15.945, raioOrbitaPx: 3.3, cor: [214, 168, 92], faseInicial: 1.2, fatoCurioso: "Tem atmosfera densa e rios de metano líquido." },
+  { nome: "Jápeto", planeta: "Saturno", diametroKm: 1469, distanciaKm: 3560820, periodoOrbitalDias: 79.33, raioOrbitaPx: 4.1, cor: [150, 140, 126], faseInicial: 5.6, fatoCurioso: "Um hemisfério é escuro como carvão e o outro, branco como neve." },
   // --- Urano ---
-  { nome: "Titânia", planeta: "Urano", diametroKm: 1578, distanciaKm: 435910, periodoOrbitalDias: 8.706, raioOrbitaPx: 2.4, cor: [176, 166, 158], faseInicial: 0.9, fatoCurioso: "A maior lua de Urano, com cânions de centenas de quilômetros." },
-  { nome: "Oberon", planeta: "Urano", diametroKm: 1523, distanciaKm: 583520, periodoOrbitalDias: 13.463, raioOrbitaPx: 3.1, cor: [150, 142, 136], faseInicial: 3.4, fatoCurioso: "A mais externa das grandes luas de Urano." },
+  { nome: "Miranda", planeta: "Urano", diametroKm: 472, distanciaKm: 129900, periodoOrbitalDias: 1.413, raioOrbitaPx: 1.8, cor: [188, 190, 192], faseInicial: 2.7, fatoCurioso: "Tem um penhasco de 20 km, o mais alto conhecido." },
+  { nome: "Ariel", planeta: "Urano", diametroKm: 1158, distanciaKm: 190900, periodoOrbitalDias: 2.52, raioOrbitaPx: 2.2, cor: [198, 196, 190], faseInicial: 0.5, fatoCurioso: "A superfície mais clara e jovem entre as luas de Urano." },
+  { nome: "Umbriel", planeta: "Urano", diametroKm: 1169, distanciaKm: 266000, periodoOrbitalDias: 4.144, raioOrbitaPx: 2.6, cor: [132, 130, 128], faseInicial: 4.0, fatoCurioso: "A mais escura das grandes luas de Urano." },
+  { nome: "Titânia", planeta: "Urano", diametroKm: 1578, distanciaKm: 435910, periodoOrbitalDias: 8.706, raioOrbitaPx: 3.1, cor: [176, 166, 158], faseInicial: 0.9, fatoCurioso: "A maior lua de Urano, com cânions de centenas de quilômetros." },
+  { nome: "Oberon", planeta: "Urano", diametroKm: 1523, distanciaKm: 583520, periodoOrbitalDias: 13.463, raioOrbitaPx: 3.7, cor: [150, 142, 136], faseInicial: 3.4, fatoCurioso: "A mais externa das grandes luas de Urano." },
   // --- Netuno ---
-  { nome: "Tritão", planeta: "Netuno", diametroKm: 2707, distanciaKm: 354759, periodoOrbitalDias: -5.877, raioOrbitaPx: 2.6, cor: [198, 206, 210], faseInicial: 1.7, fatoCurioso: "Orbita ao contrário: foi capturado, não se formou ali." },
+  { nome: "Galateia", planeta: "Netuno", diametroKm: 176, distanciaKm: 61953, periodoOrbitalDias: 0.429, raioOrbitaPx: 1.7, cor: [160, 168, 176], faseInicial: 3.0, fatoCurioso: "Sua gravidade mantém um dos anéis de Netuno agrupado." },
+  { nome: "Larissa", planeta: "Netuno", diametroKm: 194, distanciaKm: 73548, periodoOrbitalDias: 0.555, raioOrbitaPx: 2.0, cor: [172, 178, 184], faseInicial: 5.0, fatoCurioso: "Tem forma irregular e superfície muito craterada." },
+  { nome: "Proteu", planeta: "Netuno", diametroKm: 420, distanciaKm: 117647, periodoOrbitalDias: 1.122, raioOrbitaPx: 2.4, cor: [150, 156, 162], faseInicial: 0.7, fatoCurioso: "É quase o maior corpo que a gravidade não conseguiu arredondar." },
+  { nome: "Tritão", planeta: "Netuno", diametroKm: 2707, distanciaKm: 354759, periodoOrbitalDias: -5.877, raioOrbitaPx: 2.9, cor: [198, 206, 210], faseInicial: 1.7, fatoCurioso: "Orbita ao contrário: foi capturado, não se formou ali." },
+  { nome: "Nereida", planeta: "Netuno", diametroKm: 340, distanciaKm: 5513400, periodoOrbitalDias: 360.13, raioOrbitaPx: 3.8, cor: [166, 170, 174], faseInicial: 4.2, fatoCurioso: "Tem a órbita mais alongada entre as luas conhecidas." },
 ];
 
 /** Índice por planeta, para o renderizador não filtrar a lista a cada frame. */
