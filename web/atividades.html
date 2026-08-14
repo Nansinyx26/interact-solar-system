@@ -27,6 +27,12 @@
     />
     <link rel="stylesheet" href="estilo.css" />
     <link rel="stylesheet" href="atividades.css" />
+    <script>
+      // Aplica o tema salvo antes de renderizar para evitar FOUT
+      if (localStorage.getItem('tema_sistema_solar') === 'claro') {
+        document.documentElement.classList.add('tema-claro');
+      }
+    </script>
   </head>
   <body>
     <!-- Fundo Estelar Animado -->
@@ -39,6 +45,9 @@
         <span>10 Questões Interativas</span>
       </div>
       <div class="acoes">
+        <button type="button" id="btn-alternar-tema" class="btn-tema" title="Alternar Modo Claro / Escuro">
+          <i class="bi bi-sun"></i> <span>Tema</span>
+        </button>
         <a class="download" href="index.html"><i class="bi bi-stars"></i> Simulador</a>
         <a class="download" href="ranking.html"><i class="bi bi-trophy"></i> Ver Ranking</a>
       </div>

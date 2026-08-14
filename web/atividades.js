@@ -99,6 +99,24 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnReiniciar) {
     btnReiniciar.addEventListener("click", reiniciarQuiz);
   }
+
+  const btnTema = document.getElementById("btn-alternar-tema");
+  if (btnTema) {
+    const atualizarIcone = () => {
+      const ehClaro = document.documentElement.classList.contains("tema-claro");
+      btnTema.innerHTML = ehClaro
+        ? '<i class="bi bi-moon-stars"></i> <span>Escuro</span>'
+        : '<i class="bi bi-sun"></i> <span>Claro</span>';
+    };
+    atualizarIcone();
+    btnTema.addEventListener("click", () => {
+      document.documentElement.classList.toggle("tema-claro");
+      document.body.classList.toggle("tema-claro");
+      const ehClaro = document.documentElement.classList.contains("tema-claro");
+      localStorage.setItem("tema_sistema_solar", ehClaro ? "claro" : "escuro");
+      atualizarIcone();
+    });
+  }
 });
 
 function iniciarQuiz() {

@@ -628,3 +628,224 @@ select option {
     font-size: 0.88rem;
   }
 }
+
+/* ==========================================================================
+   BOTÃO DE TEMA (CLARO / ESCURO)
+   ========================================================================== */
+.btn-tema {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f4f4f5;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.btn-tema:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #ffffff;
+}
+
+/* ==========================================================================
+   MODO CLARO (PRETO & BRANCO MONOCROMÁTICO NO RANKING)
+   ========================================================================== */
+html.tema-claro,
+body.tema-claro {
+  background: #f4f5f8;
+  color: #111827;
+}
+
+html.tema-claro .fundo-estelar {
+  background: radial-gradient(circle at 50% 10%, #ffffff 0%, #e2e4e9 90%);
+}
+
+html.tema-claro .barra {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+html.tema-claro .barra .marca strong {
+  color: #111827;
+}
+
+html.tema-claro .barra .marca span {
+  color: #6b7280;
+}
+
+html.tema-claro .barra .acoes .download,
+html.tema-claro .btn-tema {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #111827;
+}
+
+html.tema-claro .barra .acoes .download:hover,
+html.tema-claro .btn-tema:hover {
+  background: #f3f4f6;
+  border-color: #111827;
+}
+
+html.tema-claro .cabecalho-ranking h1 {
+  color: #111827;
+  text-shadow: none;
+}
+
+html.tema-claro .cabecalho-ranking p {
+  color: #6b7280;
+}
+
+html.tema-claro .icone-cabecalho {
+  color: #111827;
+}
+
+html.tema-claro .podio-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+html.tema-claro .podio-card.primeiro {
+  border-color: #111827;
+  background: #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+
+html.tema-claro .coroa-badge {
+  color: #111827;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+}
+
+html.tema-claro .medalha-badge {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+html.tema-claro .primeiro .medalha-badge {
+  background: #111827;
+  color: #ffffff;
+}
+
+html.tema-claro .nome-aluno {
+  color: #111827;
+}
+
+html.tema-claro .serie-aluno {
+  color: #4b5563;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+html.tema-claro .pontos-aluno {
+  color: #111827;
+}
+
+html.tema-claro .cartao-form,
+html.tema-claro .cartao-tabela {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+html.tema-claro .cartao-form h2 {
+  color: #111827;
+}
+
+html.tema-claro .cartao-form h2 .bi {
+  color: #111827;
+}
+
+html.tema-claro .campo label,
+html.tema-claro .grupo-filtro label {
+  color: #4b5563;
+}
+
+html.tema-claro .campo label .bi,
+html.tema-claro .grupo-filtro label .bi {
+  color: #111827;
+}
+
+html.tema-claro .campo input,
+html.tema-claro .campo select,
+html.tema-claro .grupo-filtro select,
+html.tema-claro .input-busca-wrapper input {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: #111827;
+}
+
+html.tema-claro select option {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+html.tema-claro .campo input:focus,
+html.tema-claro .campo select:focus,
+html.tema-claro .grupo-filtro select:focus,
+html.tema-claro .input-busca-wrapper input:focus {
+  border-color: #111827;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
+}
+
+html.tema-claro .btn-destaque {
+  background: #111827;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+html.tema-claro .btn-destaque:hover {
+  background: #27272a;
+}
+
+html.tema-claro .icone-busca {
+  color: #6b7280;
+}
+
+html.tema-claro .tabela-wrapper {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html.tema-claro .tabela-ranking th {
+  background: rgba(0, 0, 0, 0.03);
+  color: #4b5563;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+html.tema-claro .tabela-ranking td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #1f2937;
+}
+
+html.tema-claro .tabela-ranking tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html.tema-claro .posicao-tag {
+  background: rgba(0, 0, 0, 0.06);
+  color: #4b5563;
+}
+
+html.tema-claro .pos-1 {
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+html.tema-claro .pos-2 {
+  background: #4b5563 !important;
+  color: #ffffff !important;
+}
+
+html.tema-claro .pos-3 {
+  background: #9ca3af !important;
+  color: #ffffff !important;
+}
+
+html.tema-claro .carregando {
+  color: #6b7280;
+}
+

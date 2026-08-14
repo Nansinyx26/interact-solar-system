@@ -177,21 +177,39 @@ A webcam é opcional. Se ela não abrir, o HUD avisa e o app segue por teclado.
 | Tecla | Ação |
 |---|---|
 | `0`–`8` | seleciona o corpo celeste |
+| `9` ou `L` | foca a **L**ua |
 | `V` | volta à **v**isão geral (equivale ao gesto das duas mãos abertas) |
+| `A` | abre o **Quiz & Atividades** interativo nativo (10 questões) |
+| `R` | abre o **Ranking** de pontuações no navegador |
+| `N` | ativa / desativa a **n**arração por voz (TTS) |
 | `ESPAÇO` | pausa / retoma a animação |
 | `+` / `-` | acelera / desacelera o tempo |
 | `C` | mostra / oculta o preview da webcam |
-| `ESC` ou `Q` | sair |
+| `ESC` ou `Q` | sair (ou fechar o quiz se estiver aberto) |
 
 | Mouse | Ação |
 |---|---|
 | arrastar com o botão esquerdo | pan livre pela cena |
-| roda | zoom in / out |
+| roda | zoom in / out (ou rolar respostas no quiz) |
 | clique na assinatura | abre o perfil do autor no navegador |
 
 Assumir a câmera com o mouse suspende o rastreamento automático (a ficha do
 planeta continua aberta). O próximo gesto confirmado, `V` ou uma tecla de
 0 a 8 devolvem o controle à aplicação.
+
+---
+
+## Atividades, Quiz & Ranking
+
+Tanto na versão **Desktop** (pressionando a tecla `A`) quanto na versão **Web** ([`/atividades.html`](https://interact-solar-system.vercel.app/atividades)), o projeto inclui um módulo completo de avaliação astronômica:
+
+- **10 Questões Interativas** sobre o Sistema Solar, órbitas, temperaturas e curiosidades.
+- **Identificação do Aluno** (Nome e Série/Turma) com salvamento em banco MongoDB via API.
+- **Cronômetro e Barra de Progresso** em tempo real.
+- **Gabarito com Rolagem (Scroll)** para revisão detalhada de erros e acertos.
+- **Quadro de Honra / Ranking** ([`/ranking.html`](https://interact-solar-system.vercel.app/ranking)) com Pódio Top 3, filtro por turma, busca por aluno e gerenciamento seguro.
+- **Tema Monocromático:** Alternador de **Modo Escuro (Dark) e Modo Claro (Light)** em preto & branco de alto contraste, com suporte a persistência via `localStorage`.
+- **Totalmente Responsivo:** Otimizado para telas desktop, tablets e smartphones (com alvos de toque aumentados e prevenção de zoom involuntário no iOS).
 
 ---
 
@@ -234,13 +252,17 @@ Números reais sem compressão nenhuma estão sempre na ficha do planeta.
 
 ```
 sistema_solar_gestos/
-├── main.py                  # loop principal, orquestra captura + render
+├── main.py                  # loop principal, orquestra captura + render + quiz
 ├── config.py                # constantes: resolução, escalas, cores, thresholds
+├── build_exe.py             # gerador do executável Windows com PyInstaller
+├── empacotar_web.py         # gerador do pacote ZIP com executável e fontes
+├── verificar_paridade.py    # verificador de sincronização desktop <-> web
 ├── requirements.txt
 ├── README.md
 ├── docs/                    # capturas usadas neste README
 ├── dados/
-│   └── planetas.py          # dataclass CorpoCeleste + lista com os 9 corpos
+│   ├── planetas.py          # dataclass CorpoCeleste + lista com os 9 corpos
+│   └── telemetria.py        # registro de sessões e ranking no MongoDB
 ├── nucleo/
 │   ├── orbita.py            # cálculo de posição orbital ao longo do tempo
 │   ├── camera.py            # zoom/pan com interpolação suave
@@ -248,10 +270,13 @@ sistema_solar_gestos/
 ├── gestos/
 │   ├── detector.py          # wrapper do MediaPipe (thread separada)
 │   ├── contador.py          # landmarks → número de dedos
-│   └── estabilizador.py     # buffer, votação por maioria, cooldown
+│   ├── estabilizador.py     # buffer, votação por maioria, cooldown
+│   └── pinca.py             # zoom por gesto de pinça com a mão
 └── ui/
     ├── hud.py               # overlays, indicadores, preview da câmera
     ├── ficha_planeta.py     # card de dados do planeta focado
+    ├── quiz.py              # interface interativa de atividades / quiz em Pygame
+    ├── narrador.py          # narração de voz com suporte a ElevenLabs e TTS local
     └── marca_dagua.py       # assinatura animada do autor (canto inferior direito)
 ```
 
