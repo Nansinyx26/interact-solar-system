@@ -50,11 +50,46 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 36 | Gesto de mão para as luas (pinça dupla) | ✅ | ✅ | pronto |
 | 37 | Aviso `has-symbols` no npm | — | ✅ | investigado: sem ação |
 | 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
-| 39 | **Gesto "L" como modificador: selecionar lua individual** | ⬜ | ⬜ | **especificado, aguarda decisão** |
+| 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
+| 40 | **BUG: órbita da Lua colide com Vênus e Marte** | ⬜ | ⬜ | **diagnosticado, a corrigir** |
 
 ---
 
 ## O que falta, em detalhe
+
+### 40 · BUG — a órbita da Lua invade Vênus e Marte
+
+Confirmado com número. A órbita da Lua tem raio fixo de **28 px**, mas na escala
+logarítmica os planetas vizinhos da Terra estão mais perto do que isso:
+
+```
+Mercúrio  órbita=  95.0
+Vênus     órbita= 141.7   distância até a anterior=  46.7
+Terra     órbita= 165.9   distância até Vênus     =  24.2  <-- menor que 28
+Marte     órbita= 197.3   distância até a Terra   =  31.5  <-- quase 28
+```
+
+Com a Lua a 28 px do centro da Terra, ela varre de **137,9 a 193,9 px** — e
+Vênus está em 141,7 px, bem no meio dessa faixa. Marte, em 197,3, fica a 3,4 px
+da borda.
+
+**Por que não basta diminuir o raio.** A folga real entre os discos de Vênus e
+Terra é de apenas ~4,4 px (24,2 menos os dois raios). Para a Lua caber ali sem
+encostar, a órbita dela teria que ter raio ≈ 7 px — **menor que o raio desenhado
+da própria Terra (10 px)**, ou seja, a Lua ficaria dentro do planeta. Não existe
+valor que resolva na visão geral.
+
+**Correção proposta:** aplicar à Lua a mesma regra que as luas menores já
+seguem — só desenhar acima de `ZOOM_MINIMO_PARA_LUAS`. Na visão geral a Lua e
+sua órbita somem (onde de qualquer forma seriam 4 px indistinguíveis); com a
+câmera aproximada na Terra, Vênus está fora do enquadramento e não há
+sobreposição possível. Isso também deixa o comportamento da Lua coerente com o
+das outras 21, em vez de ser um caso especial.
+
+Vale conferir junto: Netuno↔Urano (33,5 px) e Saturno↔Júpiter (45,6 px) têm
+folga parecida, então as luas **menores** desses planetas só não colidem hoje
+porque já respeitam o zoom mínimo — o que reforça que essa é a regra certa.
+
 
 ### 39 · Gesto "L" como modificador de modo — especificado, aguarda decisão
 
@@ -82,10 +117,22 @@ acrescenta a **seleção individual**, que nenhum dos dois faz.
 sem conhecer o pygame) casa com a separação que o projeto já tem entre
 `contador.py` (mede), `pinca.py` (decide) e o loop (aplica).
 
-**Ajuste necessário nos dados:** a especificação lista até 5 luas por planeta
-(Mimas, Reia, Jápeto, Ariel, Umbriel, Miranda, Nereida, Proteu), enquanto o
-catálogo atual tem 11 no total. Seria preciso ampliar `LUAS_MENORES` nos dois
-lados — e o limite de 5 existe porque **uma mão conta até 5**.
+**Catálogo (feito).** Ampliado de 11 para 22 luas, com um critério que evita
+inventar corpo: as maiores/mais notáveis de cada planeta, ordenadas pela
+distância REAL ao corpo-pai.
+
+| Planeta | No catálogo | Luas reais |
+|---|---|---|
+| Marte | 2 — Fobos, Deimos | **2** (não existe terceira) |
+| Júpiter | 5 — Amalteia, Io, Europa, Ganimedes, Calisto | 95 |
+| Saturno | 5 — Encélado, Dione, Reia, Titã, Jápeto | 146 |
+| Urano | 5 — Miranda, Ariel, Umbriel, Titânia, Oberon | 28 |
+| Netuno | 5 — Galateia, Larissa, Proteu, Tritão, Nereida | 16 |
+
+Marte é o caso que a regra "5 por planeta" não alcança, e está certo assim. O
+teto de 5 vem do gesto (uma mão conta até 5), não da astronomia — por isso o
+HUD **precisa** numerar a partir de `luas_do_planeta()`: em Marte a lista tem
+dois itens, e um dicionário fixo prometeria um terceiro.
 
 #### Três decisões pendentes (perguntas do próprio pedido)
 
@@ -122,7 +169,7 @@ que o renderizador não desenha. A numeração precisa sair de
 **Ordem de execução:**
 
 1. ✅ publicar a v1.3.1 (baseline, com a pinça dupla)
-2. ⬜ ampliar o catálogo de luas — commit isolado, sem tocar em gestos
+2. ✅ catálogo ampliado de 11 para 22 luas — commit isolado (`5da8fbf`)
 3. ⬜ máquina de estados do "L" + testes com landmarks sintéticos
 4. ⬜ HUD do modo luas, numerando a partir do catálogo
 
