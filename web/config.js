@@ -214,6 +214,8 @@ export const NARRAR_FICHA_COMPLETA = true;
 // erro, o narrador cai para a voz do próprio navegador.
 export const ENDPOINT_VOZ = "/api/voz";
 export const ELEVENLABS_VOZ_NOME = "Brian";
+// Servidor Backend no Render.com (para comunicação direta ou fallback entre Vercel e Render)
+export const URL_SERVIDOR_RENDER = "https://sistema-solar-backend.onrender.com";
 
 
 // ---------------------------------------------------------------------------

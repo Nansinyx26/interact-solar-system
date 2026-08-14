@@ -10,6 +10,10 @@ opencv-python==4.10.0.84
 pygame==2.6.1
 numpy==1.26.4
 
+# Telemetria e registro no MongoDB Atlas (Desktop)
+pymongo==4.17.0
+dnspython==2.8.0
+
 # Narração por voz. A voz neural da ElevenLabs é usada quando há uma chave em
 # ELEVENLABS_API_KEY (arquivo .env); sem chave ou sem internet, o pyttsx3 fala
 # com a voz do próprio sistema e o aplicativo continua completo offline.

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sistema-solar-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false

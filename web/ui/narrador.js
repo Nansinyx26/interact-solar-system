@@ -12,6 +12,7 @@ import {
   IDIOMA_NARRACAO,
   NARRACAO_ATIVA_PADRAO,
   NARRAR_FICHA_COMPLETA,
+  URL_SERVIDOR_RENDER,
   VELOCIDADE_NARRACAO,
   VOLUME_NARRACAO,
 } from "../config.js";
@@ -269,7 +270,15 @@ export class Narrador {
   async _falarNeural(texto) {
     const pedido = ++this._pedidoAtual;
     try {
-      const resposta = await fetch(`${ENDPOINT_VOZ}?texto=${encodeURIComponent(texto)}`);
+      let resposta = await fetch(`${ENDPOINT_VOZ}?texto=${encodeURIComponent(texto)}`);
+      if (!resposta.ok && URL_SERVIDOR_RENDER) {
+        try {
+          const respRender = await fetch(`${URL_SERVIDOR_RENDER}/api/voz?texto=${encodeURIComponent(texto)}`);
+          if (respRender.ok) resposta = respRender;
+        } catch {
+          // ignora falha de rede do render
+        }
+      }
       if (!resposta.ok) {
         if (resposta.status === 503 || resposta.status === 404) {
           this._neuralDisponivel = false;

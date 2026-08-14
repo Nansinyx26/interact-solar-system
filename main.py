@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+import webbrowser
 from dataclasses import replace
 
 import pygame
@@ -35,6 +36,7 @@ from config import (
     TITULO_JANELA,
 )
 from dados.planetas import CORPOS_POR_GESTO, CorpoCeleste, corpo_por_gesto
+from dados.telemetria import TelemetriaMongo
 from gestos.detector import MEDIAPIPE_DISPONIVEL, DetectorMaos, LeituraGestos
 from gestos.estabilizador import EstabilizadorGestos, ResultadoEstabilizacao
 from gestos.pinca import ControladorPinca
@@ -85,6 +87,8 @@ class Aplicacao:
         # webcam, essa espera corre em paralelo com a montagem da cena.
         self.narrador = Narrador()
         self.narrador.iniciar()
+        self.telemetria = TelemetriaMongo()
+        self.telemetria.registrar_sessao("desktop")
         try:
             self._construir()
         except BaseException:
@@ -201,6 +205,10 @@ class Aplicacao:
             self._voltar_visao_geral()
         elif tecla == _TECLA_NARRACAO:
             self.narrador.alternar()
+        elif tecla == pygame.K_r:
+            webbrowser.open("https://sistema-solar-gestos.vercel.app/ranking.html")
+        elif tecla == pygame.K_a:
+            webbrowser.open("https://sistema-solar-gestos.vercel.app/atividades.html")
         elif tecla == pygame.K_c:
             self.mostrar_preview = not self.mostrar_preview
         elif tecla == pygame.K_l:
@@ -294,6 +302,7 @@ class Aplicacao:
         )
         self.ficha.mostrar(corpo)
         self.narrador.anunciar(texto_do_corpo(corpo))
+        self.telemetria.registrar_interacao(corpo.nome, corpo.indice_gesto, "desktop")
 
     def _voltar_visao_geral(self, reiniciar_gesto: bool = True) -> None:
         """Desfaz o foco e reenquadra o sistema inteiro.
@@ -308,6 +317,7 @@ class Aplicacao:
         self.corpo_alvo = None
         self.camera.voltar_visao_geral()
         self.ficha.ocultar()
+        self.telemetria.registrar_interacao("Visao Geral", GESTO_VISAO_GERAL, "desktop")
         if reiniciar_gesto:
             self.estabilizador.reiniciar()
 

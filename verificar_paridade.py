@@ -92,6 +92,7 @@ MAPA_CORES_CSS = {
 MODULOS_ESPELHADOS = {
     "config.py": "config.js",
     "dados/planetas.py": "dados/planetas.js",
+    "dados/telemetria.py": "dados/telemetria.js",
     "nucleo/orbita.py": "nucleo/orbita.js",
     "nucleo/camera.py": "nucleo/camera.js",
     "nucleo/renderizador.py": "nucleo/renderizador.js",

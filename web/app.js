@@ -26,6 +26,7 @@ import { ControladorPinca } from "./gestos/pinca.js";
 import { Ficha } from "./ui/ficha.js";
 import { HUD } from "./ui/hud.js";
 import { Narrador, textoDoCorpo } from "./ui/narrador.js";
+import { registrarSessaoWeb, registrarInteracaoWeb } from "./dados/telemetria.js";
 
 /** Se o quadro demorar demais (aba em segundo plano), não damos um salto. */
 const DT_MAXIMO = 0.1;
@@ -48,6 +49,7 @@ class Aplicacao {
     this.ficha = new Ficha(document.getElementById("ficha"));
 
     this.tempoDias = 0;
+    registrarSessaoWeb();
     this.escalaTempo = TIME_SCALE;
     this.pausado = false;
     this.corpoAlvo = null;
@@ -369,6 +371,7 @@ class Aplicacao {
     this.camera.focarCorpo(this.posicoes.get(corpo.nome), raioCorpoPx(corpo), true);
     this.ficha.mostrar(corpo);
     this.narrador.anunciar(textoDoCorpo(corpo));
+    registrarInteracaoWeb(corpo.nome, corpo.indiceGesto);
     // A ficha ocupa o lugar da legenda no canto esquerdo: uma entra, a outra sai.
     document.body.classList.add("com-foco");
   }
@@ -380,6 +383,7 @@ class Aplicacao {
     this.camera.voltarVisaoGeral();
     this.ficha.ocultar();
     document.body.classList.remove("com-foco");
+    registrarInteracaoWeb("Visao Geral", GESTO_VISAO_GERAL);
     if (reiniciarGesto) this.estabilizador.reiniciar();
   }
 

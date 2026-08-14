@@ -21,17 +21,19 @@ RAIZ = Path(__file__).resolve().parent
 NOME_APP = "SistemaSolar"
 PASTA_BIBLIOTECAS = "_internal_sistema_solar"
 
-# O MediaPipe carrega os modelos .tflite/.binarypb de dentro do próprio pacote:
-# sem coletar esses arquivos o executável abre e falha ao criar o Hands.
-COLETAR = ["mediapipe"]
+# O MediaPipe e o Pymongo (com dnspython) precisam ter seus arquivos/módulos empacotados:
+COLETAR = ["mediapipe", "pymongo", "dns"]
 
-# O pyttsx3 escolhe o driver de voz por import dinâmico (SAPI5 no Windows), algo
-# que o PyInstaller não enxerga sozinho — sem estes nomes o executável sobe sem
-# a voz local de reserva.
+# Importações dinâmicas ou resoluções de driver (SAPI5, MongoDB SRV resolution)
+# que o PyInstaller não enxerga sozinho.
 IMPORTES_OCULTOS = [
     "pyttsx3.drivers",
     "pyttsx3.drivers.sapi5",
     "pyttsx3.drivers.dummy",
+    "pymongo",
+    "pymongo.srv_resolver",
+    "dns",
+    "dns.resolver",
 ]
 
 # Dependências pesadas que o mediapipe declara mas que o caminho do Hands nunca
