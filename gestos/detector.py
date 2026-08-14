@@ -86,6 +86,9 @@ class LeituraGestos:
     # Ter as DUAS é o que permite distinguir "pinça de uma mão" (zoom) de
     # "pinça das duas mãos" (comando), que é o único gesto ainda livre.
     razoes_pinca: tuple[float | None, ...] = ()
+    # Landmarks crus das mãos usáveis, para a máquina de estados classificar a
+    # FORMA (o "L") — o que a contagem sozinha não consegue expressar.
+    maos: tuple[tuple[np.ndarray, str], ...] = ()
 
     @property
     def razao_pinca(self) -> float | None:
@@ -369,6 +372,7 @@ class DetectorMaos:
             confianca_media=confianca,
             brilho_medio=brilho,
             razoes_pinca=razoes_pinca,
+            maos=tuple((pontos, lado) for pontos, lado, _ in maos),
             status=StatusCamera.ATIVA,
         )
 

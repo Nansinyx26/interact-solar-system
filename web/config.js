@@ -178,7 +178,9 @@ export const GESTO_MINIMO_DUAS_MAOS = 6;
 // Os gestos de 0 a 10 estão todos ocupados, então as luas menores não têm
 // número próprio: aparecem em bloco quando o modo é ligado — pela tecla M ou
 // pelo gesto das DUAS mãos em pinça, o único ainda livre.
-export const LUAS_VISIVEIS_PADRAO = false;
+// Ligadas por padrão: as luas são conteúdo, não um extra escondido atrás de
+// um atalho. Na visão geral elas aparecem comprimidas (FATOR_LUA_COMPACTO_*).
+export const LUAS_VISIVEIS_PADRAO = true;
 // Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
 // proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
 export const RAIO_LUA_MENOR_PX = 2.2;

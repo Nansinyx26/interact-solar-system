@@ -236,7 +236,9 @@ GESTO_MINIMO_DUAS_MAOS: Final[int] = 6
 # Os gestos de 0 a 10 estão todos ocupados, então as luas menores não têm número
 # próprio: elas aparecem em bloco quando o modo é ligado — pela tecla M ou pelo
 # gesto das DUAS mãos em pinça, o único ainda livre.
-LUAS_VISIVEIS_PADRAO: Final[bool] = False
+# Ligadas por padrão: as luas são conteúdo, não um extra escondido atrás de
+# um atalho. Na visão geral elas aparecem comprimidas (ver FATOR_LUA_COMPACTO_*).
+LUAS_VISIVEIS_PADRAO: Final[bool] = True
 # Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
 # proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
 RAIO_LUA_MENOR_PX: Final[float] = 2.2

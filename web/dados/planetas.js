@@ -302,6 +302,28 @@ export const LUAS_POR_PLANETA = LUAS_MENORES.reduce((mapa, lua) => {
   return mapa;
 }, {});
 
+// A Lua da Terra vive em CORPOS, não em LUAS_MENORES, porque tem gesto próprio
+// (o 9). Mas ela É uma lua: precisa aparecer aqui, senão a lista que o HUD
+// numera e o modo luas consulta diria que a Terra não tem satélite nenhum.
+// Esta é a fonte ÚNICA de "quais luas este planeta tem".
+for (const corpo of CORPOS) {
+  if (!corpo.orbitaEmTornoDe) continue;
+  const pai = corpo.orbitaEmTornoDe;
+  (LUAS_POR_PLANETA[pai] ??= []).unshift({
+    nome: corpo.nome,
+    planeta: pai,
+    diametroKm: corpo.diametroKm,
+    distanciaKm: corpo.distanciaKm,
+    periodoOrbitalDias: corpo.periodoOrbitalDias,
+    // 2,8 = RAIO_ORBITA_LUA_PX / RAIO_PLANETA_BASE_PX, o mesmo raio que o
+    // renderizador já usava para ela.
+    raioOrbitaPx: 2.8,
+    cor: corpo.corBase,
+    faseInicial: corpo.faseInicial,
+    fatoCurioso: corpo.fatoCurioso,
+  });
+}
+
 /** Luas desenhadas ao redor de um planeta (vazio se não houver). */
 export function luasDoPlaneta(nomePlaneta) {
   return LUAS_POR_PLANETA[nomePlaneta] ?? [];

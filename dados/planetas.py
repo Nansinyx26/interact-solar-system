@@ -376,6 +376,31 @@ for _lua in LUAS_MENORES:
     LUAS_POR_PLANETA.setdefault(_lua.planeta, ())
     LUAS_POR_PLANETA[_lua.planeta] += (_lua,)
 
+# A Lua da Terra vive em CORPOS, não em LUAS_MENORES, porque tem gesto próprio
+# (o 9). Mas ela É uma lua: precisa aparecer aqui, senão a lista que o HUD
+# numera e o modo luas consulta diria que a Terra não tem satélite nenhum.
+# Esta é a fonte ÚNICA de "quais luas este planeta tem".
+for _corpo in CORPOS:
+    if not _corpo.eh_satelite or _corpo.orbita_em_torno_de is None:
+        continue
+    _pai = _corpo.orbita_em_torno_de
+    LUAS_POR_PLANETA.setdefault(_pai, ())
+    LUAS_POR_PLANETA[_pai] = (
+        LuaMenor(
+            nome=_corpo.nome,
+            planeta=_pai,
+            diametro_km=_corpo.diametro_km,
+            distancia_km=_corpo.distancia_km,
+            periodo_orbital_dias=_corpo.periodo_orbital_dias,
+            # 2,8 = RAIO_ORBITA_LUA_PX / RAIO_PLANETA_BASE_PX, o mesmo raio que
+            # o renderizador já usava para ela.
+            raio_orbita_px=2.8,
+            cor=_corpo.cor_base,
+            fase_inicial=_corpo.fase_inicial,
+            fato_curioso=_corpo.fato_curioso,
+        ),
+    ) + LUAS_POR_PLANETA[_pai]
+
 
 def luas_do_planeta(nome_planeta: str) -> tuple[LuaMenor, ...]:
     """Luas desenhadas ao redor de um planeta (vazio se não houver)."""

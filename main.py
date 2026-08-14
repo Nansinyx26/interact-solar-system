@@ -36,16 +36,22 @@ from config import (
     TIME_SCALE_MIN,
     TITULO_JANELA,
 )
-from dados.planetas import CORPOS_POR_GESTO, CorpoCeleste, corpo_por_gesto
+from dados.planetas import (
+    CORPOS_POR_GESTO,
+    CorpoCeleste,
+    LuaMenor,
+    corpo_por_gesto,
+    luas_do_planeta,
+)
 from dados.telemetria import TelemetriaMongo
 from gestos.detector import MEDIAPIPE_DISPONIVEL, DetectorMaos, LeituraGestos
 from gestos.estabilizador import EstabilizadorGestos, ResultadoEstabilizacao
+from gestos.estado_gesto import IntencaoGesto, MaquinaGestos
 from gestos.pinca import ControladorPinca
 from nucleo.camera import Camera2D
 from nucleo.orbita import posicoes_do_sistema, raio_corpo_px
 from nucleo.renderizador import Renderizador
 from ui.ficha_planeta import FichaPlaneta
-from ui.narrador import Narrador, texto_do_corpo
 from ui.hud import (
     ALTURA_BLOCO_PREVIEW,
     HUD,
@@ -54,6 +60,7 @@ from ui.hud import (
     topo_do_painel_gesto,
 )
 from ui.marca_dagua import MarcaDagua
+from ui.narrador import Narrador, texto_do_corpo
 from ui.quiz import QuizDesktop
 
 # Limite de dt: se a janela for arrastada ou o processo travar por um instante,
@@ -132,6 +139,20 @@ class Aplicacao:
         # Modo livre: o usuário assumiu a câmera com o mouse e o rastreamento
         # automático do alvo fica suspenso até o próximo gesto/atalho.
         self.luas_visiveis: bool = LUAS_VISIVEIS_PADRAO
+        self.maquina_gestos = MaquinaGestos()
+        # Planeta e lua são campos SEPARADOS de propósito. Com um só, sair do
+        # modo luas mantendo a lua em foco deixaria o usuário sem caminho de
+        # volta ao planeta a não ser passando pela visão geral.
+        self.planeta_selecionado: CorpoCeleste | None = None
+        self.lua_selecionada: LuaMenor | None = None
+        self.aviso_luas: str = ""
+        self.intencao = IntencaoGesto(
+            modo_luas=False,
+            numero=None,
+            progresso_modo=0.0,
+            modo_mudou=False,
+            l_detectado=False,
+        )
         self.camera_livre: bool = False
         self._arrastando: bool = False
 
@@ -273,13 +294,28 @@ class Aplicacao:
                 self.camera_livre = True
                 self.camera.aplicar_zoom(estado_pinca.fator_zoom)
 
-            # 0-9 selecionam um corpo e 10 é o comando "visão geral".
-            contagem = self.leitura.contagem
-            valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
-            leitura_valida = contagem if valido else None
-            if self.pinca.bloqueando_gestos(agora):
-                leitura_valida = None
-            self.resultado_gesto = self.estabilizador.atualizar(leitura_valida, agora)
+            # A FORMA da mão vem antes da contagem: o "L" consome dois dedos e
+            # não pode entrar na soma (viraria 2 = Vênus).
+            self.intencao = self.maquina_gestos.atualizar(
+                list(self.leitura.maos), agora
+            )
+
+            if self.intencao.modo_luas:
+                # No modo luas o número significa índice de lua, não planeta:
+                # o estabilizador de corpos fica de fora.
+                if self.intencao.lua_confirmada is not None:
+                    self._selecionar_lua(self.intencao.lua_confirmada)
+                self.resultado_gesto = replace(self.resultado_gesto, confirmado=None)
+            else:
+                # 0-9 selecionam um corpo e 10 é o comando "visão geral".
+                contagem = self.leitura.contagem
+                valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
+                leitura_valida = contagem if valido else None
+                if self.pinca.bloqueando_gestos(agora):
+                    leitura_valida = None
+                self.resultado_gesto = self.estabilizador.atualizar(
+                    leitura_valida, agora
+                )
         elif self.resultado_gesto.confirmado is not None:
             # Não reconfirma o mesmo evento nos frames seguintes.
             self.resultado_gesto = replace(self.resultado_gesto, confirmado=None)
@@ -320,12 +356,62 @@ class Aplicacao:
             return
         self.camera_livre = False  # um comando novo devolve a câmera ao app
         self.corpo_alvo = corpo
+        if not corpo.eh_satelite:
+            # Guarda o contexto: é este planeta que o modo luas vai consultar.
+            self.planeta_selecionado = corpo
+            self.lua_selecionada = None
+            self.aviso_luas = ""
         self.camera.focar_corpo(
             self.posicoes[corpo.nome], raio_corpo_px(corpo), reiniciar=True
         )
         self.ficha.mostrar(corpo)
         self.narrador.anunciar(texto_do_corpo(corpo))
         self.telemetria.registrar_interacao(corpo.nome, corpo.indice_gesto, "desktop")
+
+    def _selecionar_lua(self, indice: int) -> None:
+        """Aplica o número recebido no modo luas como índice de lua.
+
+        O alvo é o planeta em contexto. Sem planeta (Sol ou visão geral) a Terra
+        assume, que é o caso mais provável de quem está começando a explorar.
+        """
+        alvo = self.planeta_selecionado
+        if alvo is None or alvo.eh_sol:
+            alvo = corpo_por_gesto(3)  # Terra
+            self.planeta_selecionado = alvo
+        if alvo is None:
+            return
+
+        luas = luas_do_planeta(alvo.nome)
+        if not luas:
+            self.aviso_luas = f"{alvo.nome} não tem luas conhecidas."
+            self.lua_selecionada = None
+            return
+
+        self.luas_visiveis = True
+        if indice == 0:
+            # Zero mostra TODAS: é a única forma de voltar à visão do sistema
+            # de luas sem largar o modificador.
+            self.lua_selecionada = None
+            self.aviso_luas = f"{alvo.nome}: todas as {len(luas)} luas."
+            return
+        if indice > len(luas):
+            # Número maior que a quantidade não troca nada — só avisa. A lista
+            # do HUD sai do catálogo, então ela nunca promete o que não existe.
+            plural = "luas" if len(luas) > 1 else "lua"
+            self.aviso_luas = f"{alvo.nome} tem {len(luas)} {plural}."
+            return
+
+        # O foco vem ANTES de gravar a lua: _selecionar() limpa lua_selecionada
+        # (é o que faz escolher um planeta desfazer a lua), então inverter a
+        # ordem apagaria a escolha no mesmo frame em que ela foi feita.
+        #
+        # A câmera fica no PLANETA: a lua é destacada, mas o planeta continua
+        # como referência de escala, que é o ponto de olhar para uma lua.
+        if self.corpo_alvo is not alvo:
+            self._selecionar(alvo)
+            self.planeta_selecionado = alvo
+        self.lua_selecionada = luas[indice - 1]
+        self.aviso_luas = ""
 
     def _voltar_visao_geral(self, reiniciar_gesto: bool = True) -> None:
         """Desfaz o foco e reenquadra o sistema inteiro.
@@ -338,6 +424,10 @@ class Aplicacao:
             return
         self.camera_livre = False
         self.corpo_alvo = None
+        # O gesto 10 e a tecla V sempre zeram o modo luas, como combinado.
+        self.maquina_gestos.reiniciar()
+        self.lua_selecionada = None
+        self.aviso_luas = ""
         self.camera.voltar_visao_geral()
         self.ficha.ocultar()
         self.telemetria.registrar_interacao("Visao Geral", GESTO_VISAO_GERAL, "desktop")
@@ -402,7 +492,8 @@ def main() -> int:
         "+/- tempo | C câmera | N voz | Q sair"
     )
     print("Mouse: arrastar = pan | roda = zoom | janela redimensionável")
-    print(f"Python {sys.version.split()[0]} | webcam pedida: índice {argumentos.camera}")
+    versao_python = sys.version.split()[0]
+    print(f"Python {versao_python} | webcam pedida: índice {argumentos.camera}")
     if not MEDIAPIPE_DISPONIVEL:
         print(
             "AVISO: MediaPipe não pôde ser importado. A aplicação roda em modo\n"
