@@ -44,16 +44,19 @@ export class Camera2D {
     this.centroY = 0;
     this.zoom = this.zoomVisaoGeral();
     this.deslocamentoX = 0;
+    this.deslocamentoY = 0;
 
     this._centroXInicial = 0;
     this._centroYInicial = 0;
     this._zoomInicial = this.zoom;
-    this._deslocamentoInicial = 0;
+    this._deslocamentoXInicial = 0;
+    this._deslocamentoYInicial = 0;
     this._progresso = 1;
 
     this._centroAlvo = { x: 0, y: 0 };
     this._zoomAlvo = this.zoom;
-    this._deslocamentoAlvo = 0;
+    this._deslocamentoXAlvo = 0;
+    this._deslocamentoYAlvo = 0;
   }
 
   /** Quanto a tela atual é maior/menor que a de referência. */
@@ -85,37 +88,55 @@ export class Camera2D {
   }
 
   /** Congela o estado atual como origem e começa uma nova interpolação. */
-  iniciarTransicao(centroAlvo, zoomAlvo, deslocamentoAlvo) {
+  iniciarTransicao(centroAlvo, zoomAlvo, deslocamentoXAlvo = 0, deslocamentoYAlvo = 0) {
     this._centroXInicial = this.centroX;
     this._centroYInicial = this.centroY;
     this._zoomInicial = this.zoom;
-    this._deslocamentoInicial = this.deslocamentoX;
+    this._deslocamentoXInicial = this.deslocamentoX;
+    this._deslocamentoYInicial = this.deslocamentoY;
     this._progresso = 0;
-    this.definirAlvo(centroAlvo, zoomAlvo, deslocamentoAlvo);
+    this.definirAlvo(centroAlvo, zoomAlvo, deslocamentoXAlvo, deslocamentoYAlvo);
   }
 
   /** Atualiza o destino sem reiniciar o progresso (alvo em movimento). */
-  definirAlvo(centroAlvo, zoomAlvo, deslocamentoAlvo) {
+  definirAlvo(centroAlvo, zoomAlvo, deslocamentoXAlvo = 0, deslocamentoYAlvo = 0) {
     this._centroAlvo = centroAlvo;
     this._zoomAlvo = this.limitarZoom(zoomAlvo);
-    this._deslocamentoAlvo = deslocamentoAlvo;
+    this._deslocamentoXAlvo = deslocamentoXAlvo;
+    this._deslocamentoYAlvo = deslocamentoYAlvo;
   }
 
   /** Aponta a câmera para um corpo, com ou sem reiniciar a transição. */
   focarCorpo(posicao, raioCorpo, reiniciar) {
     const escala = this.escalaJanela;
     const zoom = zoomParaFocar(raioCorpo, escala);
-    // Em telas estreitas (celular) a ficha ocupa a parte de baixo, não a
-    // lateral, então não faz sentido empurrar o planeta para o lado.
-    const deslocamento = this.largura < 820 ? 0 : DESLOCAMENTO_FOCO_X_PX * escala;
-    if (reiniciar) this.iniciarTransicao(posicao, zoom, deslocamento);
-    else this.definirAlvo(posicao, zoom, deslocamento);
+    let deslocamentoX = 0;
+    let deslocamentoY = 0;
+
+    if (this.largura < 820) {
+      if (this.altura > this.largura) {
+        // Celular em pé (retrato): a ficha ocupa a parte inferior da tela (~42vh).
+        // Deslocamos o astro para cima (Y ~ 26% da tela), deixando-o 100% visível!
+        deslocamentoY = -this.altura * 0.23;
+        deslocamentoX = 0;
+      } else {
+        // Celular deitado (paisagem): a ficha ocupa a lateral direita.
+        deslocamentoX = -this.largura * 0.18;
+        deslocamentoY = 0;
+      }
+    } else {
+      deslocamentoX = DESLOCAMENTO_FOCO_X_PX * escala;
+      deslocamentoY = 0;
+    }
+
+    if (reiniciar) this.iniciarTransicao(posicao, zoom, deslocamentoX, deslocamentoY);
+    else this.definirAlvo(posicao, zoom, deslocamentoX, deslocamentoY);
   }
 
   /** Volta suavemente ao enquadramento do sistema inteiro. */
   voltarVisaoGeral(reiniciar = true) {
-    if (reiniciar) this.iniciarTransicao({ x: 0, y: 0 }, this.zoomVisaoGeral(), 0);
-    else this.definirAlvo({ x: 0, y: 0 }, this.zoomVisaoGeral(), 0);
+    if (reiniciar) this.iniciarTransicao({ x: 0, y: 0 }, this.zoomVisaoGeral(), 0, 0);
+    else this.definirAlvo({ x: 0, y: 0 }, this.zoomVisaoGeral(), 0, 0);
   }
 
   /** Encerra a transição, fixando a câmera onde ela está agora. */
@@ -123,11 +144,13 @@ export class Camera2D {
     this._progresso = 1;
     this._centroAlvo = { x: this.centroX, y: this.centroY };
     this._zoomAlvo = this.zoom;
-    this._deslocamentoAlvo = this.deslocamentoX;
+    this._deslocamentoXAlvo = this.deslocamentoX;
+    this._deslocamentoYAlvo = this.deslocamentoY;
     this._centroXInicial = this.centroX;
     this._centroYInicial = this.centroY;
     this._zoomInicial = this.zoom;
-    this._deslocamentoInicial = this.deslocamentoX;
+    this._deslocamentoXInicial = this.deslocamentoX;
+    this._deslocamentoYInicial = this.deslocamentoY;
   }
 
   /** Pan manual: desloca a cena conforme o ponteiro, em pixels de tela. */
@@ -155,8 +178,13 @@ export class Camera2D {
     this.centroY = interpolar(this._centroYInicial, this._centroAlvo.y, fator);
     this.zoom = interpolar(this._zoomInicial, this._zoomAlvo, fator);
     this.deslocamentoX = interpolar(
-      this._deslocamentoInicial,
-      this._deslocamentoAlvo,
+      this._deslocamentoXInicial,
+      this._deslocamentoXAlvo,
+      fator,
+    );
+    this.deslocamentoY = interpolar(
+      this._deslocamentoYInicial,
+      this._deslocamentoYAlvo,
       fator,
     );
   }
@@ -165,7 +193,7 @@ export class Camera2D {
   mundoParaTela(posicao) {
     return {
       x: (posicao.x - this.centroX) * this.zoom + this.largura / 2 + this.deslocamentoX,
-      y: (posicao.y - this.centroY) * this.zoom + this.altura / 2,
+      y: (posicao.y - this.centroY) * this.zoom + this.altura / 2 + this.deslocamentoY,
     };
   }
 
