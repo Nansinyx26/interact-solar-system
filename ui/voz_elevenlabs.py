@@ -43,26 +43,35 @@ def _raiz_do_projeto() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def ler_chave() -> str | None:
-    """Procura a chave no ambiente e, se não achar, no .env do projeto."""
-    do_ambiente = os.environ.get(NOME_VARIAVEL, "").strip()
-    if do_ambiente:
-        return do_ambiente
+def ler_chaves() -> list[str]:
+    """Procura as chaves no ambiente e, se não achar, no .env do projeto.
 
-    arquivo = _raiz_do_projeto() / ".env"
-    if not arquivo.is_file():
-        return None
-    try:
-        for linha in arquivo.read_text(encoding="utf-8").splitlines():
-            limpa = linha.strip()
-            if not limpa or limpa.startswith("#") or "=" not in limpa:
-                continue
-            nome, _, valor = limpa.partition("=")
-            if nome.strip() == NOME_VARIAVEL:
-                return valor.strip().strip('"').strip("'") or None
-    except OSError:
-        return None
-    return None
+    Aceita múltiplas chaves separadas por vírgula para suporte a fallback.
+    """
+    bruto = os.environ.get(NOME_VARIAVEL, "").strip()
+    if not bruto:
+        arquivo = _raiz_do_projeto() / ".env"
+        if arquivo.is_file():
+            try:
+                for linha in arquivo.read_text(encoding="utf-8").splitlines():
+                    limpa = linha.strip()
+                    if not limpa or limpa.startswith("#") or "=" not in limpa:
+                        continue
+                    nome, _, valor = limpa.partition("=")
+                    if nome.strip() == NOME_VARIAVEL:
+                        bruto = valor.strip().strip('"').strip("'")
+                        break
+            except OSError:
+                pass
+    if not bruto:
+        return []
+    return [k.strip() for k in bruto.split(",") if k.strip()]
+
+
+def ler_chave() -> str | None:
+    """Compatibilidade: devolve a primeira chave válida da lista."""
+    chaves = ler_chaves()
+    return chaves[0] if chaves else None
 
 
 def _caminho_do_cache(texto: str) -> Path:
@@ -76,11 +85,12 @@ class SinteseElevenLabs:
     """Gera o áudio de uma frase, servindo do cache quando possível."""
 
     def __init__(self) -> None:
-        self.chave = ler_chave()
-        self.mensagem = "" if self.chave else f"{NOME_VARIAVEL} não configurada"
+        self.chaves = ler_chaves()
+        self.chave = self.chaves[0] if self.chaves else None
+        self.mensagem = "" if self.chaves else f"{NOME_VARIAVEL} não configurada"
         # Uma falha de rede desliga o backend até a próxima execução: insistir a
         # cada troca de planeta só adicionaria segundos de espera à narração.
-        self._desativado = not self.chave
+        self._desativado = not self.chaves
 
     @property
     def disponivel(self) -> bool:
@@ -110,7 +120,7 @@ class SinteseElevenLabs:
         return dados
 
     def _pedir_a_api(self, texto: str) -> bytes | None:
-        """Chama a ElevenLabs e devolve o MP3."""
+        """Chama a ElevenLabs e devolve o MP3, testando fallback de chaves em erro 401/403/429."""
         corpo = json.dumps(
             {
                 "text": texto,
@@ -119,26 +129,35 @@ class SinteseElevenLabs:
                 "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
             }
         ).encode("utf-8")
-        pedido = urllib.request.Request(
-            f"{ELEVENLABS_URL}/{ELEVENLABS_VOZ_ID}?output_format={ELEVENLABS_FORMATO}",
-            data=corpo,
-            headers={
-                "xi-api-key": self.chave or "",
-                "Content-Type": "application/json",
-                "Accept": "audio/mpeg",
-            },
-        )
-        try:
-            with urllib.request.urlopen(pedido, timeout=ELEVENLABS_TIMEOUT_S) as resposta:
-                return resposta.read()
-        except urllib.error.HTTPError as erro:
-            detalhe = erro.read()[:200].decode("utf-8", errors="replace")
-            self.mensagem = f"ElevenLabs HTTP {erro.code}: {detalhe}"
-            # 401/403 = chave inválida; 429 = cota. Nenhum deles melhora com
-            # nova tentativa, então o backend sai de cena e a voz local assume.
-            self._desativado = erro.code in (401, 403, 429)
-        except (urllib.error.URLError, TimeoutError, OSError) as erro:
-            self.mensagem = f"ElevenLabs indisponível: {erro}"
+
+        chaves_para_testar = list(self.chaves)
+        for chave in chaves_para_testar:
+            pedido = urllib.request.Request(
+                f"{ELEVENLABS_URL}/{ELEVENLABS_VOZ_ID}?output_format={ELEVENLABS_FORMATO}",
+                data=corpo,
+                headers={
+                    "xi-api-key": chave,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+            )
+            try:
+                with urllib.request.urlopen(pedido, timeout=ELEVENLABS_TIMEOUT_S) as resposta:
+                    return resposta.read()
+            except urllib.error.HTTPError as erro:
+                detalhe = erro.read()[:200].decode("utf-8", errors="replace")
+                self.mensagem = f"ElevenLabs HTTP {erro.code}: {detalhe}"
+                if erro.code in (401, 403, 429):
+                    if chave in self.chaves:
+                        self.chaves.remove(chave)
+                    continue
+                break
+            except (urllib.error.URLError, TimeoutError, OSError) as erro:
+                self.mensagem = f"ElevenLabs indisponível: {erro}"
+                break
+
+        if not self.chaves:
             self._desativado = True
         print(f"[narrador] {self.mensagem}", flush=True)
         return None
+

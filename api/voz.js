@@ -36,55 +36,63 @@ export default async function handler(pedido, resposta) {
     return resposta.status(413).json({ erro: "Texto longo demais." });
   }
 
-  const chave = process.env.ELEVENLABS_API_KEY;
-  if (!chave) {
+  const rawChaves = process.env.ELEVENLABS_API_KEY ?? "";
+  const chaves = rawChaves
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  if (chaves.length === 0) {
     // 503 é o sinal combinado com o front: ele usa a voz do navegador.
     return resposta
       .status(503)
       .json({ erro: "ELEVENLABS_API_KEY não configurada no servidor." });
   }
 
-  try {
-    const alvo =
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOZ_ID}` +
-      `?output_format=${FORMATO}`;
-    const upstream = await fetch(alvo, {
-      method: "POST",
-      headers: {
-        "xi-api-key": chave,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
-      },
-      body: JSON.stringify({
-        text: texto,
-        model_id: MODELO,
-        language_code: IDIOMA,
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-      }),
-    });
+  const alvo =
+    `https://api.elevenlabs.io/v1/text-to-speech/${VOZ_ID}` +
+    `?output_format=${FORMATO}`;
 
-    if (!upstream.ok) {
+  let ultimoErro = null;
+
+  for (const chave of chaves) {
+    try {
+      const upstream = await fetch(alvo, {
+        method: "POST",
+        headers: {
+          "xi-api-key": chave,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text: texto,
+          model_id: MODELO,
+          language_code: IDIOMA,
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        }),
+      });
+
+      if (upstream.ok) {
+        const audio = Buffer.from(await upstream.arrayBuffer());
+        resposta.setHeader("Content-Type", "audio/mpeg");
+        resposta.setHeader("Content-Length", String(audio.length));
+        // As frases são fixas (dez corpos celestes): o cache da CDN evita pagar
+        // créditos de novo a cada visitante.
+        resposta.setHeader(
+          "Cache-Control",
+          "public, max-age=86400, s-maxage=2592000, immutable",
+        );
+        return resposta.status(200).send(audio);
+      }
+
       const detalhe = (await upstream.text()).slice(0, 200);
-      // Não repassamos o corpo do erro da ElevenLabs adiante sem filtrar: ele
-      // pode citar dados da conta.
       console.error("ElevenLabs respondeu", upstream.status, detalhe);
-      return resposta
-        .status(502)
-        .json({ erro: `Síntese indisponível (HTTP ${upstream.status}).` });
+      ultimoErro = `Síntese indisponível (HTTP ${upstream.status}).`;
+    } catch (erro) {
+      console.error("Falha ao sintetizar:", erro);
+      ultimoErro = "Falha ao sintetizar a voz.";
     }
-
-    const audio = Buffer.from(await upstream.arrayBuffer());
-    resposta.setHeader("Content-Type", "audio/mpeg");
-    resposta.setHeader("Content-Length", String(audio.length));
-    // As frases são fixas (dez corpos celestes): o cache da CDN evita pagar
-    // créditos de novo a cada visitante.
-    resposta.setHeader(
-      "Cache-Control",
-      "public, max-age=86400, s-maxage=2592000, immutable",
-    );
-    return resposta.status(200).send(audio);
-  } catch (erro) {
-    console.error("Falha ao sintetizar:", erro);
-    return resposta.status(502).json({ erro: "Falha ao sintetizar a voz." });
   }
+
+  return resposta.status(502).json({ erro: ultimoErro ?? "Falha ao sintetizar a voz." });
 }
