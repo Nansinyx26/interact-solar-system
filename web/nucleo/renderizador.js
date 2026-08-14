@@ -56,6 +56,7 @@ import {
   anguloDoCinturao,
   anguloIluminacao,
   faixaDoCinturao,
+  fatorOrbitaLua,
   posicaoDaLuaMenor,
   faseRotacao,
   raioCorpoPx,
@@ -434,13 +435,14 @@ export class Renderizador {
 
     this._desenharEstrelas(camera);
     this._desenharCinturao(camera, tempoDias, corpoFocado);
-    this._desenharOrbitas(camera, posicoes, corpoFocado);
+    this._desenharOrbitas(camera, posicoes, corpoFocado, luasVisiveis);
     for (const corpo of CORPOS) {
       // Satélites seguem a regra das luas menores: somem na visão geral, onde
       // seriam 4 px em cima do planeta — e onde a órbita colidiria com o
       // vizinho. Quando o próprio satélite é o alvo, sempre aparece.
       if (
         corpo.orbitaEmTornoDe &&
+        !luasVisiveis &&
         camera.zoom < ZOOM_MINIMO_PARA_LUAS &&
         corpoFocado?.nome !== corpo.nome
       ) {
@@ -494,7 +496,7 @@ export class Renderizador {
    */
   _desenharLuas(camera, corpo, posicao, tempoDias, corpoFocado) {
     const luas = luasDoPlaneta(corpo.nome);
-    if (!luas.length || camera.zoom < ZOOM_MINIMO_PARA_LUAS) return;
+    if (!luas.length) return;
 
     const { ctx } = this;
     const raioPlaneta = raioCorpoPx(corpo);
@@ -503,7 +505,9 @@ export class Renderizador {
     const alphaLua = esmaecido ? ALPHA_CORPO_ESMAECIDO : 1;
 
     for (const lua of luas) {
-      const raioOrbita = camera.escalar(raioPlaneta * lua.raioOrbitaPx);
+      // Comprimido na visão geral, aberto conforme a câmera aproxima.
+      const fator = fatorOrbitaLua(lua.raioOrbitaPx, camera.zoom, corpo.temAneis);
+      const raioOrbita = camera.escalar(raioPlaneta * fator);
       if (raioOrbita > 3) {
         ctx.strokeStyle = `rgba(${COR_ORBITA_LUA}, ${esmaecido ? 0.08 : ALPHA_ORBITA_LUA})`;
         ctx.lineWidth = 1;
@@ -512,7 +516,7 @@ export class Renderizador {
         ctx.stroke();
       }
 
-      const posicaoLua = posicaoDaLuaMenor(lua, posicao, raioPlaneta, tempoDias);
+      const posicaoLua = posicaoDaLuaMenor(lua, posicao, raioPlaneta, tempoDias, fator);
       const tela = camera.mundoParaTela(posicaoLua);
       const raioDesenho = Math.max(1.5, camera.escalar(RAIO_LUA_MENOR_PX));
       ctx.globalAlpha = alphaLua;
@@ -548,7 +552,7 @@ export class Renderizador {
     });
   }
 
-  _desenharOrbitas(camera, posicoes, corpoFocado) {
+  _desenharOrbitas(camera, posicoes, corpoFocado, luasVisiveis = false) {
     const { ctx } = this;
     const centroSol = camera.mundoParaTela({ x: 0, y: 0 });
     ctx.lineWidth = 1;
@@ -564,11 +568,14 @@ export class Renderizador {
         // na visão geral a órbita da Lua (raio 28) invadiria Vênus, que fica a
         // 24,2 px da Terra — e não há raio que resolva, já que a folga entre os
         // discos é de ~4 px, menor que o raio desenhado da própria Terra.
-        if (camera.zoom < ZOOM_MINIMO_PARA_LUAS) continue;
+        if (!luasVisiveis && camera.zoom < ZOOM_MINIMO_PARA_LUAS) continue;
         const posPai = posicoes.get(corpo.orbitaEmTornoDe);
         if (!posPai) continue;
         centro = camera.mundoParaTela(posPai);
-        raioMundo = RAIO_ORBITA_LUA_PX;
+        const pai = CORPOS.find((c) => c.nome === corpo.orbitaEmTornoDe);
+        const raioPai = pai ? raioCorpoPx(pai) : 1;
+        raioMundo =
+          raioPai * fatorOrbitaLua(RAIO_ORBITA_LUA_PX / raioPai, camera.zoom, pai?.temAneis);
       } else {
         raioMundo = raioOrbitalPx(corpo.distanciaUa);
       }

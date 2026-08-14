@@ -11,6 +11,10 @@ import math
 
 from config import (
     CINTURAO_UA_EXTERNO,
+    FATOR_ANEL_EXTERNO,
+    FATOR_LUA_COMPACTO_MAX,
+    FATOR_LUA_COMPACTO_MIN,
+    FOLGA_LUA_APOS_ANEL,
     CINTURAO_UA_INTERNO,
     EXPOENTE_RAIO_CORPO,
     FATOR_ROTACAO_PROPRIA,
@@ -21,6 +25,8 @@ from config import (
     PERIODO_CINTURAO_DIAS,
     RAIO_PLANETA_BASE_PX,
     RAIO_SOL_PX,
+    ZOOM_MINIMO_PARA_LUAS,
+    ZOOM_VISAO_GERAL,
 )
 from dados.planetas import (
     CORPOS,
@@ -28,6 +34,7 @@ from dados.planetas import (
     DISTANCIA_UA_MAXIMA,
     DISTANCIA_UA_MINIMA,
     CorpoCeleste,
+    LUAS_MENORES,
     LuaMenor,
 )
 
@@ -121,8 +128,47 @@ def posicoes_do_sistema(tempo_dias: float) -> dict[str, tuple[float, float]]:
     return posicoes
 
 
+# Faixa de raios usada no catálogo, para comprimir proporcionalmente: a lua
+# mais interna continua sendo a mais interna também no modo compacto.
+_FATOR_LUA_MIN = min(l.raio_orbita_px for l in LUAS_MENORES)
+_FATOR_LUA_MAX = max(l.raio_orbita_px for l in LUAS_MENORES)
+
+
+def fator_orbita_lua(fator_base: float, zoom: float, tem_aneis: bool = False) -> float:
+    """Raio orbital da lua (em raios do planeta), adaptado ao zoom.
+
+    Na visão geral não há espaço para o raio cheio: as luas de Júpiter
+    precisariam de 105 px e só existem 70 px até Saturno. Em vez de escondê-las,
+    o sistema inteiro é **comprimido** para um anel colado ao planeta e vai se
+    abrindo conforme a câmera aproxima, até a configuração real a partir de
+    ``ZOOM_MINIMO_PARA_LUAS``.
+
+    A compressão preserva a ORDEM: a lua mais interna do catálogo continua
+    sendo a mais interna no anel compacto.
+    """
+    fracao = (fator_base - _FATOR_LUA_MIN) / (_FATOR_LUA_MAX - _FATOR_LUA_MIN)
+    compacto = FATOR_LUA_COMPACTO_MIN + fracao * (
+        FATOR_LUA_COMPACTO_MAX - FATOR_LUA_COMPACTO_MIN
+    )
+    if tem_aneis:
+        # Sem este deslocamento as luas de Saturno cairiam dentro dos anéis,
+        # que se estendem até FATOR_ANEL_EXTERNO raios.
+        compacto += FATOR_ANEL_EXTERNO + FOLGA_LUA_APOS_ANEL - FATOR_LUA_COMPACTO_MIN
+
+    # A abertura começa em ZERO no zoom da visão geral — não em zoom zero.
+    # Dividir direto por ZOOM_MINIMO_PARA_LUAS deixava o sistema 56% aberto já
+    # no panorama, que é justamente onde ele não pode caber.
+    faixa = max(1e-6, ZOOM_MINIMO_PARA_LUAS - ZOOM_VISAO_GERAL)
+    abertura = min(1.0, max(0.0, (zoom - ZOOM_VISAO_GERAL) / faixa))
+    return compacto + (fator_base - compacto) * abertura
+
+
 def posicao_da_lua_menor(
-    lua: LuaMenor, posicao_planeta: tuple[float, float], raio_planeta: float, tempo_dias: float
+    lua: LuaMenor,
+    posicao_planeta: tuple[float, float],
+    raio_planeta: float,
+    tempo_dias: float,
+    fator: float | None = None,
 ) -> tuple[float, float]:
     """Posição de uma lua menor, em unidades de mundo.
 
@@ -134,7 +180,7 @@ def posicao_da_lua_menor(
         angulo = lua.fase_inicial
     else:
         angulo = lua.fase_inicial + 2.0 * math.pi * (tempo_dias / lua.periodo_orbital_dias)
-    raio = raio_planeta * lua.raio_orbita_px
+    raio = raio_planeta * (fator if fator is not None else lua.raio_orbita_px)
     return (
         posicao_planeta[0] + raio * math.cos(angulo),
         posicao_planeta[1] + raio * math.sin(angulo),
@@ -172,6 +218,7 @@ __all__ = [
     "angulo_orbital",
     "fase_rotacao",
     "faixa_do_cinturao",
+    "fator_orbita_lua",
     "posicao_da_lua_menor",
     "posicao_orbital",
     "posicoes_do_sistema",

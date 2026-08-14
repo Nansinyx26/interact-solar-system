@@ -240,9 +240,19 @@ LUAS_VISIVEIS_PADRAO: Final[bool] = False
 # Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
 # proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
 RAIO_LUA_MENOR_PX: Final[float] = 2.2
-# As luas só aparecem quando o planeta está grande o bastante na tela; abaixo
-# disto elas viram um borrão de pontos em cima do disco.
+# Zoom a partir do qual as luas usam o raio orbital cheio. Abaixo dele o
+# sistema é comprimido (ver FATOR_LUA_COMPACTO_*), não escondido.
 ZOOM_MINIMO_PARA_LUAS: Final[float] = 1.6
+
+# Raio orbital COMPACTO, usado na visão geral — múltiplo do raio do planeta.
+# Sem isso as luas invadem o planeta vizinho: em volta de Júpiter elas
+# precisariam de 105 px e só há 70 px até Saturno. Com teto de 1,45 todo mundo
+# cabe (Júpiter usa 38 px, a Lua da Terra usa 14,5 contra 34 de folga).
+FATOR_LUA_COMPACTO_MIN: Final[float] = 1.15
+FATOR_LUA_COMPACTO_MAX: Final[float] = 1.45
+# Planetas com anéis precisam de um piso: com o fator compacto puro, as luas de
+# Saturno cairiam DENTRO dos anéis, que vão até 2,3 raios.
+FOLGA_LUA_APOS_ANEL: Final[float] = 0.15
 COR_ORBITA_LUA: Final[tuple[int, int, int]] = (150, 160, 190)
 ALPHA_ORBITA_LUA: Final[int] = 45
 

@@ -8,6 +8,10 @@
 
 import {
   CINTURAO_UA_EXTERNO,
+  FATOR_ANEL_EXTERNO,
+  FATOR_LUA_COMPACTO_MAX,
+  FATOR_LUA_COMPACTO_MIN,
+  FOLGA_LUA_APOS_ANEL,
   CINTURAO_UA_INTERNO,
   EXPOENTE_RAIO_CORPO,
   FATOR_ROTACAO_PROPRIA,
@@ -18,9 +22,12 @@ import {
   PERIODO_CINTURAO_DIAS,
   RAIO_PLANETA_BASE_PX,
   RAIO_SOL_PX,
+  ZOOM_MINIMO_PARA_LUAS,
+  ZOOM_VISAO_GERAL,
 } from "../config.js";
 import {
   CORPOS,
+  LUAS_MENORES,
   DIAMETRO_REFERENCIA_KM,
   DISTANCIA_UA_MAXIMA,
   DISTANCIA_UA_MINIMA,
@@ -125,12 +132,12 @@ export function anguloIluminacao(posicao) {
  * real: em escala fiel Fobos ficaria dentro do disco de Marte e Calisto a 26
  * raios de Júpiter, fora da tela em qualquer zoom útil.
  */
-export function posicaoDaLuaMenor(lua, posicaoPlaneta, raioPlaneta, tempoDias) {
+export function posicaoDaLuaMenor(lua, posicaoPlaneta, raioPlaneta, tempoDias, fator) {
   const angulo =
     lua.periodoOrbitalDias === 0
       ? lua.faseInicial
       : lua.faseInicial + 2 * Math.PI * (tempoDias / lua.periodoOrbitalDias);
-  const raio = raioPlaneta * lua.raioOrbitaPx;
+  const raio = raioPlaneta * (fator ?? lua.raioOrbitaPx);
   return {
     x: posicaoPlaneta.x + raio * Math.cos(angulo),
     y: posicaoPlaneta.y + raio * Math.sin(angulo),
@@ -150,4 +157,33 @@ export function faixaDoCinturao() {
 /** Rotação do cinturão inteiro, tratado como um corpo só. */
 export function anguloDoCinturao(tempoDias) {
   return 2 * Math.PI * (tempoDias / PERIODO_CINTURAO_DIAS);
+}
+
+// Faixa de raios usada no catálogo, para comprimir proporcionalmente: a lua
+// mais interna continua sendo a mais interna também no modo compacto.
+const FATOR_LUA_MIN = Math.min(...LUAS_MENORES.map((l) => l.raioOrbitaPx));
+const FATOR_LUA_MAX = Math.max(...LUAS_MENORES.map((l) => l.raioOrbitaPx));
+
+/**
+ * Raio orbital da lua (em raios do planeta), adaptado ao zoom.
+ *
+ * Na visão geral não há espaço para o raio cheio, então o sistema inteiro é
+ * comprimido para um anel colado ao planeta e vai se abrindo conforme a câmera
+ * aproxima, até a configuração real a partir de ZOOM_MINIMO_PARA_LUAS.
+ *
+ * A compressão preserva a ORDEM: a lua mais interna do catálogo continua sendo
+ * a mais interna no anel compacto.
+ */
+export function fatorOrbitaLua(fatorBase, zoom, temAneis = false) {
+  const fracao = (fatorBase - FATOR_LUA_MIN) / (FATOR_LUA_MAX - FATOR_LUA_MIN);
+  let compacto =
+    FATOR_LUA_COMPACTO_MIN + fracao * (FATOR_LUA_COMPACTO_MAX - FATOR_LUA_COMPACTO_MIN);
+  if (temAneis) {
+    // Sem este deslocamento as luas de Saturno cairiam dentro dos anéis.
+    compacto += FATOR_ANEL_EXTERNO + FOLGA_LUA_APOS_ANEL - FATOR_LUA_COMPACTO_MIN;
+  }
+  // A abertura começa em ZERO no zoom da visão geral — não em zoom zero.
+  const faixa = Math.max(1e-6, ZOOM_MINIMO_PARA_LUAS - ZOOM_VISAO_GERAL);
+  const abertura = Math.min(1, Math.max(0, (zoom - ZOOM_VISAO_GERAL) / faixa));
+  return compacto + (fatorBase - compacto) * abertura;
 }

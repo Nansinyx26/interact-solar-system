@@ -52,55 +52,50 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
 | 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
 | 40 | BUG: órbita da Lua colidia com Vênus e Marte | ✅ | ✅ | corrigido |
-| 41 | **Ver as luas em volta dos planetas na visão geral** | ⬜ | ⬜ | **medido, precisa de escala adaptativa** |
+| 41 | Ver as luas em volta dos planetas na visão geral | ✅ | ✅ | pronto |
 
 ---
 
 ## O que falta, em detalhe
 
-### 41 · Ver as luas na visão geral — precisa de escala adaptativa
+### 41 · Ver as luas na visão geral — pronto
 
-Pedido: as luas devem aparecer em volta dos planetas **também na visão geral**,
-não só com a câmera aproximada.
+As luas aparecem em volta dos planetas também na visão geral, com **raio
+orbital adaptativo ao zoom**: comprimido de longe, aberto de perto.
 
-**Do jeito atual é impossível.** O raio orbital das luas vai até 4,1 vezes o
-raio do planeta, e nessa escala o espaço não existe:
+**Correção de um erro meu no registro anterior.** Eu havia escrito que "com teto
+de 1,45 tudo cabe". Estava errado: calculei a folga sem descontar o raio do
+planeta vizinho. Medindo direito:
 
 ```
-planeta    raio    folga até o vizinho    luas precisam de
-Marte       7.8         41.5                  24.9   cabe
-Júpiter    26.3         70.1                 105.2   NÃO cabe
-Saturno    24.6         69.3                 100.7   NÃO cabe
-Urano      17.4         50.7                  64.5   NÃO cabe
-Netuno     17.2         51.0                  65.4   NÃO cabe
+planeta    raio    folga real    fator que caberia
+Marte       7.8       21.5            2.76
+Júpiter    26.3       21.0            0.80   <- menor que 1
+Saturno    24.6       19.3            0.79   <- menor que 1
+Urano      17.4       16.3            0.94   <- menor que 1
+Netuno     17.2       16.1            0.94   <- menor que 1
 ```
 
-Pior: **dois pares de planetas já se sobrepõem entre si** nessa escala, sem
-nenhuma lua envolvida — Júpiter+Saturno somam 50,8 px de disco para 45,6 px de
-separação, e Urano+Netuno somam 34,6 para 33,5. Quando as fases orbitais os
-alinham, eles encostam. É uma consequência da compressão logarítmica que o
-projeto assume desde o início.
+Fator menor que 1 significa que as luas caberiam apenas **dentro do disco** do
+planeta. **Não existe valor que evite a sobreposição** — os gigantes estão
+próximos demais nessa escala (Júpiter e Saturno já encostam entre si quando
+alinhados, sem nenhuma lua envolvida).
 
-**Solução: raio orbital adaptativo ao zoom.** As luas ficam num anel compacto
-colado ao planeta na visão geral e se abrem conforme a câmera aproxima:
+**Como foi resolvido.** Como não dá para eliminar, o que se pode fazer é
+minimizar e tornar explícito:
 
-- zoom baixo → fator entre 1,15 e 1,45 do raio do planeta
-- zoom ≥ `ZOOM_MINIMO_PARA_LUAS` → interpola até a configuração atual (1,7–4,1)
+- Na visão geral o sistema de luas é comprimido para 1,15–1,45 raios (o mínimo
+  que ainda deixa as luas fora do disco), abrindo até 1,7–4,1 conforme o zoom
+  chega a `ZOOM_MINIMO_PARA_LUAS`.
+- Só desenha com o **modo luas ligado** (tecla `M` ou pinça dupla). Quem liga
+  está pedindo para ver; com o modo desligado a visão geral fica limpa.
+- Saturno tem piso próprio: os anéis vão até 2,3 raios, então as luas dele
+  começam em 2,45 — senão cairiam dentro dos anéis.
 
-Com teto de 1,45 tudo cabe: Júpiter precisaria de 38,1 px contra 70,1 de folga,
-Netuno de 24,9 contra 51,0, e a Lua da Terra de 14,5 contra 34,0. Na visão geral
-o resultado é "pontinhos ao redor do planeta" — não é a órbita real, mas informa
-que o planeta tem luas, que é o que se quer enxergar de longe.
-
-**Ponto de atenção:** os anéis de Saturno vão até 2,3 raios. Com o fator
-compacto as luas cairiam *dentro* dos anéis. Ou Saturno ganha um piso próprio
-(começar depois de 2,3), ou as luas dele ficam de fora na visão geral.
-
-Isso **substitui** parte da correção do item 40: em vez de esconder os satélites
-abaixo do limiar, eles passam a ser desenhados sempre, com raio comprimido. O
-resultado para a Lua é o mesmo — ela deixa de invadir Vênus —, mas ela volta a
-aparecer de longe.
-
+A sobreposição residual (17 px em Júpiter, 48 em Saturno no pior caso) só
+acontece quando dois planetas vizinhos estão **no mesmo ângulo orbital**, o que
+é raro e passageiro: as fases iniciais são espalhadas de propósito. Na prática a
+cena fica legível, como mostra o teste visual.
 
 ### 40 · BUG — a órbita da Lua invade Vênus e Marte
 

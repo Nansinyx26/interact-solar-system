@@ -60,6 +60,7 @@ from config import (
     PASSO_ANGULO_SOMBRA_GRAUS,
     QUADROS_ROTACAO,
     RAIO_LUA_MENOR_PX,
+    RAIO_ORBITA_LUA_PX,
     RAIO_ORBITA_MAX_DESENHAVEL_PX,
     RAIO_TEXTURA_PX,
     SEMENTE_ALEATORIA,
@@ -72,6 +73,7 @@ from nucleo.orbita import (
     angulo_iluminacao,
     faixa_do_cinturao,
     fase_rotacao,
+    fator_orbita_lua,
     posicao_da_lua_menor,
     raio_corpo_px,
     raio_orbital_px,
@@ -457,13 +459,16 @@ class Renderizador:
         superficie.fill(COR_FUNDO)
         self._desenhar_estrelas(superficie, camera)
         self._desenhar_cinturao(superficie, camera, tempo_dias, corpo_focado)
-        self._desenhar_orbitas(superficie, camera, posicoes, corpo_focado)
+        self._desenhar_orbitas(
+            superficie, camera, posicoes, corpo_focado, luas_visiveis
+        )
         for corpo in CORPOS:
             # Satélites seguem a regra das luas menores: sumem na visão geral,
             # onde seriam 4 px em cima do planeta — e onde a órbita colidiria
             # com o vizinho. Quando o próprio satélite é o alvo, sempre aparece.
             if (
                 corpo.eh_satelite
+                and not luas_visiveis
                 and camera.zoom < ZOOM_MINIMO_PARA_LUAS
                 and (corpo_focado is None or corpo_focado.nome != corpo.nome)
             ):
@@ -532,7 +537,7 @@ class Renderizador:
         colado no disco do planeta.
         """
         luas = luas_do_planeta(corpo.nome)
-        if not luas or camera.zoom < ZOOM_MINIMO_PARA_LUAS:
+        if not luas:
             return
         raio_planeta = raio_corpo_px(corpo)
         centro = camera.mundo_para_tela(posicao)
@@ -540,7 +545,9 @@ class Renderizador:
         alpha_lua = ALPHA_CORPO_ESMAECIDO if esmaecido else 255
 
         for lua in luas:
-            raio_orbita = camera.escalar(raio_planeta * lua.raio_orbita_px)
+            # Comprimido na visão geral, aberto conforme a câmera aproxima.
+            fator = fator_orbita_lua(lua.raio_orbita_px, camera.zoom, corpo.tem_aneis)
+            raio_orbita = camera.escalar(raio_planeta * fator)
             if raio_orbita > 3:
                 camada = pygame.Surface(
                     (int(raio_orbita * 2) + 4, int(raio_orbita * 2) + 4),
@@ -558,7 +565,9 @@ class Renderizador:
                     (centro[0] - raio_orbita - 2, centro[1] - raio_orbita - 2),
                 )
 
-            posicao_lua = posicao_da_lua_menor(lua, posicao, raio_planeta, tempo_dias)
+            posicao_lua = posicao_da_lua_menor(
+                lua, posicao, raio_planeta, tempo_dias, fator
+            )
             tela = camera.mundo_para_tela(posicao_lua)
             raio_desenho = max(1.5, camera.escalar(RAIO_LUA_MENOR_PX))
             disco = pygame.Surface(
@@ -602,6 +611,7 @@ class Renderizador:
         camera: Camera2D,
         posicoes: dict[str, tuple[float, float]],
         corpo_focado: CorpoCeleste | None,
+        luas_visiveis: bool = False,
     ) -> None:
         """Círculos orbitais; os não focados ficam tênues durante um foco."""
         self._camada_orbitas.fill((0, 0, 0, 0))
@@ -612,20 +622,26 @@ class Renderizador:
                 continue
 
             if corpo.eh_satelite:
-                # Só com a câmera aproximada. Na visão geral a órbita da Lua
-                # (raio 28) invadiria Vênus, que fica a 24,2 px da Terra —
-                # e não há raio que resolva: a folga entre os discos é de ~4 px,
-                # menor que o raio desenhado da própria Terra.
-                if camera.zoom < ZOOM_MINIMO_PARA_LUAS:
+                # Com o modo luas desligado, some de longe: a órbita cheia
+                # (raio 28) invadiria Vênus, a 24,2 px da Terra. Com o modo
+                # ligado ela aparece comprimida — o usuário pediu para ver.
+                if not luas_visiveis and camera.zoom < ZOOM_MINIMO_PARA_LUAS:
                     continue
                 # `orbita_em_torno_de` é str | None no catálogo; o `or ""` evita
                 # passar None para o dict.get (que o verificador de tipos recusa)
                 # e cai no `continue` logo abaixo, que já é o comportamento certo.
                 pos_pai = posicoes.get(corpo.orbita_em_torno_de or "")
-                if not pos_pai:
+                pai = next(
+                    (c for c in CORPOS if c.nome == corpo.orbita_em_torno_de), None
+                )
+                if not pos_pai or pai is None:
                     continue
                 centro = camera.mundo_para_tela(pos_pai)
-                raio_mundo = 28.0  # RAIO_ORBITA_LUA_PX
+                # Mesmo fator adaptativo das luas menores: comprimido de longe.
+                fator_lua = RAIO_ORBITA_LUA_PX / raio_corpo_px(pai)
+                raio_mundo = raio_corpo_px(pai) * fator_orbita_lua(
+                    fator_lua, camera.zoom, pai.tem_aneis
+                )
             else:
                 centro = centro_sol
                 raio_mundo = raio_orbital_px(corpo.distancia_ua)
