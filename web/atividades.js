@@ -126,7 +126,7 @@ function iniciarCronometro() {
     const segs = Math.floor((Date.now() - estadoQuiz.tempoInicio) / 1000);
     const mins = Math.floor(segs / 60);
     const segsRest = segs % 60;
-    elCrono.textContent = `⏱️ ${String(mins).padStart(2, "0")}:${String(segsRest).padStart(
+    elCrono.innerHTML = `<i class="bi bi-stopwatch"></i> ${String(mins).padStart(2, "0")}:${String(segsRest).padStart(
       2,
       "0"
     )}`;
@@ -177,8 +177,10 @@ function exibirQuestao() {
   });
 
   const btn = document.getElementById("btn-responder");
-  btn.textContent =
-    estadoQuiz.indiceQuestao === total - 1 ? "Finalizar Atividade ✨" : "Próxima Questão ➡️";
+  btn.innerHTML =
+    estadoQuiz.indiceQuestao === total - 1
+      ? '<i class="bi bi-check2-circle"></i> Finalizar Atividade'
+      : 'Próxima Questão <i class="bi bi-arrow-right-circle"></i>';
 }
 
 function responderEAvancar() {
@@ -237,10 +239,10 @@ function gerarGabarito() {
       <div class="gabarito-item ${acertou ? "correta" : "incorreta"}">
         <strong>${q.pergunta}</strong><br>
         <span style="color: ${acertou ? "var(--sucesso)" : "var(--erro)"}; font-weight: bold;">
-          ${acertou ? "✔ Correto!" : "✖ Incorreto!"}
+          ${acertou ? '<i class="bi bi-check-circle-fill"></i> Correto!' : '<i class="bi bi-x-circle-fill"></i> Incorreto!'}
         </span>
         Sua resposta: <em>${respUser !== null ? q.opcoes[respUser] : "Nenhuma"}</em>
-        ${!acertou ? `<br>👉 Resposta certa: <strong>${q.opcoes[q.correta]}</strong>` : ""}
+        ${!acertou ? `<br><i class="bi bi-arrow-right" style="color: var(--destaque)"></i> Resposta certa: <strong>${q.opcoes[q.correta]}</strong>` : ""}
       </div>
     `;
   }).join("");
@@ -286,7 +288,7 @@ async function enviarParaRanking() {
 
     if (resposta.ok) {
       msg.className = "mensagem-status sucesso";
-      msg.textContent = "🏆 Resultado registrado no Ranking com sucesso!";
+      msg.innerHTML = '<i class="bi bi-trophy-fill"></i> Resultado registrado no Ranking com sucesso!';
       setTimeout(() => {
         window.location.href = "ranking.html";
       }, 1500);
@@ -296,9 +298,9 @@ async function enviarParaRanking() {
   } catch (erro) {
     console.error("Erro ao enviar resultado para o ranking:", erro);
     msg.className = "mensagem-status erro";
-    msg.textContent = "❌ Falha ao enviar para o ranking. Tente novamente.";
+    msg.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Falha ao enviar para o ranking. Tente novamente.';
     btn.disabled = false;
-    btn.textContent = "🏆 Enviar Resultado para o Ranking";
+    btn.innerHTML = '<i class="bi bi-trophy"></i> Enviar Resultado para o Ranking';
   }
 }
 
