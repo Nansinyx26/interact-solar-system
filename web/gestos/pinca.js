@@ -25,6 +25,7 @@ export class ControladorPinca {
     this._ativa = false;
     this._razaoSuave = null;
     this._fimDaPinca = -COOLDOWN_APOS_PINCA_S;
+    this._duplo = false;
   }
 
   /** True enquanto o modo zoom estiver ligado. */
@@ -48,8 +49,41 @@ export class ControladorPinca {
     this._razaoSuave = null;
   }
 
-  /** Processa uma leitura e devolve { ativa, fatorZoom, razao }. */
-  atualizar(razao, agora) {
+  /**
+   * Processa uma leitura e devolve { ativa, fatorZoom, razao, comandoLuas }.
+   *
+   * `razoes` é a lista de pinças, uma por mão visível (ordenadas por
+   * confiança). Aceita também um número solto, por compatibilidade.
+   *
+   * As DUAS mãos em pinça formam o único gesto ainda livre: com 0-10 todos
+   * ocupados, é ele que alterna as luas dos planetas. O comando tem prioridade
+   * sobre o zoom — senão a mão dominante começaria a aproximar a cena antes de
+   * o gesto ser reconhecido.
+   */
+  atualizar(razoes, agora) {
+    const lista = Array.isArray(razoes) ? razoes : [razoes];
+    const validas = lista.filter((r) => r !== null && r !== undefined);
+
+    // Pinça dupla: as duas mãos fechadas ao mesmo tempo.
+    const duploAgora =
+      validas.length >= 2 && validas.slice(0, 2).every((r) => r < LIMIAR_PINCA_ATIVA);
+    if (duploAgora) {
+      const comando = !this._duplo; // dispara só na transição
+      this._duplo = true;
+      this._ativa = false;
+      this._razaoSuave = null;
+      this._fimDaPinca = agora; // segura a seleção ao desfazer o gesto
+      return {
+        ativa: false,
+        fatorZoom: 1,
+        razao: Math.min(...validas.slice(0, 2)),
+        comandoLuas: comando,
+        duploAtivo: true,
+      };
+    }
+    this._duplo = false;
+
+    const razao = validas.length ? validas[0] : null;
     if (razao === null || razao === undefined) {
       // Sem indicador estendido não há pinça: encerra o modo zoom.
       if (this._ativa) {

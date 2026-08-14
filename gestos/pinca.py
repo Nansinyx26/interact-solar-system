@@ -29,6 +29,10 @@ class EstadoPinca:
     ativa: bool
     fator_zoom: float  # 1.0 = não mexer
     razao: float | None  # razão suavizada, para o HUD
+    # True apenas no frame em que a pinça DUPLA é reconhecida. É um evento, não
+    # um estado: quem recebe alterna as luas uma vez e pronto.
+    comando_luas: bool = False
+    duplo_ativo: bool = False  # as duas mãos seguem em pinça (para o HUD)
 
 
 class ControladorPinca:
@@ -38,6 +42,7 @@ class ControladorPinca:
         self._ativa = False
         self._razao_suave: float | None = None
         self._fim_da_pinca: float = -COOLDOWN_APOS_PINCA_S
+        self._duplo = False
 
     @property
     def ativa(self) -> bool:
@@ -57,8 +62,39 @@ class ControladorPinca:
         self._ativa = False
         self._razao_suave = None
 
-    def atualizar(self, razao: float | None, agora: float) -> EstadoPinca:
-        """Processa uma leitura e devolve o fator de zoom do frame."""
+    def atualizar(self, razoes, agora: float) -> EstadoPinca:
+        """Processa uma leitura e devolve o fator de zoom do frame.
+
+        ``razoes`` é a lista de pinças, uma por mão visível (ordenadas por
+        confiança). Aceita também um número solto, por compatibilidade.
+
+        As DUAS mãos em pinça formam o único gesto ainda livre: com 0-10 todos
+        ocupados, é ele que alterna as luas dos planetas. O comando tem
+        prioridade sobre o zoom — senão a mão dominante começaria a aproximar a
+        cena antes de o gesto ser reconhecido.
+        """
+        if isinstance(razoes, (int, float)) or razoes is None:
+            razoes = (razoes,) if razoes is not None else ()
+        validas = [r for r in razoes if r is not None]
+
+        # Pinça dupla: as duas mãos fechadas ao mesmo tempo.
+        duplo_agora = len(validas) >= 2 and all(r < LIMIAR_PINCA_ATIVA for r in validas[:2])
+        if duplo_agora:
+            comando = not self._duplo  # dispara só na transição
+            self._duplo = True
+            self._ativa = False
+            self._razao_suave = None
+            self._fim_da_pinca = agora  # segura a seleção ao desfazer o gesto
+            return EstadoPinca(
+                ativa=False,
+                fator_zoom=1.0,
+                razao=min(validas[:2]),
+                comando_luas=comando,
+                duplo_ativo=True,
+            )
+        self._duplo = False
+
+        razao = validas[0] if validas else None
         if razao is None:
             # Sem indicador estendido não há pinça: encerra o modo zoom.
             if self._ativa:

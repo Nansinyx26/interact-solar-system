@@ -49,8 +49,9 @@ export class DetectorMaos {
     this.leitura = {
       contagem: null,
       porMao: [],
-      // Separação polegar<->indicador em palmas, da mão de maior confiança.
-      // null = indicador dobrado, ou seja, não é uma pinça.
+      // Separação polegar<->indicador em palmas, uma entrada por mão visível
+      // (ordenadas por confiança). null = indicador dobrado, não é pinça.
+      razoesPinca: [],
       razaoPinca: null,
       maosVisiveis: 0,
       confiancaMedia: 0,
@@ -102,6 +103,7 @@ export class DetectorMaos {
       ...this.leitura,
       contagem: null,
       porMao: [],
+      razoesPinca: [],
       razaoPinca: null,
       maosVisiveis: 0,
     };
@@ -192,15 +194,15 @@ export class DetectorMaos {
     const selecionadas = maos.slice(0, MAX_MAOS);
 
     const { total, porMao, descartadaPorBorda } = contarDedosTotal(selecionadas);
-    // A pinça é medida na mão de maior confiança (a lista já está ordenada):
-    // com as duas mãos no quadro, uma delas precisa comandar o zoom.
-    const razaoPinca = selecionadas.length
-      ? medirPinca(selecionadas[0].landmarks, selecionadas[0].lado)
-      : null;
+    // Medida em TODAS as mãos visíveis (a lista já vem ordenada por
+    // confiança): a primeira comanda o zoom, e as duas juntas formam o gesto
+    // de comando das luas — o único ainda livre.
+    const razoesPinca = selecionadas.map((m) => medirPinca(m.landmarks, m.lado));
     this.leitura = {
       contagem: total,
       porMao,
-      razaoPinca,
+      razoesPinca,
+      razaoPinca: razoesPinca[0] ?? null,
       maosVisiveis: selecionadas.length,
       confiancaMedia: selecionadas.length
         ? selecionadas.reduce((soma, m) => soma + m.score, 0) / selecionadas.length

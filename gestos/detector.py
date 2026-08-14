@@ -81,9 +81,16 @@ class LeituraGestos:
     confianca_media: float = 0.0
     brilho_medio: float = 1.0
     descartada_por_borda: bool = False
-    # Separação polegar<->indicador em palmas, da mão de maior confiança.
-    # None = indicador dobrado, ou seja, não é uma pinça.
-    razao_pinca: float | None = None
+    # Separação polegar<->indicador em palmas, uma entrada por mão visível
+    # (ordenadas por confiança). None = indicador dobrado, ou seja, não é pinça.
+    # Ter as DUAS é o que permite distinguir "pinça de uma mão" (zoom) de
+    # "pinça das duas mãos" (comando), que é o único gesto ainda livre.
+    razoes_pinca: tuple[float | None, ...] = ()
+
+    @property
+    def razao_pinca(self) -> float | None:
+        """Pinça da mão de maior confiança — a que comanda o zoom."""
+        return self.razoes_pinca[0] if self.razoes_pinca else None
     preview: np.ndarray | None = field(default=None, repr=False)
     status: StatusCamera = StatusCamera.INICIANDO
     mensagem: str = ""
@@ -350,9 +357,10 @@ class DetectorMaos:
                 )
             contagens.append(contar_dedos(pontos, lado))
 
-        # A pinça é medida na mão de maior confiança (a lista já está ordenada):
-        # com as duas mãos no quadro, uma delas precisa comandar o zoom.
-        razao_pinca = medir_pinca(maos[0][0], maos[0][1]) if maos else None
+        # Medida em TODAS as mãos visíveis (a lista já vem ordenada por
+        # confiança): a primeira comanda o zoom, e as duas juntas formam o
+        # gesto de comando das luas.
+        razoes_pinca = tuple(medir_pinca(pontos, lado) for pontos, lado, _ in maos)
 
         return LeituraGestos(
             contagem=sum(contagens),
@@ -360,7 +368,7 @@ class DetectorMaos:
             maos_visiveis=len(maos),
             confianca_media=confianca,
             brilho_medio=brilho,
-            razao_pinca=razao_pinca,
+            razoes_pinca=razoes_pinca,
             status=StatusCamera.ATIVA,
         )
 

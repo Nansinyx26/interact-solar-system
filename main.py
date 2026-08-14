@@ -264,8 +264,12 @@ class Aplicacao:
 
             # Pinça primeiro: enquanto ela comanda o zoom, a pose seria contada
             # como 2 dedos (Vênus) e trocaria o foco no meio do movimento.
-            estado_pinca = self.pinca.atualizar(self.leitura.razao_pinca, agora)
-            if estado_pinca.fator_zoom != 1.0:
+            estado_pinca = self.pinca.atualizar(self.leitura.razoes_pinca, agora)
+            if estado_pinca.comando_luas:
+                # As duas mãos em pinça: o único gesto que sobrou, já que 0-10
+                # estão todos ocupados. Alterna as luas dos planetas.
+                self.luas_visiveis = not self.luas_visiveis
+            elif estado_pinca.fator_zoom != 1.0:
                 self.camera_livre = True
                 self.camera.aplicar_zoom(estado_pinca.fator_zoom)
 

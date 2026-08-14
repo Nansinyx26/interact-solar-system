@@ -47,35 +47,86 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 33 | Cinturão de asteroides | ✅ | ✅ | pronto |
 | 34 | Campo **sala** no quiz e no ranking | — | ✅ | pronto |
 | 35 | Erros de lint em `nucleo/renderizador.py` | ✅ | — | corrigido |
-| 36 | **Gesto de mão para as luas (pinça dupla)** | ⬜ | ⬜ | **a fazer** |
+| 36 | Gesto de mão para as luas (pinça dupla) | ✅ | ✅ | pronto |
 | 37 | Aviso `has-symbols` no npm | — | ✅ | investigado: sem ação |
-| 38 | **Rebuild + republicar com as luas e o cinturão** | ⬜ | ⬜ | **a fazer** |
+| 38 | Rebuild + republicar (exe/ZIP/site na mesma versão) | ✅ | ✅ | v1.3.0 no ar |
+| 39 | **Gesto "L" como modificador: selecionar lua individual** | ⬜ | ⬜ | **especificado, aguarda decisão** |
 
 ---
 
 ## O que falta, em detalhe
 
-### 35 · Gesto de mão para as luas — o que falta
+### 39 · Gesto "L" como modificador de modo — especificado, aguarda decisão
 
-As 11 luas já existem e ligam/desligam pela tecla `M`. Falta o **gesto**.
+**O que é.** Uma mão forma o "L" (polegar + indicador estendidos, ~90° entre
+eles) e vira um *modificador*: enquanto ele está ativo, o número mostrado pela
+**outra mão** deixa de significar planeta e passa a significar **índice da lua**
+do corpo em foco. É a saída para o problema que já vinha de antes — com 0 a 10
+todos ocupados, não havia como selecionar uma lua específica.
 
-**Qual gesto sobrou?** O mapa atual está assim:
+**Relação com o que já existe.** Não substitui nada: a pinça dupla (item 36)
+continua sendo o liga/desliga rápido das luas, e a tecla `M` também. O "L"
+acrescenta a **seleção individual**, que nenhum dos dois faz.
+
+**Pontos técnicos que a especificação acerta e valem destaque:**
+
+- A mão do "L" **não pode entrar na contagem numérica** — o gesto consome dois
+  dedos. A ordem de parsing precisa classificar a forma antes de contar.
+- Distinguir "L" de "2" (indicador + médio) exige checar **quais** dedos estão
+  dobrados, não só quantos. Merece teste dedicado com landmarks sintéticos.
+- Histerese **assimétrica** (6 frames para entrar, 8 para sair): sair sem querer
+  é pior que entrar devagar. Mesmo princípio da histerese da pinça.
+- Duas mãos em "L" = estado inválido, ignora o frame.
+
+**Estrutura proposta** (`gestos/formatos_mao.py` + `gestos/estado_gesto.py`,
+sem conhecer o pygame) casa com a separação que o projeto já tem entre
+`contador.py` (mede), `pinca.py` (decide) e o loop (aplica).
+
+**Ajuste necessário nos dados:** a especificação lista até 5 luas por planeta
+(Mimas, Reia, Jápeto, Ariel, Umbriel, Miranda, Nereida, Proteu), enquanto o
+catálogo atual tem 11 no total. Seria preciso ampliar `LUAS_MENORES` nos dois
+lados — e o limite de 5 existe porque **uma mão conta até 5**.
+
+#### Três decisões pendentes (perguntas do próprio pedido)
+
+| # | Pergunta | Recomendação |
+|---|---|---|
+| 1 | Ao sair do modo, mantém a lua em foco ou volta ao planeta? | **Manter**, como proposto. Sair do modo é largar o modificador, não desfazer a escolha — e um corte de câmera ao soltar a mão pareceria bug. |
+| 2 | `0` mostra todas as luas ou sai do modo? | **Todas.** Sair já tem dois caminhos (soltar o L, gesto 10); gastar o `0` nisso perde a única forma de voltar à visão do sistema de luas sem largar o modificador. |
+| 3 | O "L" deve servir de "voltar" fora do modo luas? | **Não.** Um gesto com dois significados dependendo do contexto é o tipo de coisa que o usuário erra — e "voltar" já é o gesto 10 e a tecla `V`. |
+
+**Estado:** especificação registrada, nada implementado. Aguarda as respostas
+acima para começar.
+
+### 36 · Gesto de mão para as luas — pronto
+
+As 11 luas ligam/desligam pela tecla `M` **ou pela pinça com as duas mãos**.
+
+**Qual gesto sobrou?** O mapa ficou assim:
 
 | Gesto | Uso |
 |:---:|---|
 | 0–8 | Sol e os 8 planetas |
 | 9 | Lua |
 | 10 | comando: voltar à visão geral |
-| pinça | comando: zoom |
+| pinça (1 mão) | comando: zoom |
+| **pinça (2 mãos)** | **comando: mostrar/esconder as luas** |
 
-Com duas mãos o máximo é 10, e **todos os valores estão ocupados**. Por isso as
-luas não ganharam número: elas entram e saem pela tecla `M`.
+Com duas mãos o máximo é 10 e **todos os números estavam ocupados** — por isso as
+luas não ganharam contagem própria. A pinça com as DUAS mãos era o único estado
+que nada usava, já que a pinça simples só é lida na mão de maior confiança.
 
-O único gesto ainda livre é a **pinça com as DUAS mãos ao mesmo tempo** — hoje a
-pinça só é lida na mão de maior confiança, então duas pinças simultâneas são um
-estado que nada usa. Implementar exige medir a pinça em ambas as mãos no
-detector e dar prioridade ao comando sobre o zoom (senão a mão dominante
-começaria a dar zoom antes de o comando ser reconhecido).
+Três detalhes que a implementação exigiu:
+
+- **O detector passou a medir a pinça em todas as mãos** (`razoes_pinca`), não
+  só na dominante. Sem isso não há como saber que as duas estão fechadas.
+- **O comando tem prioridade sobre o zoom.** Se o zoom fosse avaliado primeiro,
+  a mão dominante começaria a aproximar a cena antes de o gesto ser reconhecido.
+- **É evento, não estado.** Dispara só na transição para pinça dupla; mantendo
+  as mãos fechadas nada mais acontece. Sem isso as luas piscariam a 15 Hz.
+
+Verificado nos dois lados com o mesmo roteiro de leituras — Python e JavaScript
+disparam exatamente nos mesmos momentos: `[F, F, F, V, F, F, F, V]`.
 
 ### 37 · Aviso `has-symbols` no npm — investigado, sem ação necessária
 

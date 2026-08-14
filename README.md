@@ -127,6 +127,7 @@ Conte os dedos levantados **somando as duas mãos visíveis**:
 | 8 | Netuno |
 | 9 | Lua (satélite da Terra) |
 | **10 (duas mãos abertas)** | **volta à visão geral do sistema** |
+| **pinça com as duas mãos** | **mostra/esconde as luas dos planetas** |
 
 **Uma mão só chega a 5.** Para 6, 7, 8 e 9 use as duas mãos — por exemplo
 `5 + 1 = 6` (Saturno) ou `5 + 4 = 9` (Lua). Isso não é uma limitação do

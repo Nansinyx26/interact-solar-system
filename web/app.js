@@ -331,8 +331,12 @@ class Aplicacao {
 
       // Pinça primeiro: enquanto ela comanda o zoom, a pose seria contada como
       // 2 dedos (Vênus) e trocaria o foco no meio do movimento.
-      const estadoPinca = this.pinca.atualizar(leitura.razaoPinca, agora);
-      if (estadoPinca.fatorZoom !== 1) {
+      const estadoPinca = this.pinca.atualizar(leitura.razoesPinca, agora);
+      if (estadoPinca.comandoLuas) {
+        // As duas mãos em pinça: o único gesto que sobrou, já que 0-10 estão
+        // todos ocupados. Alterna as luas dos planetas.
+        this.luasVisiveis = !this.luasVisiveis;
+      } else if (estadoPinca.fatorZoom !== 1) {
         this.cameraLivre = true;
         this.camera.aplicarZoom(estadoPinca.fatorZoom);
       }
