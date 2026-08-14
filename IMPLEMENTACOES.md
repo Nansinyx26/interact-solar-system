@@ -95,8 +95,36 @@ lados — e o limite de 5 existe porque **uma mão conta até 5**.
 | 2 | `0` mostra todas as luas ou sai do modo? | **Todas.** Sair já tem dois caminhos (soltar o L, gesto 10); gastar o `0` nisso perde a única forma de voltar à visão do sistema de luas sem largar o modificador. |
 | 3 | O "L" deve servir de "voltar" fora do modo luas? | **Não.** Um gesto com dois significados dependendo do contexto é o tipo de coisa que o usuário erra — e "voltar" já é o gesto 10 e a tecla `V`. |
 
-**Estado:** especificação registrada, nada implementado. Aguarda as respostas
-acima para começar.
+**Decisões tomadas:** as três recomendações acima foram aceitas, com três
+acréscimos que mudam o plano de execução:
+
+**a) Estado separado — `planeta_selecionado` e `lua_selecionada` como campos
+distintos.** "Manter a lua em foco ao sair do modo" só funciona bem assim: com
+um campo único não existe caminho de volta ao planeta sem passar pela visão
+geral. Sair do modo mantém a lua; um número sem o "L" volta ao planeta.
+
+**b) O catálogo entra em commit separado.** Ampliar `LUAS_MENORES` para 5 luas
+por planeta é entrada de dados — raio orbital, período e escala de cada corpo
+novo. Não tem relação com a máquina de estados do gesto, e juntar as duas coisas
+num commit só significa que uma falha não diz se foi o gesto ou o dado.
+
+**c) O release vem ANTES, não depois.** O gesto "L" é feature grande, de vários
+commits; publicar só no fim deixaria o executável defasado esse tempo todo. Uma
+v1.3.1 no ar antes de começar também dá **baseline** para comparar se o gesto
+introduzir regressão.
+
+**d) A lista do HUD vem do catálogo, não de um dicionário fixo.** A
+especificação lista 5 luas para Saturno e Urano, mas o catálogo real tem 11 no
+total. Se o HUD numerar a partir de um dicionário próprio, ele promete uma lua
+que o renderizador não desenha. A numeração precisa sair de
+`luas_do_planeta(nome)` — a mesma fonte que a cena usa.
+
+**Ordem de execução:**
+
+1. ✅ publicar a v1.3.1 (baseline, com a pinça dupla)
+2. ⬜ ampliar o catálogo de luas — commit isolado, sem tocar em gestos
+3. ⬜ máquina de estados do "L" + testes com landmarks sintéticos
+4. ⬜ HUD do modo luas, numerando a partir do catálogo
 
 ### 36 · Gesto de mão para as luas — pronto
 
