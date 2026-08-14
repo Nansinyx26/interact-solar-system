@@ -14,7 +14,9 @@ import {
   FOLGA_LUA_APOS_ANEL,
   CINTURAO_UA_INTERNO,
   EXPOENTE_RAIO_CORPO,
+  EXPOENTE_PERIODO_LUA,
   FATOR_ROTACAO_PROPRIA,
+  PERIODO_LUA_REFERENCIA_DIAS,
   RAIO_LUA_PX,
   RAIO_ORBITA_LUA_PX,
   RAIO_ORBITA_MAX_PX,
@@ -60,10 +62,38 @@ export function raioCorpoPx(corpo) {
   return RAIO_PLANETA_BASE_PX * razao ** EXPOENTE_RAIO_CORPO;
 }
 
+/**
+ * Período que a lua *aparenta* ter na tela, em dias simulados.
+ *
+ * Na escala padrão passam 12 dias por segundo. Com o período real, Fobos
+ * (0,319 dia) daria 37 voltas por segundo — um borrão. Mas também não dá para
+ * dividir tudo pelo mesmo número: entre Fobos e Calisto há um fator 52, então
+ * o ajuste que salva a mais rápida congela a mais lenta.
+ *
+ * Por isso a mesma lei de potência usada nos raios: expoente < 1 **comprime a
+ * faixa** em vez de deslocá-la. A ordem real é preservada — lua interna ainda
+ * gira mais rápido que a externa, que é verdade física — mas o intervalo
+ * inteiro cai em 7 a 31 segundos por volta, tempo de ler o nome.
+ *
+ * O sinal é preservado: Tritão tem período negativo porque orbita Netuno ao
+ * contrário, e elevar um negativo a 0,38 daria NaN.
+ */
+export function periodoAparenteDaLua(periodoRealDias) {
+  if (periodoRealDias === 0) return 0;
+  const sentido = periodoRealDias > 0 ? 1 : -1;
+  const razao = Math.abs(periodoRealDias) ** EXPOENTE_PERIODO_LUA;
+  return sentido * PERIODO_LUA_REFERENCIA_DIAS * razao;
+}
+
 /** Ângulo orbital (radianos) do corpo no instante simulado informado. */
 export function anguloOrbital(corpo, tempoDias) {
   if (corpo.periodoOrbitalDias <= 0) return corpo.faseInicial;
-  return corpo.faseInicial + 2 * Math.PI * (tempoDias / corpo.periodoOrbitalDias);
+  // A Lua da Terra é satélite e passa pela mesma compressão das luas menores:
+  // senão ela sozinha giraria 5x mais rápido que as de Júpiter, ao lado.
+  const periodo = ehSatelite(corpo)
+    ? periodoAparenteDaLua(corpo.periodoOrbitalDias)
+    : corpo.periodoOrbitalDias;
+  return corpo.faseInicial + 2 * Math.PI * (tempoDias / periodo);
 }
 
 /**
@@ -136,7 +166,8 @@ export function posicaoDaLuaMenor(lua, posicaoPlaneta, raioPlaneta, tempoDias, f
   const angulo =
     lua.periodoOrbitalDias === 0
       ? lua.faseInicial
-      : lua.faseInicial + 2 * Math.PI * (tempoDias / lua.periodoOrbitalDias);
+      : lua.faseInicial +
+        2 * Math.PI * (tempoDias / periodoAparenteDaLua(lua.periodoOrbitalDias));
   const raio = raioPlaneta * (fator ?? lua.raioOrbitaPx);
   return {
     x: posicaoPlaneta.x + raio * Math.cos(angulo),

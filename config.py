@@ -16,7 +16,7 @@ from typing import Final
 # qualquer uma delas, suba este número aqui E em web/config.js — o
 # verificar_paridade.py falha se os dois ficarem diferentes, e o
 # publicar.py regenera o ZIP de download com a versão nova.
-VERSAO: Final[str] = "1.4.0"
+VERSAO: Final[str] = "1.4.1"
 
 # ---------------------------------------------------------------------------
 # Janela e loop principal
@@ -89,6 +89,14 @@ FATOR_AJUSTE_TEMPO: Final[float] = 1.5  # multiplicador aplicado por toque em +/
 # à sua translação. Comprimimos a rotação por este fator para virar um giro
 # perceptível, não um borrão.
 FATOR_ROTACAO_PROPRIA: Final[float] = 0.06
+
+# Velocidade aparente das luas. O período de cada uma vira
+# REFERENCIA * (período_real ** EXPOENTE): o expoente < 1 comprime a faixa
+# (Fobos 0,3 dia e Calisto 16,7 dias ficam ambos legíveis) e a referência
+# escolhe onde essa faixa cai. Com 130 e 0,38, uma volta leva de 7 a 31 s na
+# escala de tempo padrão — dá para ler o nome da lua antes de ela dar a volta.
+PERIODO_LUA_REFERENCIA_DIAS: Final[float] = 130.0
+EXPOENTE_PERIODO_LUA: Final[float] = 0.38
 
 # ---------------------------------------------------------------------------
 # Câmera

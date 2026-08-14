@@ -12,7 +12,7 @@
 // qualquer uma delas, suba este número aqui E em config.py — o
 // verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
 // regenera o ZIP de download com a versão nova.
-export const VERSAO = "1.4.0";
+export const VERSAO = "1.4.1";
 
 // Destino do botão "Baixar versão desktop".
 //
@@ -61,6 +61,14 @@ export const TIME_SCALE_MAX = 400;
 export const FATOR_AJUSTE_TEMPO = 1.5;
 // Rotação própria comprimida: na proporção real Júpiter (9,93 h) seria um borrão.
 export const FATOR_ROTACAO_PROPRIA = 0.06;
+
+// Velocidade aparente das luas. O período de cada uma vira
+// REFERENCIA * (período_real ** EXPOENTE): o expoente < 1 comprime a faixa
+// (Fobos 0,3 dia e Calisto 16,7 dias ficam ambos legíveis) e a referência
+// escolhe onde essa faixa cai. Com 130 e 0,38, uma volta leva de 7 a 31 s na
+// escala de tempo padrão — dá para ler o nome da lua antes de ela dar a volta.
+export const PERIODO_LUA_REFERENCIA_DIAS = 130.0;
+export const EXPOENTE_PERIODO_LUA = 0.38;
 
 // ---------------------------------------------------------------------------
 // Câmera

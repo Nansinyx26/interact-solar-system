@@ -17,7 +17,9 @@ from config import (
     FOLGA_LUA_APOS_ANEL,
     CINTURAO_UA_INTERNO,
     EXPOENTE_RAIO_CORPO,
+    EXPOENTE_PERIODO_LUA,
     FATOR_ROTACAO_PROPRIA,
+    PERIODO_LUA_REFERENCIA_DIAS,
     RAIO_LUA_PX,
     RAIO_ORBITA_LUA_PX,
     RAIO_ORBITA_MAX_PX,
@@ -69,11 +71,41 @@ def raio_corpo_px(corpo: CorpoCeleste) -> float:
     return RAIO_PLANETA_BASE_PX * (razao**EXPOENTE_RAIO_CORPO)
 
 
+def periodo_aparente_da_lua(periodo_real_dias: float) -> float:
+    """Período que a lua *aparenta* ter na tela, em dias simulados.
+
+    Na escala padrão passam 12 dias por segundo. Com o período real, Fobos
+    (0,319 dia) daria 37 voltas por segundo — um borrão. Mas também não dá para
+    dividir tudo pelo mesmo número: entre Fobos e Calisto há um fator 52, então
+    o ajuste que salva a mais rápida congela a mais lenta.
+
+    Por isso a mesma lei de potência usada nos raios: expoente < 1 **comprime a
+    faixa** em vez de deslocá-la. A ordem real é preservada — lua interna ainda
+    gira mais rápido que a externa, que é verdade física — mas o intervalo
+    inteiro cai em 7 a 31 segundos por volta, tempo de ler o nome.
+
+    O sinal é preservado: Tritão tem período negativo porque orbita Netuno ao
+    contrário, e elevar um negativo a 0,38 daria número complexo.
+    """
+    if periodo_real_dias == 0.0:
+        return 0.0
+    sentido = 1.0 if periodo_real_dias > 0.0 else -1.0
+    razao = abs(periodo_real_dias) ** EXPOENTE_PERIODO_LUA
+    return sentido * PERIODO_LUA_REFERENCIA_DIAS * razao
+
+
 def angulo_orbital(corpo: CorpoCeleste, tempo_dias: float) -> float:
     """Ângulo orbital (radianos) do corpo no instante simulado informado."""
     if corpo.periodo_orbital_dias <= 0.0:
         return corpo.fase_inicial
-    voltas = tempo_dias / corpo.periodo_orbital_dias
+    # A Lua da Terra é satélite e passa pela mesma compressão das luas menores:
+    # senão ela sozinha giraria 5x mais rápido que as de Júpiter, ao lado.
+    periodo = (
+        periodo_aparente_da_lua(corpo.periodo_orbital_dias)
+        if corpo.eh_satelite
+        else corpo.periodo_orbital_dias
+    )
+    voltas = tempo_dias / periodo
     return corpo.fase_inicial + 2.0 * math.pi * voltas
 
 
@@ -179,7 +211,8 @@ def posicao_da_lua_menor(
     if lua.periodo_orbital_dias == 0.0:
         angulo = lua.fase_inicial
     else:
-        angulo = lua.fase_inicial + 2.0 * math.pi * (tempo_dias / lua.periodo_orbital_dias)
+        periodo = periodo_aparente_da_lua(lua.periodo_orbital_dias)
+        angulo = lua.fase_inicial + 2.0 * math.pi * (tempo_dias / periodo)
     raio = raio_planeta * (fator if fator is not None else lua.raio_orbita_px)
     return (
         posicao_planeta[0] + raio * math.cos(angulo),

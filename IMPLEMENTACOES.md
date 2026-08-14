@@ -53,6 +53,8 @@ Legenda: ✅ pronto e verificado · 🔄 em andamento · ⬜ não começado
 | 39 | Gesto "L" como modificador: selecionar lua individual | 🔄 | 🔄 | catálogo pronto; falta o gesto |
 | 40 | BUG: órbita da Lua colidia com Vênus e Marte | ✅ | ✅ | corrigido |
 | 41 | Ver as luas em volta dos planetas na visão geral | ✅ | ✅ | pronto |
+| 42 | Luas ligadas por padrão + rebuild v1.4.0 | ✅ | ✅ | publicado |
+| 43 | Luas giravam rápido demais para ler o nome | ✅ | ✅ | corrigido |
 
 ---
 
@@ -218,8 +220,43 @@ que o renderizador não desenha. A numeração precisa sair de
 
 1. ✅ publicar a v1.3.1 (baseline, com a pinça dupla)
 2. ✅ catálogo ampliado de 11 para 22 luas — commit isolado (`5da8fbf`)
-3. ⬜ máquina de estados do "L" + testes com landmarks sintéticos
+3. ✅ máquina de estados do "L" + testes com landmarks sintéticos (`6148cc8`)
 4. ⬜ HUD do modo luas, numerando a partir do catálogo
+5. ⬜ espelhar o gesto "L" no site (hoje só existe no desktop)
+
+### 43 · Velocidade das luas — corrigido
+
+Com o período real, na escala padrão de 12 dias por segundo, **Fobos dava 33
+voltas por segundo**. Nome ilegível, e a lua virava um risco em volta de Marte.
+
+Dividir tudo pelo mesmo número não resolve: entre Fobos (0,319 dia) e Calisto
+(16,7 dias) há um fator 52, então o ajuste que salva a mais rápida congela a mais
+lenta. A saída foi a mesma lei de potência já usada nos raios — expoente < 1
+**comprime a faixa** em vez de deslocá-la:
+
+```
+periodo_aparente = 130 * periodo_real ** 0,38
+```
+
+| lua | período real | antes | agora |
+|---|---:|---:|---:|
+| Fobos | 0,319 d | 0,03 s/volta | 7,0 s |
+| Io | 1,77 d | 0,15 s | 13,5 s |
+| Europa | 3,55 d | 0,30 s | 17,5 s |
+| Calisto | 16,7 d | 1,39 s | 31,6 s |
+| Lua | 27,3 d | 2,28 s | 38,1 s |
+
+A ordem real é preservada: lua interna continua mais rápida que a externa, o que
+é verdade física. **Tritão tem período negativo** (orbita Netuno ao contrário) —
+o sinal é aplicado fora da potência, senão `(-5,877) ** 0,38` daria número
+complexo em Python e `NaN` em JavaScript.
+
+### 42 · Luas ligadas por padrão — publicado (v1.4.0)
+
+O usuário não via as luas por duas razões somadas: `LUAS_VISIVEIS_PADRAO` era
+`False` (era preciso apertar `M`) e o executável instalado era a v1.3.1, anterior
+ao raio adaptativo. As luas agora vêm ligadas e o exe/ZIP/site estão todos na
+mesma versão.
 
 ### 36 · Gesto de mão para as luas — pronto
 
