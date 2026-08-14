@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function carregarRanking(serie = "Todas") {
   const corpoTabela = document.getElementById("tabela-corpo");
   if (corpoTabela) {
-    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando">Carregando classificação...</td></tr>`;
+    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando"><i class="bi bi-arrow-clockwise girando"></i> Carregando classificação...</td></tr>`;
   }
 
   let url = `${ENDPOINT_RANKING}?limit=100`;
@@ -113,7 +113,7 @@ function renderizarTabela(lista) {
   if (!corpoTabela) return;
 
   if (lista.length === 0) {
-    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando">Nenhum resultado registrado ainda.</td></tr>`;
+    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando"><i class="bi bi-info-circle"></i> Nenhum resultado registrado ainda.</td></tr>`;
     return;
   }
 
@@ -121,9 +121,9 @@ function renderizarTabela(lista) {
     .map((item, index) => {
       const pos = index + 1;
       let posTag = `<span class="posicao-tag">${pos}</span>`;
-      if (pos === 1) posTag = `<span class="posicao-tag pos-1">🥇 1</span>`;
-      if (pos === 2) posTag = `<span class="posicao-tag pos-2">🥈 2</span>`;
-      if (pos === 3) posTag = `<span class="posicao-tag pos-3">🥉 3</span>`;
+      if (pos === 1) posTag = `<span class="posicao-tag pos-1"><i class="bi bi-trophy-fill"></i> 1</span>`;
+      if (pos === 2) posTag = `<span class="posicao-tag pos-2"><i class="bi bi-award-fill"></i> 2</span>`;
+      if (pos === 3) posTag = `<span class="posicao-tag pos-3"><i class="bi bi-award"></i> 3</span>`;
 
       const dataFormatada = item.data_hora
         ? new Date(item.data_hora).toLocaleDateString("pt-BR", {
@@ -141,10 +141,10 @@ function renderizarTabela(lista) {
         <td><span class="serie-aluno">${escaparHtml(item.serie)}</span></td>
         <td><strong>${item.pontuacao} pts</strong></td>
         <td>${item.acertos} / 10</td>
-        <td><small style="color: var(--texto-fraco);">${dataFormatada}</small></td>
+        <td><small style="color: #a1a1aa;">${dataFormatada}</small></td>
         <td>
           <button type="button" class="btn-excluir-item" data-id="${item.id}" title="Apagar este registro">
-            🗑️ Excluir
+            <i class="bi bi-trash"></i> Excluir
           </button>
         </td>
       </tr>
@@ -195,7 +195,7 @@ async function cadastrarResultado(form) {
   if (!nome) return;
 
   btnSalvar.disabled = true;
-  btnSalvar.textContent = "Salvando...";
+  btnSalvar.innerHTML = `<i class="bi bi-arrow-clockwise girando"></i> Salvando...`;
 
   const payload = { nome, serie, pontuacao, acertos, tempoSegundos: 0 };
 
@@ -216,7 +216,7 @@ async function cadastrarResultado(form) {
 
     if (resposta.ok) {
       msgEl.className = "mensagem-status sucesso";
-      msgEl.textContent = "✨ Pontuação cadastrada com sucesso!";
+      msgEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> Pontuação cadastrada com sucesso!`;
       form.reset();
       form.pontuacao.value = "100";
       form.acertos.value = "10";
@@ -228,12 +228,12 @@ async function cadastrarResultado(form) {
   } catch (erro) {
     console.error("Erro ao salvar resultado:", erro);
     msgEl.className = "mensagem-status erro";
-    msgEl.textContent = "❌ Falha ao salvar pontuação. Tente novamente.";
+    msgEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Falha ao salvar pontuação. Tente novamente.`;
   } finally {
     btnSalvar.disabled = false;
-    btnSalvar.textContent = "⭐ Cadastrar Pontuação";
+    btnSalvar.innerHTML = `<i class="bi bi-star-fill"></i> Cadastrar Pontuação`;
     setTimeout(() => {
-      if (msgEl) msgEl.textContent = "";
+      if (msgEl) msgEl.innerHTML = "";
     }, 4000);
   }
 }
@@ -243,14 +243,14 @@ async function cadastrarResultado(form) {
  */
 async function apagarRegistros(idItem = null, limparTudo = false) {
   const mensagemPrompt = limparTudo
-    ? "⚠️ AVISO: Isso vai apagar TODO o ranking!\nDigite o código de autorização (4 dígitos) para confirmar:"
+    ? "AVISO: Isso vai apagar TODO o ranking!\nDigite o código de autorização (4 dígitos) para confirmar:"
     : "Digite o código de autorização (4 dígitos) para apagar este registro:";
 
   const codigo = prompt(mensagemPrompt);
   if (!codigo) return;
 
   if (codigo.trim() !== "4400") {
-    alert("❌ Código de autorização incorreto! Exclusão não permitida.");
+    alert("Código de autorização incorreto! Exclusão não permitida.");
     return;
   }
 
@@ -277,16 +277,16 @@ async function apagarRegistros(idItem = null, limparTudo = false) {
     }
 
     if (resposta.ok) {
-      alert("✅ Exclusão realizada com sucesso!");
+      alert("Exclusão realizada com sucesso!");
       const serieFiltro = document.getElementById("filtro-serie")?.value ?? "Todas";
       await carregarRanking(serieFiltro);
     } else {
       const json = await resposta.json().catch(() => ({}));
-      alert(`❌ Falha ao excluir: ${json.erro || "Código de autorização inválido."}`);
+      alert(`Falha ao excluir: ${json.erro || "Código de autorização inválido."}`);
     }
   } catch (erro) {
     console.error("Erro ao excluir do ranking:", erro);
-    alert("❌ Erro ao comunicar com o servidor.");
+    alert("Erro ao comunicar com o servidor.");
   }
 }
 

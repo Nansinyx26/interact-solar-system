@@ -53,6 +53,7 @@ from ui.hud import (
     topo_do_painel_gesto,
 )
 from ui.marca_dagua import MarcaDagua
+from ui.quiz import QuizDesktop
 
 # Limite de dt: se a janela for arrastada ou o processo travar por um instante,
 # a simulação não deve dar um salto gigante.
@@ -114,6 +115,7 @@ class Aplicacao:
         self.hud = HUD(self.fontes, self.largura, self.altura)
         self.ficha = FichaPlaneta(self.fontes, self.largura, self.altura)
         self.marca = MarcaDagua(self.fontes, self.largura, self.altura)
+        self.quiz = QuizDesktop(self.fontes, self.largura, self.altura, self.telemetria)
         self.camera = Camera2D(self.largura, self.altura)
         self.estabilizador = EstabilizadorGestos()
         self.pinca = ControladorPinca()
@@ -158,6 +160,9 @@ class Aplicacao:
     def _tratar_eventos(self) -> None:
         """Processa a fila de eventos do pygame (teclado é fallback completo)."""
         for evento in pygame.event.get():
+            # Quando o quiz está ativo, ele tem prioridade sobre cliques e teclas.
+            if self.quiz.ativo and self.quiz.tratar_evento(evento):
+                continue
             # A assinatura é clicável: quando ela consome o clique, ele não pode
             # virar um arrasto de câmera atrás do painel.
             if self.marca.tratar_evento(evento):
@@ -194,6 +199,7 @@ class Aplicacao:
         self.hud.redimensionar(self.largura, self.altura)
         self.ficha.redimensionar(self.largura, self.altura)
         self.marca.redimensionar(self.largura, self.altura)
+        self.quiz.redimensionar(self.largura, self.altura)
 
     def _tratar_tecla(self, tecla: int) -> None:
         """Aplica o atalho correspondente à tecla pressionada."""
@@ -208,7 +214,10 @@ class Aplicacao:
         elif tecla == pygame.K_r:
             webbrowser.open("https://sistema-solar-gestos.vercel.app/ranking.html")
         elif tecla == pygame.K_a:
-            webbrowser.open("https://sistema-solar-gestos.vercel.app/atividades.html")
+            if self.quiz.ativo:
+                self.quiz.fechar()
+            else:
+                self.quiz.abrir()
         elif tecla == pygame.K_c:
             self.mostrar_preview = not self.mostrar_preview
         elif tecla == pygame.K_l:
@@ -289,6 +298,8 @@ class Aplicacao:
         self.camera.atualizar(dt)
         self.ficha.atualizar(dt)
         self.marca.atualizar(dt, self._base_canto_direito())
+        if self.quiz.ativo:
+            self.quiz.atualizar(dt)
 
     def _selecionar(self, corpo: CorpoCeleste | None) -> None:
         """Foca um corpo (ignora índices sem corpo associado)."""
@@ -353,6 +364,8 @@ class Aplicacao:
             ),
         )
         self.marca.desenhar(self.tela)
+        if self.quiz.ativo:
+            self.quiz.desenhar(self.tela)
 
 
 def main() -> int:

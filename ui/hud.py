@@ -98,11 +98,11 @@ ALTURA_BLOCO_PREVIEW = ALTURA_PREVIEW_CAMERA + 22
 # Texto da barra de atalhos, em duas versões: a janela estreita perde a cauda
 # sobre o mouse, que é a parte descobrível sem ajuda.
 _ATALHOS_COMPLETOS = (
-    "0–9 focar   L Lua   V visão geral   ESPAÇO pausa   +/− tempo   "
+    "0–9 focar   L Lua   V visão geral   A Quiz   ESPAÇO pausa   +/− tempo   "
     "C câmera   N voz   Q sair   ·   arraste com o mouse, roda = zoom"
 )
 _ATALHOS_CURTOS = (
-    "0–9 focar   L Lua   V visão geral   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
+    "0–9 focar   L Lua   V visão geral   A Quiz   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
 )
 
 # Rótulo do gesto de comando na legenda.
