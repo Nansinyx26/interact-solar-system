@@ -514,7 +514,9 @@ body.com-foco .painel-legenda {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--margem) + var(--seguro-baixo) + 46px);
+  /* Apoiado sobre a barra de planetas: com 46 px ele encostava nela e o
+     rodapé da barra de CONFIRMAÇÃO ficava por baixo. */
+  bottom: calc(var(--margem) + var(--seguro-baixo) + 72px);
   width: min(360px, calc(100vw - 2 * var(--margem)));
   padding: 12px 14px;
   border-radius: var(--raio);
@@ -1067,6 +1069,69 @@ body.com-foco .painel-legenda {
     font-size: 22px;
   }
 
+  /* --- ficha da LUA no celular -------------------------------------------
+     No desktop as duas fichas ficam lado a lado, e é a comparação entre elas
+     que dá sentido a olhar uma lua. No celular não existem duas colunas: a
+     ficha da lua assume a MESMA folha inferior e a do planeta se recolhe. */
+  .ficha-lua {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 52vh;
+    padding: 14px 16px calc(76px + var(--seguro-baixo));
+    border-radius: 16px 16px 0 0;
+    transform: translateY(28px); /* entra por baixo, como a do planeta */
+    /* Um degrau acima da ficha do planeta (30): as duas ocupam o mesmo lugar
+       e a da lua é a que o usuário acabou de pedir. */
+    z-index: 31;
+  }
+  .ficha-lua .dados {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .ficha-lua h2 {
+    font-size: 22px;
+  }
+  /* A dica de fechar fala de teclado; no celular não há tecla ESC. */
+  .ficha-lua .dica-fechar {
+    display: none;
+  }
+  /* Recolhe a ficha do planeta enquanto a da lua estiver aberta. Some por
+     transform + opacity (e não display) para a animação continuar valendo. */
+  body.com-lua .ficha {
+    opacity: 0;
+    transform: translateY(28px);
+    pointer-events: none;
+  }
+
+  /* Painel do modo lua: desce para baixo da faixa ocupada pelo painel de
+     gesto (à esquerda) e pelo preview da câmera (à direita), que no celular
+     sobem para top: 76px. Centralizado ele batia nos dois. */
+  .painel-luas {
+    top: 156px;
+    left: var(--margem);
+    right: var(--margem);
+    transform: none;
+    width: auto;
+    max-width: none;
+    z-index: 12;
+  }
+
+  /* O painel de debug some nesta faixa. Dois motivos, e o segundo decide:
+
+     1. não cabe — barra superior, painel de gesto, lista de luas, ficha e
+        barra de planetas já ocupam ~800 dos 844 px de um telefone comum;
+     2. é inalcançável: o único jeito de abri-lo é a tecla F3, e um celular
+        não tem F3. Manter um painel que o usuário não consegue abrir, mas que
+        cobriria a ficha se abrisse, é só dívida.
+
+     Em tela larga (ou tablet em paisagem, acima de 900 px) ele volta. */
+  .debug {
+    display: none;
+  }
+
   /* Painel de gesto compacto no alto, sem competir com a barra superior. */
   .painel-gesto {
     top: 76px;
@@ -1131,8 +1196,14 @@ body.com-foco .painel-legenda {
     font-size: 9px;
   }
 
-  /* Marca d'água posicionada discretamente ACIMA da barra de planetas */
-  .nandev-watermark {
+  /* Marca d'água posicionada discretamente ACIMA da barra de planetas.
+
+     O seletor leva `body` na frente só para GANHAR em especificidade: a regra
+     base de `.nandev-watermark` aparece DEPOIS desta no arquivo e declara
+     `z-index: 99`, então o 25 pedido aqui era descartado e o selo acabava por
+     cima das fichas — cobrindo a curiosidade da lua e o fim dos dados do
+     planeta. O valor abaixo é o que esta regra sempre quis; só agora ele vale. */
+  body .nandev-watermark {
     font-size: 10px;
     padding: 4px 8px;
     gap: 6px;

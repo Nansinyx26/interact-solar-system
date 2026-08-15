@@ -105,6 +105,11 @@ export class FichaLua {
     void this.raiz.offsetWidth;
     this.raiz.classList.add("visivel");
     this.raiz.hidden = false;
+    // No celular as duas fichas disputam a MESMA folha inferior — não há duas
+    // colunas para comparar planeta e lua lado a lado. A classe deixa o CSS
+    // recolher a ficha do planeta enquanto a da lua estiver aberta. Mesmo
+    // padrão do `com-foco`, que já troca legenda por ficha.
+    document.body.classList.add("com-lua");
   }
 
   /** True enquanto o card estiver na tela (o HUD descreve o que se vê). */
@@ -117,5 +122,6 @@ export class FichaLua {
     if (!this.luaAtual) return;
     this.luaAtual = null;
     this.raiz.classList.remove("visivel");
+    document.body.classList.remove("com-lua");
   }
 }
