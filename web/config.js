@@ -155,11 +155,51 @@ export const MARGEM_QUADRO = 0.06;
 export const MAX_LANDMARKS_FORA_DO_QUADRO = 3;
 export const LIMIAR_AVISO_CONFIANCA = 0.72;
 
+// Score de handedness abaixo do qual a mão é considerada lixo. O MediaPipe
+// continua devolvendo 21 landmarks quando "acha" que viu uma mão numa cortina ou
+// num rosto, e esses frames é que produziam a troca de gesto sozinha. Em vez de
+// zerar a leitura (que apagaria o modo lua), o leitor REAPROVEITA a última pose
+// boa por alguns frames — ver JANELA_REAPROVEITAMENTO_S.
+export const CONFIANCA_MIN_UTIL = 0.7;
+// Por quanto tempo a última pose válida pode substituir frames ruins. Acima
+// disso a mão provavelmente saiu mesmo, e insistir seria mentir para o usuário.
+export const JANELA_REAPROVEITAMENTO_S = 0.35;
+
+// ---------------------------------------------------------------------------
+// Filtro de landmarks (One Euro)
+// ---------------------------------------------------------------------------
+// O tremor natural da mão vale alguns pixels por frame e é justamente o que faz
+// um dedo na fronteira do limiar piscar entre "aberto" e "fechado". Filtrar os
+// 21 pontos ANTES de qualquer classificação resolve o problema na origem.
+//
+// Escolhemos o One Euro em vez de uma EMA simples porque a EMA obriga a um
+// compromisso ruim: alpha baixo (suave) atrasa o gesto, alpha alto (responsivo)
+// deixa passar o tremor. O One Euro varia o alpha com a VELOCIDADE — parado ele
+// filtra forte, em movimento ele solta — então dá as duas coisas.
+export const FILTRO_LANDMARKS_ATIVO = true;
+// Frequência de corte com a mão parada. Quanto menor, mais estável (e mais
+// "arrastado"). 1,2 Hz remove o tremor sem que o usuário perceba atraso.
+export const UM_EURO_CORTE_MINIMO_HZ = 1.2;
+// Quanto o corte sobe por unidade de velocidade. É o botão da responsividade:
+// alto demais e o filtro deixa de agir durante o movimento.
+export const UM_EURO_BETA = 0.7;
+// Corte do filtro aplicado à própria derivada (padrão do artigo original).
+export const UM_EURO_CORTE_DERIVADA_HZ = 1.0;
+// Alternativa simples, usada quando FILTRO_LANDMARKS_ATIVO é desligado ou
+// quando não há timestamp confiável: média móvel exponencial pura.
+export const ALPHA_EMA_LANDMARKS = 0.4;
+
 // ---------------------------------------------------------------------------
 // Contagem de dedos (limiares em frações do tamanho da palma)
 // ---------------------------------------------------------------------------
 export const LIMIAR_DEDO_ESTENDIDO = 0.16;
 export const LIMIAR_POLEGAR_ESTENDIDO = 0.26;
+// HISTERESE: um dedo já contado como estendido só volta a "fechado" abaixo de um
+// limiar MENOR. Com limiar único, um dedo parado exatamente na fronteira alterna
+// a cada frame e a contagem oscila entre 3 e 4 sem o usuário mexer a mão.
+// A folga é multiplicativa para acompanhar a normalização pela palma.
+export const FOLGA_HISTERESE_DEDO = 0.72; // 0,16 -> sai em 0,115
+export const FOLGA_HISTERESE_POLEGAR = 0.78; // 0,26 -> sai em 0,203
 export const MARGEM_ZONA_CINZENTA_POLEGAR = 0.1;
 export const RAZAO_POLEGAR_ABERTO = 1.02;
 export const TAMANHO_PALMA_MINIMO = 1e-4;
@@ -242,7 +282,25 @@ export const FRAMES_PARA_SAIR_MODO_LUAS = 8;
 // Votação da lua escolhida, no mesmo espírito do estabilizador de planetas.
 export const BUFFER_SELECAO_LUA = 6;
 export const VOTOS_SELECAO_LUA = 5;
-export const COOLDOWN_SELECAO_LUA_S = 0.4;
+// Cooldown após ABRIR uma ficha de lua. Mais longo que o do estabilizador de
+// planetas porque a ficha muda a tela inteira: reabrir outra em seguida, por um
+// frame ruim, é bem mais incômodo que trocar de planeta sem querer.
+export const COOLDOWN_SELECAO_LUA_S = 0.8;
+
+// --- confirmação da lua (PREVIEW -> FICHA) ---------------------------------
+// Enquanto o "L" é mantido, o número da outra mão apenas PRÉ-VISUALIZA a lua
+// (destaque na órbita + nome no HUD). A ficha só abre quando o mesmo número se
+// mantém estável por FRAMES_PARA_ABRIR_FICHA_LUA leituras seguidas.
+//
+// São leituras (inferências), não frames de render: a ~15 leituras/s, 12
+// leituras ≈ 0,8 s de mão parada. O valor foi escolhido para ser longo o
+// bastante para o usuário "passear" pelos números sem abrir nada, e curto o
+// bastante para não cansar o braço.
+export const FRAMES_PARA_ABRIR_FICHA_LUA = 12;
+// Tolerância a falhas DENTRO da contagem: um único frame com número diferente
+// não zera o progresso, só o desconta. Sem isso, uma piscada do rastreio no
+// décimo frame obrigava a recomeçar do zero.
+export const FALHAS_TOLERADAS_CONFIRMACAO = 3;
 
 // ---------------------------------------------------------------------------
 // Gesto de pinça — zoom controlado pela câmera

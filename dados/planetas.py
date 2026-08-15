@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-Cor = tuple[int, int, int]
+from dados.luas import LUAS_MENORES, Cor, LuaMenor, indexar_por_planeta
 
 
 @dataclass(frozen=True)
@@ -267,114 +267,23 @@ DISTANCIA_UA_MAXIMA: float = max(c.distancia_ua for c in CORPOS)
 # ---------------------------------------------------------------------------
 # Luas dos demais planetas
 # ---------------------------------------------------------------------------
-# Ficam FORA de CORPOS de propósito: os gestos vão de 0 a 10 e já estão todos
-# ocupados (0-8 Sol e planetas, 9 Lua, 10 visão geral). Estas luas não são
-# selecionáveis por contagem de dedos — elas aparecem em bloco quando o "modo
-# luas" é ligado, e podem ser focadas por toque/clique.
-#
-# Só as principais de cada planeta: Júpiter sozinho tem 95 luas conhecidas, e
-# desenhar todas viraria ruído em volta do disco.
-#
-# ATENÇÃO à escala: o raio orbital em pixels é VISUAL, não proporcional. Em
-# escala real Calisto ficaria a 26 raios de Júpiter e Fobos a 1,4 raios de
-# Marte — as luas internas sumiriam dentro do planeta. O que preservamos é a
-# ordem e o espaçamento relativo dentro de cada sistema.
-
-
-@dataclass(frozen=True)
-class LuaMenor:
-    """Satélite secundário: aparece na cena, mas não tem gesto próprio."""
-
-    nome: str
-    planeta: str  # nome do corpo-pai
-    diametro_km: float
-    distancia_km: float  # distância média real ao planeta
-    periodo_orbital_dias: float
-    raio_orbita_px: float  # raio DESENHADO, em múltiplos do raio do planeta
-    cor: Cor
-    fase_inicial: float
-    fato_curioso: str
-
-
-LUAS_MENORES: tuple[LuaMenor, ...] = (
-    # --- Marte ---------------------------------------------------------
-    LuaMenor("Fobos", "Marte", 22.5, 9_376, 0.319, 2.2,
-             (150, 140, 130), 0.0,
-             "Está tão perto de Marte que nasce a oeste e se põe a leste."),
-    LuaMenor("Deimos", "Marte", 12.4, 23_463, 1.263, 3.2,
-             (170, 158, 145), 2.1,
-             "A menor lua do Sistema Solar entre as bem conhecidas."),
-    # --- Júpiter -------------------------------------------------------
-    LuaMenor("Amalteia", "Júpiter", 167, 181_366, 0.498, 1.7,
-             (196, 120, 96), 1.1,
-             "É avermelhada e tem formato irregular, como uma batata."),
-    LuaMenor("Io", "Júpiter", 3643, 421_700, 1.769, 2.1,
-             (232, 214, 120), 0.4,
-             "O corpo com mais atividade vulcânica do Sistema Solar."),
-    LuaMenor("Europa", "Júpiter", 3122, 671_034, 3.551, 2.6,
-             (216, 206, 190), 2.0,
-             "Sob a crosta de gelo há um oceano de água líquida."),
-    LuaMenor("Ganimedes", "Júpiter", 5268, 1_070_412, 7.155, 3.2,
-             (168, 156, 140), 3.7,
-             "É a maior lua do Sistema Solar — maior que Mercúrio."),
-    LuaMenor("Calisto", "Júpiter", 4821, 1_882_709, 16.689, 4.0,
-             (128, 118, 108), 5.2,
-             "A superfície mais craterada que se conhece."),
-    # --- Saturno -------------------------------------------------------
-    LuaMenor("Encélado", "Saturno", 504, 237_948, 1.37, 1.8,
-             (236, 240, 244), 4.4,
-             "Lança gêiseres de água pelo polo sul."),
-    LuaMenor("Dione", "Saturno", 1123, 377_396, 2.737, 2.2,
-             (206, 204, 198), 1.9,
-             "Tem penhascos de gelo que chegam a centenas de metros."),
-    LuaMenor("Reia", "Saturno", 1527, 527_108, 4.518, 2.7,
-             (194, 192, 186), 3.1,
-             "A segunda maior lua de Saturno, feita quase toda de gelo."),
-    LuaMenor("Titã", "Saturno", 5150, 1_221_870, 15.945, 3.3,
-             (214, 168, 92), 1.2,
-             "Tem atmosfera densa e rios de metano líquido."),
-    LuaMenor("Jápeto", "Saturno", 1469, 3_560_820, 79.33, 4.1,
-             (150, 140, 126), 5.6,
-             "Um hemisfério é escuro como carvão e o outro, branco como neve."),
-    # --- Urano ---------------------------------------------------------
-    LuaMenor("Miranda", "Urano", 472, 129_900, 1.413, 1.8,
-             (188, 190, 192), 2.7,
-             "Tem um penhasco de 20 km, o mais alto conhecido."),
-    LuaMenor("Ariel", "Urano", 1158, 190_900, 2.52, 2.2,
-             (198, 196, 190), 0.5,
-             "A superfície mais clara e jovem entre as luas de Urano."),
-    LuaMenor("Umbriel", "Urano", 1169, 266_000, 4.144, 2.6,
-             (132, 130, 128), 4.0,
-             "A mais escura das grandes luas de Urano."),
-    LuaMenor("Titânia", "Urano", 1578, 435_910, 8.706, 3.1,
-             (176, 166, 158), 0.9,
-             "A maior lua de Urano, com cânions de centenas de quilômetros."),
-    LuaMenor("Oberon", "Urano", 1523, 583_520, 13.463, 3.7,
-             (150, 142, 136), 3.4,
-             "A mais externa das grandes luas de Urano."),
-    # --- Netuno --------------------------------------------------------
-    LuaMenor("Galateia", "Netuno", 176, 61_953, 0.429, 1.7,
-             (160, 168, 176), 3.0,
-             "Sua gravidade mantém um dos anéis de Netuno agrupado."),
-    LuaMenor("Larissa", "Netuno", 194, 73_548, 0.555, 2.0,
-             (172, 178, 184), 5.0,
-             "Tem forma irregular e superfície muito craterada."),
-    LuaMenor("Proteu", "Netuno", 420, 117_647, 1.122, 2.4,
-             (150, 156, 162), 0.7,
-             "É quase o maior corpo que a gravidade não conseguiu arredondar."),
-    LuaMenor("Tritão", "Netuno", 2707, 354_759, -5.877, 2.9,
-             (198, 206, 210), 1.7,
-             "Orbita ao contrário: foi capturado, não se formou ali."),
-    LuaMenor("Nereida", "Netuno", 340, 5_513_400, 360.13, 3.8,
-             (166, 170, 174), 4.2,
-             "Tem a órbita mais alongada entre as luas conhecidas."),
-)
+# O catálogo em si mora em ``dados/luas.py``. Aqui ficou só a FUSÃO com os
+# corpos principais, que é a parte que depende de ``CORPOS`` — e é por isso que
+# ela não pôde ir junto: o import iria nos dois sentidos.
 
 # Índice por planeta, para o renderizador não filtrar a lista inteira por frame.
-LUAS_POR_PLANETA: dict[str, tuple[LuaMenor, ...]] = {}
-for _lua in LUAS_MENORES:
-    LUAS_POR_PLANETA.setdefault(_lua.planeta, ())
-    LUAS_POR_PLANETA[_lua.planeta] += (_lua,)
+LUAS_POR_PLANETA: dict[str, tuple[LuaMenor, ...]] = indexar_por_planeta(LUAS_MENORES)
+
+# Dados que só a ficha da LUA usa e que CorpoCeleste não carrega. Ficam num
+# mapa à parte, por nome, em vez de virarem campos opcionais no dataclass dos 9
+# corpos principais: só satélites precisam deles, e hoje só existe um satélite
+# em CORPOS.
+MASSAS_DE_SATELITE_KG: dict[str, float] = {
+    "Lua": 7.342e22,
+}
+COMPOSICOES_DE_SATELITE: dict[str, str] = {
+    "Lua": "Crosta de anortosito sobre manto de silicatos e núcleo pequeno de ferro",
+}
 
 # A Lua da Terra vive em CORPOS, não em LUAS_MENORES, porque tem gesto próprio
 # (o 9). Mas ela É uma lua: precisa aparecer aqui, senão a lista que o HUD
@@ -398,6 +307,11 @@ for _corpo in CORPOS:
             cor=_corpo.cor_base,
             fase_inicial=_corpo.fase_inicial,
             fato_curioso=_corpo.fato_curioso,
+            # Massa e composição não existem em CorpoCeleste (nenhum dos 9
+            # corpos principais precisa delas na ficha), mas a ficha da LUA
+            # mostra as duas — então entram aqui, na fusão.
+            massa_kg=MASSAS_DE_SATELITE_KG.get(_corpo.nome, 0.0),
+            composicao=COMPOSICOES_DE_SATELITE.get(_corpo.nome, ""),
         ),
     ) + LUAS_POR_PLANETA[_pai]
 
@@ -419,6 +333,8 @@ def legenda_gestos() -> list[tuple[int, str]]:
 
 __all__ = [
     "CorpoCeleste",
+    # Reexportados de dados/luas.py: o catálogo mudou de arquivo, mas o ponto
+    # de import antigo continua valendo — nenhum chamador precisou mudar.
     "LuaMenor",
     "LUAS_MENORES",
     "LUAS_POR_PLANETA",

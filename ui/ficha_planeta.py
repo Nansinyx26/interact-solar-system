@@ -30,12 +30,12 @@ _ALTURA_LINHA_VALOR = 17
 _RESPIRO_ITEM = 10
 
 
-def _formatar_inteiro(valor: float) -> str:
+def formatar_inteiro(valor: float) -> str:
     """Inteiro no padrão pt-BR (1.392.700)."""
     return f"{valor:,.0f}".replace(",", ".")
 
 
-def _formatar_decimal(valor: float, casas: int = 2) -> str:
+def formatar_decimal(valor: float, casas: int = 2) -> str:
     """Decimal no padrão pt-BR (1,52)."""
     texto = f"{valor:,.{casas}f}"
     return texto.replace(",", "@").replace(".", ",").replace("@", ".")
@@ -47,9 +47,9 @@ def _formatar_periodo_orbital(corpo: CorpoCeleste) -> str:
         return "— (orbita o centro da Galáxia)"
     dias = corpo.periodo_orbital_dias
     if dias < 365.26:
-        return f"{_formatar_decimal(dias, 2)} dias"
+        return f"{formatar_decimal(dias, 2)} dias"
     anos = dias / 365.26
-    return f"{_formatar_decimal(anos, 2)} anos ({_formatar_inteiro(dias)} dias)"
+    return f"{formatar_decimal(anos, 2)} anos ({formatar_inteiro(dias)} dias)"
 
 
 def _formatar_rotacao(corpo: CorpoCeleste) -> str:
@@ -58,8 +58,8 @@ def _formatar_rotacao(corpo: CorpoCeleste) -> str:
     sufixo = " (retrógrada)" if horas < 0 else ""
     horas = abs(horas)
     if horas >= 48:
-        return f"{_formatar_decimal(horas / 24, 2)} dias{sufixo}"
-    return f"{_formatar_decimal(horas, 2)} h{sufixo}"
+        return f"{formatar_decimal(horas / 24, 2)} dias{sufixo}"
+    return f"{formatar_decimal(horas, 2)} h{sufixo}"
 
 
 def _rotulo_distancia(corpo: CorpoCeleste) -> str:
@@ -76,12 +76,12 @@ def _formatar_distancia(corpo: CorpoCeleste) -> str:
     0,00257 — um número exato e inútil. Para satélites fica só o valor em km.
     """
     if corpo.eh_satelite:
-        return f"{_formatar_inteiro(corpo.distancia_km)} km"
+        return f"{formatar_inteiro(corpo.distancia_km)} km"
     if corpo.distancia_ua <= 0:
         return "0 (centro do sistema)"
     return (
-        f"{_formatar_decimal(corpo.distancia_ua, 3)} UA\n"
-        f"{_formatar_inteiro(corpo.distancia_km)} km"
+        f"{formatar_decimal(corpo.distancia_ua, 3)} UA\n"
+        f"{formatar_inteiro(corpo.distancia_km)} km"
     )
 
 
@@ -103,13 +103,13 @@ def nome_do_tipo(corpo: CorpoCeleste) -> str:
 def linhas_da_ficha(corpo: CorpoCeleste) -> list[tuple[str, str]]:
     """Pares (rótulo, valor) exibidos no card."""
     return [
-        ("Diâmetro equatorial", f"{_formatar_inteiro(corpo.diametro_km)} km"),
+        ("Diâmetro equatorial", f"{formatar_inteiro(corpo.diametro_km)} km"),
         (_rotulo_distancia(corpo), _formatar_distancia(corpo)),
         ("Período orbital", _formatar_periodo_orbital(corpo)),
         ("Período de rotação", _formatar_rotacao(corpo)),
-        ("Luas conhecidas", _formatar_inteiro(corpo.luas)),
-        ("Temperatura média", f"{_formatar_decimal(corpo.temperatura_media_c, 1)} °C"),
-        ("Inclinação axial", f"{_formatar_decimal(corpo.inclinacao_axial_graus, 2)}°"),
+        ("Luas conhecidas", formatar_inteiro(corpo.luas)),
+        ("Temperatura média", f"{formatar_decimal(corpo.temperatura_media_c, 1)} °C"),
+        ("Inclinação axial", f"{formatar_decimal(corpo.inclinacao_axial_graus, 2)}°"),
     ]
 
 
@@ -264,4 +264,10 @@ class FichaPlaneta:
         return linhas
 
 
-__all__ = ["FichaPlaneta", "linhas_da_ficha", "nome_do_tipo"]
+__all__ = [
+    "FichaPlaneta",
+    "formatar_decimal",
+    "formatar_inteiro",
+    "linhas_da_ficha",
+    "nome_do_tipo",
+]

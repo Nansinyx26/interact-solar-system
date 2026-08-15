@@ -427,7 +427,14 @@ export class Renderizador {
   }
 
   /** Desenha um frame completo da cena (fundo, órbitas e corpos). */
-  desenhar(camera, posicoes, tempoDias, corpoFocado, luasVisiveis = false) {
+  /**
+   * Desenha um frame completo da cena.
+   *
+   * `luaDestacada` é o NOME da lua em preview no modo lua. Ela ganha anel,
+   * disco maior e rótulo sempre visível — sem isso o usuário mostra o número e
+   * não tem como saber qual ponto na tela ele acabou de escolher.
+   */
+  desenhar(camera, posicoes, tempoDias, corpoFocado, luasVisiveis = false, luaDestacada = null) {
     const { ctx } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = COR_FUNDO;
@@ -450,7 +457,14 @@ export class Renderizador {
       }
       this._desenharCorpo(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
       if (luasVisiveis) {
-        this._desenharLuas(camera, corpo, posicoes.get(corpo.nome), tempoDias, corpoFocado);
+        this._desenharLuas(
+          camera,
+          corpo,
+          posicoes.get(corpo.nome),
+          tempoDias,
+          corpoFocado,
+          luaDestacada,
+        );
       }
     }
   }
@@ -494,7 +508,7 @@ export class Renderizador {
    * Só aparecem com zoom suficiente: de longe viram um borrão de pontos colado
    * no disco do planeta.
    */
-  _desenharLuas(camera, corpo, posicao, tempoDias, corpoFocado) {
+  _desenharLuas(camera, corpo, posicao, tempoDias, corpoFocado, luaDestacada = null) {
     const luas = luasDoPlaneta(corpo.nome);
     if (!luas.length) return;
 
@@ -505,12 +519,20 @@ export class Renderizador {
     const alphaLua = esmaecido ? ALPHA_CORPO_ESMAECIDO : 1;
 
     for (const lua of luas) {
+      const destacada = lua.nome === luaDestacada;
       // Comprimido na visão geral, aberto conforme a câmera aproxima.
       const fator = fatorOrbitaLua(lua.raioOrbitaPx, camera.zoom, corpo.temAneis);
       const raioOrbita = camera.escalar(raioPlaneta * fator);
       if (raioOrbita > 3) {
-        ctx.strokeStyle = `rgba(${COR_ORBITA_LUA}, ${esmaecido ? 0.08 : ALPHA_ORBITA_LUA})`;
-        ctx.lineWidth = 1;
+        if (destacada) {
+          // A órbita da lua escolhida acende na cor DELA: é o que liga o número
+          // mostrado com a mão ao ponto na tela.
+          ctx.strokeStyle = `rgba(${lua.cor}, 0.75)`;
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = `rgba(${COR_ORBITA_LUA}, ${esmaecido ? 0.08 : ALPHA_ORBITA_LUA})`;
+          ctx.lineWidth = 1;
+        }
         ctx.beginPath();
         ctx.arc(centro.x, centro.y, raioOrbita, 0, Math.PI * 2);
         ctx.stroke();
@@ -518,15 +540,34 @@ export class Renderizador {
 
       const posicaoLua = posicaoDaLuaMenor(lua, posicao, raioPlaneta, tempoDias, fator);
       const tela = camera.mundoParaTela(posicaoLua);
-      const raioDesenho = Math.max(1.5, camera.escalar(RAIO_LUA_MENOR_PX));
-      ctx.globalAlpha = alphaLua;
+      // A lua destacada é desenhada maior: com 2,2 px de raio ela some entre as
+      // vizinhas, e o ponto do preview é justamente distinguir.
+      let raioDesenho = Math.max(1.5, camera.escalar(RAIO_LUA_MENOR_PX));
+      if (destacada) raioDesenho = Math.max(raioDesenho * 1.8, 4);
+      ctx.globalAlpha = destacada ? 1 : alphaLua;
       ctx.fillStyle = `rgb(${lua.cor})`;
       ctx.beginPath();
       ctx.arc(tela.x, tela.y, raioDesenho, 0, Math.PI * 2);
       ctx.fill();
 
-      // O nome só cabe quando o planeta está realmente próximo.
-      if (!esmaecido && camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6) {
+      if (destacada) {
+        // Anel em volta do disco, como a mira de um alvo.
+        ctx.strokeStyle = `rgb(${COR_ANEL_DESTAQUE})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(tela.x, tela.y, raioDesenho + 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // O nome só cabe quando o planeta está realmente próximo — mas o da lua
+      // destacada aparece SEMPRE: sem ele o preview não diz qual lua é.
+      if (destacada) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#e8ecf5";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.fillText(lua.nome, tela.x + raioDesenho + 6, tela.y);
+      } else if (!esmaecido && camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6) {
         ctx.globalAlpha = 0.67;
         ctx.fillStyle = "#96a0b9";
         ctx.font = "11px system-ui, sans-serif";

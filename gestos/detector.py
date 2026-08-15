@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 import cv2
@@ -30,19 +30,15 @@ warnings.filterwarnings("ignore", message=".*SymbolDatabase.GetPrototype.*")
 from config import (
     ALTURA_CAPTURA,
     ALTURA_PREVIEW_CAMERA,
-    COMPLEXIDADE_MODELO,
-    CONFIANCA_MIN_DETECCAO,
-    CONFIANCA_MIN_RASTREIO,
     DETECTAR_A_CADA_N_FRAMES,
     FALHAS_ATE_DESCONEXAO,
     FPS_CAPTURA,
     INDICE_CAMERA,
     LARGURA_CAPTURA,
     LARGURA_PREVIEW_CAMERA,
-    MAX_MAOS,
     SEGUNDOS_ENTRE_RECONEXOES,
 )
-from gestos.contador import contar_dedos, mao_dentro_do_quadro, medir_pinca
+from gestos.leitor_maos import LeitorMaos, PoseMaos
 
 try:  # pragma: no cover - depende do ambiente
     import mediapipe as mp
@@ -86,9 +82,19 @@ class LeituraGestos:
     # Ter as DUAS é o que permite distinguir "pinça de uma mão" (zoom) de
     # "pinça das duas mãos" (comando), que é o único gesto ainda livre.
     razoes_pinca: tuple[float | None, ...] = ()
-    # Landmarks crus das mãos usáveis, para a máquina de estados classificar a
-    # FORMA (o "L") — o que a contagem sozinha não consegue expressar.
+    # Landmarks JÁ FILTRADOS das mãos usáveis, para a máquina de estados
+    # classificar a FORMA (o "L") — o que a contagem sozinha não expressa.
     maos: tuple[tuple[np.ndarray, str], ...] = ()
+    # Pose completa do leitor (dedos por mão, forma, score). É o caminho novo;
+    # os campos acima seguem preenchidos para não quebrar quem já os lia.
+    pose: PoseMaos = field(default_factory=PoseMaos)
+    # True quando esta leitura é a anterior reapresentada porque o frame atual
+    # não trazia nada confiável. O HUD de debug mostra; o resto trata como
+    # leitura normal, que é justamente o objetivo.
+    reaproveitada: bool = False
+    # 0 a 1: concordância das últimas N leituras. Abaixo de ~0,6 a mão está em
+    # transição e nenhuma decisão deveria ser tomada.
+    estabilidade: float = 0.0
 
     @property
     def razao_pinca(self) -> float | None:
@@ -208,13 +214,10 @@ class DetectorMaos:
 
     def _laco(self) -> None:
         """Laço da thread: abre, lê, detecta, publica — e sempre libera."""
-        detector = mp.solutions.hands.Hands(
-            static_image_mode=False,
-            max_num_hands=MAX_MAOS,
-            model_complexity=COMPLEXIDADE_MODELO,
-            min_detection_confidence=CONFIANCA_MIN_DETECCAO,
-            min_tracking_confidence=CONFIANCA_MIN_RASTREIO,
-        )
+        # Toda a percepção (inferência, corte por confiança, filtro, histerese
+        # e votação) mora no leitor. Aqui ficou só o que é de câmera: abrir,
+        # reconectar, espelhar e montar o preview.
+        leitor = LeitorMaos(mp)
         desenhista = mp.solutions.drawing_utils
         estilos = mp.solutions.drawing_styles
         conexoes = mp.solutions.hands.HAND_CONNECTIONS
@@ -223,7 +226,6 @@ class DetectorMaos:
         sequencia = 0
         falhas_seguidas = 0
         proxima_tentativa = 0.0
-        ultimo_resultado = None
         ultima_leitura = LeituraGestos()
 
         try:
@@ -264,7 +266,9 @@ class DetectorMaos:
                         self._captura.release()
                         self._captura = None
                         proxima_tentativa = agora + SEGUNDOS_ENTRE_RECONEXOES
-                        ultimo_resultado = None
+                        # A mão vai reaparecer em outro ponto do quadro: manter
+                        # o histórico do filtro faria a pose atravessar a tela.
+                        leitor.reiniciar()
                         self._registrar("parou de entregar imagem — tentando reconectar")
                         ultima_leitura = LeituraGestos(
                             status=StatusCamera.DESCONECTADA,
@@ -279,106 +283,51 @@ class DetectorMaos:
 
                 # ------------------------------------------------- inferência
                 if contador_frames % DETECTAR_A_CADA_N_FRAMES == 0:
-                    rgb = cv2.cvtColor(quadro, cv2.COLOR_BGR2RGB)
-                    rgb.flags.writeable = False
-                    ultimo_resultado = detector.process(rgb)
+                    pose = leitor.atualizar(quadro, agora)
                     sequencia += 1
-                    ultima_leitura = self._interpretar(ultimo_resultado, quadro)
+                    ultima_leitura = self._montar_leitura(leitor, pose, quadro)
 
                 preview = self._montar_preview(
-                    quadro, ultimo_resultado, desenhista, estilos, conexoes
+                    quadro, leitor.resultado_bruto, desenhista, estilos, conexoes
                 )
-                self._publicar(
-                    LeituraGestos(
-                        contagem=ultima_leitura.contagem,
-                        sequencia=sequencia,
-                        contagens_por_mao=ultima_leitura.contagens_por_mao,
-                        maos_visiveis=ultima_leitura.maos_visiveis,
-                        confianca_media=ultima_leitura.confianca_media,
-                        brilho_medio=ultima_leitura.brilho_medio,
-                        descartada_por_borda=ultima_leitura.descartada_por_borda,
-                        preview=preview,
-                        status=StatusCamera.ATIVA,
-                        mensagem="",
-                    )
-                )
+                self._publicar(replace(ultima_leitura, sequencia=sequencia,
+                                       preview=preview))
         finally:
             # Libera a webcam mesmo se algo explodir no meio do laço.
-            detector.close()
+            leitor.fechar()
             if self._captura is not None:
                 self._captura.release()
                 self._captura = None
 
     # ------------------------------------------------------------ auxiliares
-    def _interpretar(self, resultado, quadro: np.ndarray) -> LeituraGestos:
-        """Converte a saída do MediaPipe em contagem de dedos + diagnóstico."""
+    def _montar_leitura(
+        self, leitor: LeitorMaos, pose: PoseMaos, quadro: np.ndarray
+    ) -> LeituraGestos:
+        """Empacota a pose do leitor no formato que o loop de render consome.
+
+        A classificação toda já aconteceu no leitor; aqui só se acrescenta o que
+        depende do FRAME e não da mão — o brilho médio, que alimenta o aviso de
+        iluminação baixa.
+        """
         brilho = float(np.mean(quadro)) / 255.0
-
-        if not resultado or not resultado.multi_hand_landmarks:
-            # Sem mão no quadro: contagem None. O alvo confirmado é preservado
-            # lá no estabilizador, não aqui.
-            return LeituraGestos(
-                contagem=None,
-                maos_visiveis=0,
-                confianca_media=0.0,
-                brilho_medio=brilho,
-                status=StatusCamera.ATIVA,
-            )
-
-        maos: list[tuple[np.ndarray, str, float]] = []
-        lateralidades = resultado.multi_handedness or []
-        for indice, marcos in enumerate(resultado.multi_hand_landmarks):
-            pontos = np.array(
-                [(ponto.x, ponto.y) for ponto in marcos.landmark], dtype=np.float64
-            )
-            lado = "Right"
-            score = 1.0
-            if indice < len(lateralidades):
-                classificacao = lateralidades[indice].classification[0]
-                lado = classificacao.label
-                score = float(classificacao.score)
-            maos.append((pontos, lado, score))
-
-        # Três ou mais mãos no quadro: fica só com as duas de maior confiança.
-        maos.sort(key=lambda item: item[2], reverse=True)
-        maos = maos[:MAX_MAOS]
-
-        confianca = float(np.mean([item[2] for item in maos]))
-
-        contagens: list[int] = []
-        for pontos, lado, _ in maos:
-            if not mao_dentro_do_quadro(pontos):
-                # Mão cortada pela borda: descarta o frame inteiro em vez de
-                # arriscar uma contagem errada.
-                return LeituraGestos(
-                    contagem=None,
-                    maos_visiveis=len(maos),
-                    confianca_media=confianca,
-                    brilho_medio=brilho,
-                    descartada_por_borda=True,
-                    # As mãos SEGUEM no resultado mesmo com o frame descartado:
-                    # quem lê formato (o "L") filtra mão por mão e ainda
-                    # aproveita a que está inteira. Sem isso, uma segunda mão
-                    # encostando na borda zerava o modo luas — e o polegar do L
-                    # encosta na borda com frequência.
-                    maos=tuple((pontos, lado) for pontos, lado, _ in maos),
-                    status=StatusCamera.ATIVA,
-                )
-            contagens.append(contar_dedos(pontos, lado))
-
-        # Medida em TODAS as mãos visíveis (a lista já vem ordenada por
-        # confiança): a primeira comanda o zoom, e as duas juntas formam o
-        # gesto de comando das luas.
-        razoes_pinca = tuple(medir_pinca(pontos, lado) for pontos, lado, _ in maos)
+        usaveis = [m for m in pose.maos if m.no_quadro]
 
         return LeituraGestos(
-            contagem=sum(contagens),
-            contagens_por_mao=tuple(contagens),
-            maos_visiveis=len(maos),
-            confianca_media=confianca,
+            # A contagem já vem da pose (None quando não há mão inteira). Note
+            # que uma mão na borda NÃO zera mais a leitura das outras: a pose
+            # marca mão por mão, então o "L" de uma mão sobrevive à outra
+            # encostando no canto — o polegar do L encosta com frequência.
+            contagem=pose.contagem_total,
+            contagens_por_mao=tuple(m.contagem for m in usaveis),
+            maos_visiveis=len(pose.maos),
+            confianca_media=pose.confianca_media,
             brilho_medio=brilho,
-            razoes_pinca=razoes_pinca,
-            maos=tuple((pontos, lado) for pontos, lado, _ in maos),
+            descartada_por_borda=pose.descartada_por_borda,
+            razoes_pinca=pose.razoes_pinca,
+            maos=pose.como_pares,
+            pose=pose,
+            reaproveitada=pose.reaproveitada,
+            estabilidade=leitor.razao_estabilidade,
             status=StatusCamera.ATIVA,
         )
 

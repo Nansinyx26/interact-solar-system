@@ -29,6 +29,13 @@ const PERIMETRO_ANEL = 2 * Math.PI * 34;
 /** O catálogo guarda a cor como "48, 104, 196" (mesmo literal do desktop). */
 const rgb = (cor) => `rgb(${cor})`;
 
+/** Verde/amarelo/vermelho conforme o valor cai abaixo dos limiares. */
+function faixa(valor, bom, aceitavel) {
+  if (valor >= bom) return "sucesso";
+  if (valor >= aceitavel) return "aviso";
+  return "erro";
+}
+
 export class HUD {
   constructor(raiz) {
     this.raiz = raiz;
@@ -61,6 +68,8 @@ export class HUD {
     this.anel.style.strokeDashoffset = `${PERIMETRO_ANEL}`;
     this._montarLegenda();
     this._avisosAtuais = "";
+    this.debug = raiz.querySelector("[data-debug]");
+    this._debugAtual = "";
 
     // Site e ZIP de download carregam a MESMA versão: é o que permite conferir
     // de bate-pronto se o desktop baixado corresponde ao site que está no ar.
@@ -145,7 +154,69 @@ export class HUD {
     this._atualizarAtivo(corpoAlvo);
     this._atualizarEstadoCamera(detector, leitura);
     this._atualizarPainelLuas(estado);
-    this._atualizarAvisos(leitura, detector, pincaAtiva);
+    this._atualizarAvisos(leitura, detector, pincaAtiva, estado.avisoLuas, estado.modoLuas);
+    this._atualizarDebug(estado);
+  }
+
+  /**
+   * Painel de diagnóstico do reconhecimento (tecla F3).
+   *
+   * Existe porque quase todo problema relatado como "o gesto não pega" é na
+   * verdade uma de quatro coisas, e sem ver os números não dá para saber qual:
+   * FPS no chão, confiança baixa, leitura instável, ou o número certo chegando
+   * mas a confirmação nunca completando. O painel mostra as quatro lado a lado.
+   */
+  _atualizarDebug(estado) {
+    if (!this.debug) return;
+    if (!estado.debugVisivel) {
+      if (!this.debug.hidden) this.debug.hidden = true;
+      return;
+    }
+    this.debug.hidden = false;
+
+    const leitura = estado.leitura;
+    const pose = leitura.pose ?? { maos: [] };
+    const numero = leitura.contagem === null ? "—" : String(leitura.contagem);
+    const porMao = leitura.porMao?.length ? leitura.porMao.join(" + ") : "—";
+    const lados = pose.maos.length
+      ? pose.maos.map((m) => `${m.lado[0]}:${m.score.toFixed(2)}`).join(" / ")
+      : "—";
+
+    const linhas = [
+      ["FPS", estado.fps.toFixed(1), faixa(estado.fps, 50, 30)],
+      ["PLANETA", estado.planetaSelecionado?.nome ?? "—", "neutro"],
+      [
+        "MODO LUA",
+        estado.estadoSelecao || (estado.modoLuas ? "ativo" : "—"),
+        estado.modoLuas ? "destaque" : "fraco",
+      ],
+      ["NÚMERO", `${numero}  (por mão: ${porMao})`, "neutro"],
+      ["ÍNDICE LUA", String(estado.indiceLua ?? "—"), "neutro"],
+      ["MÃOS", `${leitura.maosVisiveis}  [${lados}]`, "neutro"],
+      ["CONFIANÇA", leitura.confiancaMedia.toFixed(2), faixa(leitura.confiancaMedia, 0.85, 0.7)],
+      [
+        "ESTABILIDADE",
+        `${(leitura.estabilidade ?? 0).toFixed(2)}${leitura.reaproveitada ? "  (reaproveitada)" : ""}`,
+        faixa(leitura.estabilidade ?? 0, 0.8, 0.6),
+      ],
+    ];
+
+    const progresso = Math.min(1, Math.max(0, estado.progressoLua ?? 0));
+    const assinatura = linhas.map((l) => l.join(":")).join("|") + progresso.toFixed(2);
+    if (assinatura === this._debugAtual) return;
+    this._debugAtual = assinatura;
+
+    this.debug.innerHTML =
+      `<p class="debug-titulo">DEBUG DE GESTOS · F3</p>` +
+      linhas
+        .map(
+          ([rotulo, valor, classe]) =>
+            `<div class="debug-linha"><span>${rotulo}</span>` +
+            `<b class="${classe}">${valor}</b></div>`,
+        )
+        .join("") +
+      `<div class="debug-linha"><span>CONFIRMAÇÃO</span>` +
+      `<span class="debug-barra"><i style="width:${Math.round(progresso * 100)}%"></i></span></div>`;
   }
 
   /**
@@ -227,8 +298,11 @@ export class HUD {
     this.estadoCamera.innerHTML = `<i></i>${texto}`;
   }
 
-  _atualizarAvisos(leitura, detector, pincaAtiva) {
+  _atualizarAvisos(leitura, detector, pincaAtiva, avisoLua = "", modoLuas = false) {
     const avisos = [];
+    // O aviso do modo lua vem primeiro: quando ele existe, é a resposta direta
+    // ao que o usuário acabou de fazer com as mãos.
+    if (avisoLua) avisos.push(["aviso", avisoLua]);
     if (pincaAtiva) {
       // Enquanto a pinça comanda o zoom a seleção por dedos fica suspensa: sem
       // este aviso o usuário acha que o reconhecimento travou.
@@ -245,7 +319,10 @@ export class HUD {
       if (leitura.descartadaPorBorda) {
         avisos.push(["aviso", "Mão saindo do quadro — leitura descartada."]);
       }
-      if (leitura.contagem === MAXIMO_DEDOS_UMA_MAO) {
+      // A dica dos números altos só faz sentido FORA do modo lua: lá o total é
+      // "L (2 dedos) + número da outra mão" e não seleciona corpo nenhum, então
+      // sugerir 5+4 mandaria o usuário para o lugar errado.
+      if (leitura.contagem === MAXIMO_DEDOS_UMA_MAO && !modoLuas) {
         avisos.push([
           "dica",
           `Use as duas mãos para ${GESTO_MINIMO_DUAS_MAOS}–${MAXIMO_GESTO_CORPO} ` +
@@ -288,9 +365,16 @@ export class HUD {
     const visiveis = luas.slice(0, MAXIMO_LUAS);
     const restantes = luas.length - visiveis.length;
     const luaAtiva = estado.luaSelecionada ? (estado.luaSelecionada.nome ?? estado.luaSelecionada) : null;
-    const rotulo = estado.modoLuas ? "MODO LUAS" : "reconhecendo L...";
-    const progresso = estado.progressoModo ?? 0;
-    const mostrarBarra = !estado.modoLuas && progresso > 0;
+    let rotulo;
+    if (estado.fichaLuaAberta) rotulo = "FICHA DA LUA";
+    else if (estado.modoLuas) rotulo = "MODO LUA";
+    else rotulo = "reconhecendo L...";
+    // Duas barras diferentes: fora do modo, a da histerese do "L"; dentro
+    // dele, a da confirmação que abre a ficha. É sempre a que está enchendo.
+    const progresso = estado.modoLuas
+      ? (estado.progressoLua ?? 0)
+      : (estado.progressoModo ?? 0);
+    const mostrarBarra = progresso > 0 && !estado.fichaLuaAberta;
 
     const assinatura = `${estado.modoLuas}|${planeta?.nome}|${luaAtiva}|${progresso.toFixed(2)}|${rotulo}|${mostrarBarra}`;
     if (assinatura !== this._estadoLuasAtual) {

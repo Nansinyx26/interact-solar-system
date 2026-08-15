@@ -5,6 +5,8 @@
  * do aplicativo desktop.
  */
 
+import { LUAS_MENORES, indexarPorPlaneta } from "./luas.js";
+
 /** @typedef {typeof CORPOS[number]} CorpoCeleste */
 
 export const CORPOS = [
@@ -254,53 +256,22 @@ export const LUA = CORPOS.find((c) => c.nome === "Lua");
 // ---------------------------------------------------------------------------
 // Luas dos demais planetas
 // ---------------------------------------------------------------------------
-// Ficam FORA de CORPOS de propósito: os gestos vão de 0 a 10 e já estão todos
-// ocupados (0-8 Sol e planetas, 9 Lua, 10 visão geral). Estas luas não são
-// selecionáveis por contagem de dedos — elas aparecem em bloco quando o "modo
-// luas" é ligado, e podem ser focadas por toque/clique.
-//
-// Só as principais de cada planeta: Júpiter sozinho tem 95 luas conhecidas, e
-// desenhar todas viraria ruído em volta do disco.
-//
-// ATENÇÃO à escala: `raioOrbitaPx` é VISUAL (múltiplo do raio do planeta), não
-// proporcional. Em escala real Calisto ficaria a 26 raios de Júpiter e Fobos a
-// 1,4 raios de Marte — as luas internas sumiriam dentro do planeta. O que
-// preservamos é a ordem e o espaçamento relativo dentro de cada sistema.
-export const LUAS_MENORES = [
-  // --- Marte ---
-  { nome: "Fobos", planeta: "Marte", diametroKm: 22.5, distanciaKm: 9376, periodoOrbitalDias: 0.319, raioOrbitaPx: 2.2, cor: [150, 140, 130], faseInicial: 0.0, fatoCurioso: "Está tão perto de Marte que nasce a oeste e se põe a leste." },
-  { nome: "Deimos", planeta: "Marte", diametroKm: 12.4, distanciaKm: 23463, periodoOrbitalDias: 1.263, raioOrbitaPx: 3.2, cor: [170, 158, 145], faseInicial: 2.1, fatoCurioso: "A menor lua do Sistema Solar entre as bem conhecidas." },
-  // --- Júpiter ---
-  { nome: "Amalteia", planeta: "Júpiter", diametroKm: 167, distanciaKm: 181366, periodoOrbitalDias: 0.498, raioOrbitaPx: 1.7, cor: [196, 120, 96], faseInicial: 1.1, fatoCurioso: "É avermelhada e tem formato irregular, como uma batata." },
-  { nome: "Io", planeta: "Júpiter", diametroKm: 3643, distanciaKm: 421700, periodoOrbitalDias: 1.769, raioOrbitaPx: 2.1, cor: [232, 214, 120], faseInicial: 0.4, fatoCurioso: "O corpo com mais atividade vulcânica do Sistema Solar." },
-  { nome: "Europa", planeta: "Júpiter", diametroKm: 3122, distanciaKm: 671034, periodoOrbitalDias: 3.551, raioOrbitaPx: 2.6, cor: [216, 206, 190], faseInicial: 2.0, fatoCurioso: "Sob a crosta de gelo há um oceano de água líquida." },
-  { nome: "Ganimedes", planeta: "Júpiter", diametroKm: 5268, distanciaKm: 1070412, periodoOrbitalDias: 7.155, raioOrbitaPx: 3.2, cor: [168, 156, 140], faseInicial: 3.7, fatoCurioso: "É a maior lua do Sistema Solar — maior que Mercúrio." },
-  { nome: "Calisto", planeta: "Júpiter", diametroKm: 4821, distanciaKm: 1882709, periodoOrbitalDias: 16.689, raioOrbitaPx: 4.0, cor: [128, 118, 108], faseInicial: 5.2, fatoCurioso: "A superfície mais craterada que se conhece." },
-  // --- Saturno ---
-  { nome: "Encélado", planeta: "Saturno", diametroKm: 504, distanciaKm: 237948, periodoOrbitalDias: 1.37, raioOrbitaPx: 1.8, cor: [236, 240, 244], faseInicial: 4.4, fatoCurioso: "Lança gêiseres de água pelo polo sul." },
-  { nome: "Dione", planeta: "Saturno", diametroKm: 1123, distanciaKm: 377396, periodoOrbitalDias: 2.737, raioOrbitaPx: 2.2, cor: [206, 204, 198], faseInicial: 1.9, fatoCurioso: "Tem penhascos de gelo que chegam a centenas de metros." },
-  { nome: "Reia", planeta: "Saturno", diametroKm: 1527, distanciaKm: 527108, periodoOrbitalDias: 4.518, raioOrbitaPx: 2.7, cor: [194, 192, 186], faseInicial: 3.1, fatoCurioso: "A segunda maior lua de Saturno, feita quase toda de gelo." },
-  { nome: "Titã", planeta: "Saturno", diametroKm: 5150, distanciaKm: 1221870, periodoOrbitalDias: 15.945, raioOrbitaPx: 3.3, cor: [214, 168, 92], faseInicial: 1.2, fatoCurioso: "Tem atmosfera densa e rios de metano líquido." },
-  { nome: "Jápeto", planeta: "Saturno", diametroKm: 1469, distanciaKm: 3560820, periodoOrbitalDias: 79.33, raioOrbitaPx: 4.1, cor: [150, 140, 126], faseInicial: 5.6, fatoCurioso: "Um hemisfério é escuro como carvão e o outro, branco como neve." },
-  // --- Urano ---
-  { nome: "Miranda", planeta: "Urano", diametroKm: 472, distanciaKm: 129900, periodoOrbitalDias: 1.413, raioOrbitaPx: 1.8, cor: [188, 190, 192], faseInicial: 2.7, fatoCurioso: "Tem um penhasco de 20 km, o mais alto conhecido." },
-  { nome: "Ariel", planeta: "Urano", diametroKm: 1158, distanciaKm: 190900, periodoOrbitalDias: 2.52, raioOrbitaPx: 2.2, cor: [198, 196, 190], faseInicial: 0.5, fatoCurioso: "A superfície mais clara e jovem entre as luas de Urano." },
-  { nome: "Umbriel", planeta: "Urano", diametroKm: 1169, distanciaKm: 266000, periodoOrbitalDias: 4.144, raioOrbitaPx: 2.6, cor: [132, 130, 128], faseInicial: 4.0, fatoCurioso: "A mais escura das grandes luas de Urano." },
-  { nome: "Titânia", planeta: "Urano", diametroKm: 1578, distanciaKm: 435910, periodoOrbitalDias: 8.706, raioOrbitaPx: 3.1, cor: [176, 166, 158], faseInicial: 0.9, fatoCurioso: "A maior lua de Urano, com cânions de centenas de quilômetros." },
-  { nome: "Oberon", planeta: "Urano", diametroKm: 1523, distanciaKm: 583520, periodoOrbitalDias: 13.463, raioOrbitaPx: 3.7, cor: [150, 142, 136], faseInicial: 3.4, fatoCurioso: "A mais externa das grandes luas de Urano." },
-  // --- Netuno ---
-  { nome: "Galateia", planeta: "Netuno", diametroKm: 176, distanciaKm: 61953, periodoOrbitalDias: 0.429, raioOrbitaPx: 1.7, cor: [160, 168, 176], faseInicial: 3.0, fatoCurioso: "Sua gravidade mantém um dos anéis de Netuno agrupado." },
-  { nome: "Larissa", planeta: "Netuno", diametroKm: 194, distanciaKm: 73548, periodoOrbitalDias: 0.555, raioOrbitaPx: 2.0, cor: [172, 178, 184], faseInicial: 5.0, fatoCurioso: "Tem forma irregular e superfície muito craterada." },
-  { nome: "Proteu", planeta: "Netuno", diametroKm: 420, distanciaKm: 117647, periodoOrbitalDias: 1.122, raioOrbitaPx: 2.4, cor: [150, 156, 162], faseInicial: 0.7, fatoCurioso: "É quase o maior corpo que a gravidade não conseguiu arredondar." },
-  { nome: "Tritão", planeta: "Netuno", diametroKm: 2707, distanciaKm: 354759, periodoOrbitalDias: -5.877, raioOrbitaPx: 2.9, cor: [198, 206, 210], faseInicial: 1.7, fatoCurioso: "Orbita ao contrário: foi capturado, não se formou ali." },
-  { nome: "Nereida", planeta: "Netuno", diametroKm: 340, distanciaKm: 5513400, periodoOrbitalDias: 360.13, raioOrbitaPx: 3.8, cor: [166, 170, 174], faseInicial: 4.2, fatoCurioso: "Tem a órbita mais alongada entre as luas conhecidas." },
-];
+// O catálogo em si mora em `dados/luas.js`. Aqui ficou só a FUSÃO com os corpos
+// principais, que é a parte que depende de CORPOS — e é por isso que ela não
+// pôde ir junto: o import iria nos dois sentidos.
 
 /** Índice por planeta, para o renderizador não filtrar a lista a cada frame. */
-export const LUAS_POR_PLANETA = LUAS_MENORES.reduce((mapa, lua) => {
-  (mapa[lua.planeta] ??= []).push(lua);
-  return mapa;
-}, {});
+export const LUAS_POR_PLANETA = indexarPorPlaneta(LUAS_MENORES);
+
+// Dados que só a ficha da LUA usa e que os corpos principais não carregam.
+// Ficam num mapa à parte, por nome, em vez de virarem campos opcionais nos 9
+// corpos: só satélites precisam deles, e hoje só existe um satélite em CORPOS.
+const MASSAS_DE_SATELITE_KG = {
+  Lua: 7.342e22,
+};
+const COMPOSICOES_DE_SATELITE = {
+  Lua: "Crosta de anortosito sobre manto de silicatos e núcleo pequeno de ferro",
+};
 
 // A Lua da Terra vive em CORPOS, não em LUAS_MENORES, porque tem gesto próprio
 // (o 9). Mas ela É uma lua: precisa aparecer aqui, senão a lista que o HUD
@@ -321,8 +292,17 @@ for (const corpo of CORPOS) {
     cor: corpo.corBase,
     faseInicial: corpo.faseInicial,
     fatoCurioso: corpo.fatoCurioso,
+    // Massa e composição não existem nos 9 corpos principais (nenhum deles
+    // precisa delas na ficha), mas a ficha da LUA mostra as duas — então
+    // entram aqui, na fusão.
+    massaKg: MASSAS_DE_SATELITE_KG[corpo.nome] ?? 0,
+    composicao: COMPOSICOES_DE_SATELITE[corpo.nome] ?? "",
   });
 }
+
+// Reexportado de dados/luas.js: o catálogo mudou de arquivo, mas o ponto de
+// import antigo continua valendo — nenhum chamador precisou mudar.
+export { LUAS_MENORES };
 
 /** Luas desenhadas ao redor de um planeta (vazio se não houver). */
 export function luasDoPlaneta(nomePlaneta) {

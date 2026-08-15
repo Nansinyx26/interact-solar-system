@@ -66,19 +66,18 @@ export class MaquinaGestos {
       ...mao,
       ehL: ehFormatoL(mao.landmarks, mao.lado),
     }));
-    const maosEmL = formas.filter((f) => f.ehL);
+    let maosEmL = formas.filter((f) => f.ehL);
     const outras = formas.filter((f) => !f.ehL);
 
-    // 3. Duas mãos em L é estado inválido: não muda nada.
+    // 3. Duas mãos em L: a PRIMEIRA detectada vira âncora e a segunda passa a
+    //    valer como mão de número. Antes isto era estado inválido e não mudava
+    //    nada — mas fazer o L com as duas mãos é um erro comum de quem está
+    //    aprendendo o gesto, e congelar a tela sem explicação era o pior
+    //    desfecho possível. Um L conta como 2 dedos, então o usuário vê a lua 2
+    //    em preview e entende sozinho o que fazer.
     if (maosEmL.length >= 2) {
-      return {
-        modoLuas: this.modoLuas,
-        numero: null,
-        progressoModo: this._progresso(),
-        modoMudou: false,
-        lDetectado: true,
-        luaConfirmada: null,
-      };
+      outras.unshift(maosEmL[1]);
+      maosEmL = maosEmL.slice(0, 1);
     }
 
     const temL = maosEmL.length === 1;
@@ -104,6 +103,10 @@ export class MaquinaGestos {
       modoMudou,
       lDetectado: temL,
       luaConfirmada,
+      // Quantas mãos utilizáveis havia no quadro. O seletor precisa disto para
+      // distinguir "não mostrou número" de "só tem uma mão na tela" — são
+      // avisos de HUD diferentes, e o número sozinho não conta essa história.
+      maosVisiveis: usaveis.length,
     };
   }
 

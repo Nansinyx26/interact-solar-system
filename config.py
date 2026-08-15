@@ -208,6 +208,40 @@ MARGEM_QUADRO: Final[float] = 0.06
 # extrapolado não invalida a contagem, uma mão cortada ao meio sim.
 MAX_LANDMARKS_FORA_DO_QUADRO: Final[int] = 3
 
+# Score de handedness abaixo do qual a mão é considerada lixo. O MediaPipe
+# continua devolvendo 21 landmarks quando "acha" que viu uma mão numa cortina ou
+# num rosto, e esses frames é que produziam a troca de gesto sozinha. Em vez de
+# zerar a leitura (que apagaria o modo luas), o leitor REAPROVEITA a última pose
+# boa por alguns frames — ver JANELA_REAPROVEITAMENTO_S.
+CONFIANCA_MIN_UTIL: Final[float] = 0.70
+# Por quanto tempo a última pose válida pode substituir frames ruins. Acima
+# disso a mão provavelmente saiu mesmo, e insistir seria mentir para o usuário.
+JANELA_REAPROVEITAMENTO_S: Final[float] = 0.35
+
+# ---------------------------------------------------------------------------
+# Filtro de landmarks (One Euro)
+# ---------------------------------------------------------------------------
+# O tremor natural da mão vale alguns pixels por frame e é justamente o que faz
+# um dedo na fronteira do limiar piscar entre "aberto" e "fechado". Filtrar os
+# 21 pontos ANTES de qualquer classificação resolve o problema na origem.
+#
+# Escolhemos o One Euro em vez de uma EMA simples porque a EMA obriga a um
+# compromisso ruim: alpha baixo (suave) atrasa o gesto, alpha alto (responsivo)
+# deixa passar o tremor. O One Euro varia o alpha com a VELOCIDADE — parado ele
+# filtra forte, em movimento ele solta — então dá as duas coisas.
+FILTRO_LANDMARKS_ATIVO: Final[bool] = True
+# Frequência de corte com a mão parada. Quanto menor, mais estável (e mais
+# "arrastado"). 1,2 Hz remove o tremor sem que o usuário perceba atraso.
+UM_EURO_CORTE_MINIMO_HZ: Final[float] = 1.2
+# Quanto o corte sobe por unidade de velocidade. É o botão da responsividade:
+# alto demais e o filtro deixa de agir durante o movimento.
+UM_EURO_BETA: Final[float] = 0.7
+# Corte do filtro aplicado à própria derivada (padrão do artigo original).
+UM_EURO_CORTE_DERIVADA_HZ: Final[float] = 1.0
+# Alternativa simples, usada quando FILTRO_LANDMARKS_ATIVO é desligado ou
+# quando não há timestamp confiável: média móvel exponencial pura.
+ALPHA_EMA_LANDMARKS: Final[float] = 0.4
+
 # ---------------------------------------------------------------------------
 # Contagem de dedos
 # ---------------------------------------------------------------------------
@@ -215,6 +249,12 @@ MAX_LANDMARKS_FORA_DO_QUADRO: Final[int] = 3
 # o que torna a contagem invariante à distância da mão até a câmera.
 LIMIAR_DEDO_ESTENDIDO: Final[float] = 0.16
 LIMIAR_POLEGAR_ESTENDIDO: Final[float] = 0.26
+# HISTERESE: um dedo já contado como estendido só volta a "fechado" abaixo de um
+# limiar MENOR. Com limiar único, um dedo parado exatamente na fronteira alterna
+# a cada frame e a contagem oscila entre 3 e 4 sem o usuário mexer a mão.
+# A folga é multiplicativa para acompanhar a normalização pela palma.
+FOLGA_HISTERESE_DEDO: Final[float] = 0.72   # 0,16 -> sai em 0,115
+FOLGA_HISTERESE_POLEGAR: Final[float] = 0.78  # 0,26 -> sai em 0,203
 # Faixa em torno do limiar do polegar onde a projeção lateral não decide sozinha
 # e entra o critério de distância até a base do dedo mínimo.
 MARGEM_ZONA_CINZENTA_POLEGAR: Final[float] = 0.10
@@ -300,7 +340,25 @@ FRAMES_PARA_SAIR_MODO_LUAS: Final[int] = 8
 # Votação da lua escolhida, no mesmo espírito do estabilizador de planetas.
 BUFFER_SELECAO_LUA: Final[int] = 6
 VOTOS_SELECAO_LUA: Final[int] = 5
-COOLDOWN_SELECAO_LUA_S: Final[float] = 0.4
+# Cooldown após ABRIR uma ficha de lua. Mais longo que o do estabilizador de
+# planetas porque a ficha muda a tela inteira: reabrir outra em seguida, por um
+# frame ruim, é bem mais incômodo que trocar de planeta sem querer.
+COOLDOWN_SELECAO_LUA_S: Final[float] = 0.8
+
+# --- confirmação da lua (PREVIEW -> FICHA) ---------------------------------
+# Enquanto o "L" é mantido, o número da outra mão apenas PRÉ-VISUALIZA a lua
+# (destaque na órbita + nome no HUD). A ficha só abre quando o mesmo número se
+# mantém estável por FRAMES_PARA_ABRIR_FICHA_LUA leituras seguidas.
+#
+# São leituras (inferências), não frames de render: a ~15 leituras/s, 12
+# leituras ≈ 0,8 s de mão parada. O valor foi escolhido para ser longo o
+# bastante para o usuário "passear" pelos números sem abrir nada, e curto o
+# bastante para não cansar o braço.
+FRAMES_PARA_ABRIR_FICHA_LUA: Final[int] = 12
+# Tolerância a falhas DENTRO da contagem: um único frame com número diferente
+# não zera o progresso, só o desconta. Sem isso, uma piscada do rastreio no
+# décimo frame obrigava a recomeçar do zero.
+FALHAS_TOLERADAS_CONFIRMACAO: Final[int] = 3
 
 # ---------------------------------------------------------------------------
 # Gesto de pinça — zoom controlado pela câmera
@@ -368,6 +426,11 @@ COR_DESTAQUE: Final[tuple[int, int, int]] = (120, 200, 255)
 COR_AVISO: Final[tuple[int, int, int]] = (255, 190, 90)
 COR_ERRO: Final[tuple[int, int, int]] = (255, 110, 110)
 COR_SUCESSO: Final[tuple[int, int, int]] = (110, 226, 160)  # câmera ativa
+# Trilho das barras de progresso. Precisa ser OPACO: o pygame descarta o alfa de
+# uma cor RGBA ao desenhar direto na tela (que não tem canal alfa por pixel), e
+# um (255,255,255,40) saía branco sólido em vez de um cinza discreto. Este é o
+# valor já pré-misturado sobre o fundo do painel.
+COR_TRILHO_BARRA: Final[tuple[int, int, int]] = (58, 64, 84)
 COR_PAINEL: Final[tuple[int, int, int]] = (14, 17, 30)
 ALPHA_PAINEL: Final[int] = 210
 
@@ -385,6 +448,10 @@ LARGURA_MINIMA_ATALHOS: Final[int] = 1040
 
 # Ficha do planeta
 LARGURA_FICHA: Final[int] = 330
+# A ficha da LUA vive na coluna direita (a esquerda é do planeta-mãe, que
+# continua visível: comparar lua e planeta lado a lado é o ponto de olhar uma
+# lua). Um pouco mais estreita porque tem menos linhas.
+LARGURA_FICHA_LUA: Final[int] = 300
 DURACAO_ANIMACAO_FICHA_S: Final[float] = 0.45
 DESLOCAMENTO_ENTRADA_FICHA_PX: Final[float] = 60.0
 

@@ -54,7 +54,7 @@ SO_DESKTOP = {
     "ALTURA_MINIMA_JANELA", "FPS_ALVO", "FAMILIA_FONTE", "FAMILIA_FONTE_MONO",
     "TAM_FONTE_TITULO", "TAM_FONTE_GRANDE", "TAM_FONTE_MEDIA", "TAM_FONTE_PEQUENA",
     "TAM_FONTE_MINI", "MARGEM_HUD", "LARGURA_PREVIEW_CAMERA", "ALTURA_PREVIEW_CAMERA",
-    "LARGURA_FICHA", "ALPHA_PAINEL", "RAIO_ANEL_PROGRESSO", "ESPESSURA_ANEL_PROGRESSO",
+    "LARGURA_FICHA", "LARGURA_FICHA_LUA", "ALPHA_PAINEL", "RAIO_ANEL_PROGRESSO", "ESPESSURA_ANEL_PROGRESSO",
     "DURACAO_ANIMACAO_FICHA_S", "DESLOCAMENTO_ENTRADA_FICHA_PX",
     "ALPHA_LINHA_LEGENDA_ATIVA", "ALTURA_BARRA_ATALHOS", "ALTURA_MINIMA_LEGENDA",
     "LARGURA_MINIMA_ATALHOS", "RAIO_PONTO_LEGENDA",
@@ -69,6 +69,12 @@ SO_DESKTOP = {
     # chamada ficam só do lado que a executa.
     "ELEVENLABS_TIMEOUT_S",
 }
+# Constantes cuja divergência é CONHECIDA e está esperando o porte para a web.
+# Ficam listadas aqui — com o motivo — em vez de fora do verificador: uma
+# divergência silenciosa é exatamente o que este script existe para impedir, mas
+# uma divergência anotada não pode deixar o CI vermelho para sempre.
+DIVERGENCIAS_ACEITAS: set[str] = set()
+
 SO_WEB = {
     "ALTURA_REFERENCIA", "URL_WASM_MEDIAPIPE", "URL_MODELO_MAOS",
     "CONFIANCA_MIN_PRESENCA",
@@ -104,6 +110,11 @@ MODULOS_ESPELHADOS = {
     "gestos/detector.py": "gestos/detector.js",
     "gestos/formatos_mao.py": "gestos/formatos_mao.js",
     "gestos/estado_gesto.py": "gestos/estado_gesto.js",
+    "gestos/filtro_landmarks.py": "gestos/filtro_landmarks.js",
+    "gestos/leitor_maos.py": "gestos/leitor_maos.js",
+    "gestos/seletor_lua.py": "gestos/seletor_lua.js",
+    "dados/luas.py": "dados/luas.js",
+    "ui/ficha_lua.py": "ui/ficha_lua.js",
     "ui/hud.py": "ui/hud.js",
     "ui/ficha_planeta.py": "ui/ficha.js",
 }
@@ -317,7 +328,11 @@ def verificar() -> int:
             iguais = abs(float(py[nome]) - float(js[nome]) * 255) <= TOLERANCIA_ALPHA
         else:
             iguais = _iguais(py[nome], js[nome])
-        if not iguais:
+        if not iguais and nome in DIVERGENCIAS_ACEITAS:
+            # Anotada e com motivo: aparece no relatório, mas não reprova.
+            print(f"  PENDENTE {nome}: desktop={py[nome]!r} web={js[nome]!r}"
+                  " (porte para a web pendente)")
+        elif not iguais:
             problemas_config += 1
             divergencias.append(f"{nome}: desktop={py[nome]!r} web={js[nome]!r}")
             print(f"  DIFERE   {nome}: desktop={py[nome]!r} web={js[nome]!r}")

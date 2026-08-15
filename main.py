@@ -11,6 +11,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 import time
 import webbrowser
@@ -48,9 +49,11 @@ from gestos.detector import MEDIAPIPE_DISPONIVEL, DetectorMaos, LeituraGestos
 from gestos.estabilizador import EstabilizadorGestos, ResultadoEstabilizacao
 from gestos.estado_gesto import IntencaoGesto, MaquinaGestos
 from gestos.pinca import ControladorPinca
+from gestos.seletor_lua import EstadoSelecao, SeletorLua
 from nucleo.camera import Camera2D
 from nucleo.orbita import posicoes_do_sistema, raio_corpo_px
 from nucleo.renderizador import Renderizador
+from ui.ficha_lua import FichaLua
 from ui.ficha_planeta import FichaPlaneta
 from ui.hud import (
     ALTURA_BLOCO_PREVIEW,
@@ -60,12 +63,22 @@ from ui.hud import (
     topo_do_painel_gesto,
 )
 from ui.marca_dagua import MarcaDagua
-from ui.narrador import Narrador, texto_do_corpo
+from ui.narrador import Narrador, texto_da_lua, texto_do_corpo
 from ui.quiz import QuizDesktop
 
 # Limite de dt: se a janela for arrastada ou o processo travar por um instante,
 # a simulação não deve dar um salto gigante.
 _DT_MAXIMO = 0.1
+
+# Deslocamento a partir do qual o clique vira arrasto (mesmo valor da web).
+# Abaixo disso é um clique parado e vale como seleção — um mouse nunca fica
+# exatamente imóvel entre o pressionar e o soltar.
+_LIMIAR_ARRASTO_PX = 3.0
+
+# Índice registrado na telemetria para as luas do modo lua. Elas não têm gesto
+# numérico próprio (0-10 estão todos ocupados), mas a telemetria espera um
+# inteiro — 11 fica logo acima do maior gesto real e não colide com nada.
+GESTO_LUA_TELEMETRIA = 11
 
 # Teclas numéricas (fila principal e teclado numérico) -> índice de gesto.
 _TECLAS_NUMERICAS: dict[int, int] = {}
@@ -75,6 +88,9 @@ for _indice in CORPOS_POR_GESTO:
 
 _TECLAS_ACELERAR = (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS)
 _TECLAS_DESACELERAR = (pygame.K_MINUS, pygame.K_KP_MINUS)
+# ESC deixou de sair direto: quando a ficha da lua está aberta ele a fecha
+# primeiro, que é o que a tecla significa em qualquer interface com painel. Só
+# com nada aberto ele encerra. "Q" continua saindo sempre, sem escala.
 _TECLAS_SAIR = (pygame.K_ESCAPE, pygame.K_q)
 # "V" de visão geral — o equivalente de teclado ao gesto das duas mãos abertas.
 _TECLA_VISAO_GERAL = pygame.K_v
@@ -82,6 +98,8 @@ _TECLA_VISAO_GERAL = pygame.K_v
 _TECLA_NARRACAO = pygame.K_n
 # "M" de luas (moons): mostra/esconde as luas dos demais planetas.
 _TECLA_LUAS = pygame.K_m
+# F3 abre o painel de diagnóstico do reconhecimento (FPS, confiança, votação).
+_TECLA_DEBUG = pygame.K_F3
 
 
 class Aplicacao:
@@ -124,11 +142,15 @@ class Aplicacao:
         self.renderizador = Renderizador(self.fontes.mini, self.largura, self.altura)
         self.hud = HUD(self.fontes, self.largura, self.altura)
         self.ficha = FichaPlaneta(self.fontes, self.largura, self.altura)
+        self.ficha_lua = FichaLua(self.fontes, self.largura, self.altura)
         self.marca = MarcaDagua(self.fontes, self.largura, self.altura)
         self.quiz = QuizDesktop(self.fontes, self.largura, self.altura, self.telemetria)
         self.camera = Camera2D(self.largura, self.altura)
         self.estabilizador = EstabilizadorGestos()
         self.pinca = ControladorPinca()
+        # A confirmação da lua (preview -> ficha) mora aqui, não na
+        # MaquinaGestos: a máquina lê MÃOS, o seletor conhece o CATÁLOGO.
+        self.seletor_lua = SeletorLua()
 
         self.tempo_dias: float = 0.0
         self.escala_tempo: float = TIME_SCALE
@@ -146,6 +168,7 @@ class Aplicacao:
         self.planeta_selecionado: CorpoCeleste | None = None
         self.lua_selecionada: LuaMenor | None = None
         self.aviso_luas: str = ""
+        self.mostrar_debug: bool = False
         self.intencao = IntencaoGesto(
             modo_luas=False,
             numero=None,
@@ -155,6 +178,7 @@ class Aplicacao:
         )
         self.camera_livre: bool = False
         self._arrastando: bool = False
+        self._moveu: bool = False
 
         # Estado compartilhado entre atualização e desenho, já inicializado para
         # o caso de uma tecla chegar antes do primeiro _atualizar().
@@ -200,13 +224,22 @@ class Aplicacao:
                 self._redimensionar(evento.w, evento.h)
             elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
                 self._arrastando = True
+                self._moveu = False
             elif evento.type == pygame.MOUSEBUTTONUP and evento.button == 1:
                 self._arrastando = False
+                # Clique curto SEM arrasto = seleção direta do corpo clicado,
+                # como na web. A distinção importa: sem ela, todo fim de pan
+                # sobre um planeta trocaria o foco sem o usuário pedir.
+                if not self._moveu:
+                    self._selecionar_no_ponto(evento.pos)
             elif evento.type == pygame.MOUSEMOTION and self._arrastando:
                 # Arrastar assume a câmera: o alvo continua selecionado (a ficha
                 # permanece), mas a cena para de segui-lo até o próximo comando.
-                self.camera_livre = True
-                self.camera.arrastar(*evento.rel)
+                if math.hypot(*evento.rel) > _LIMIAR_ARRASTO_PX:
+                    self._moveu = True
+                if self._moveu:
+                    self.camera_livre = True
+                    self.camera.arrastar(*evento.rel)
             elif evento.type == pygame.MOUSEWHEEL:
                 self.camera_livre = True
                 self.camera.aplicar_zoom(FATOR_ZOOM_RODA**evento.y)
@@ -223,13 +256,20 @@ class Aplicacao:
         self.renderizador.redimensionar(self.largura, self.altura)
         self.hud.redimensionar(self.largura, self.altura)
         self.ficha.redimensionar(self.largura, self.altura)
+        self.ficha_lua.redimensionar(self.largura, self.altura)
         self.marca.redimensionar(self.largura, self.altura)
         self.quiz.redimensionar(self.largura, self.altura)
 
     def _tratar_tecla(self, tecla: int) -> None:
         """Aplica o atalho correspondente à tecla pressionada."""
-        if tecla in _TECLAS_SAIR:
+        if tecla == pygame.K_ESCAPE and self.seletor_lua.fechar_ficha():
+            # ESC com ficha aberta = fechar a ficha. Só depois ele encerra.
+            self.ficha_lua.ocultar()
+            self.aviso_luas = ""
+        elif tecla in _TECLAS_SAIR:
             self.executando = False
+        elif tecla == _TECLA_DEBUG:
+            self.mostrar_debug = not self.mostrar_debug
         elif tecla == pygame.K_SPACE:
             self.pausado = not self.pausado
         elif tecla == _TECLA_VISAO_GERAL:
@@ -312,12 +352,14 @@ class Aplicacao:
             )
 
             if self.intencao.modo_luas:
-                # No modo luas o número significa índice de lua, não planeta:
+                # No modo lua o número significa índice de lua, não planeta:
                 # o estabilizador de corpos fica de fora.
-                if self.intencao.lua_confirmada is not None:
-                    self._selecionar_lua(self.intencao.lua_confirmada)
+                self._atualizar_modo_lua(agora)
                 self.resultado_gesto = replace(self.resultado_gesto, confirmado=None)
             else:
+                # Sem "L" na tela: avisa o seletor, que fecha a ficha e volta
+                # ao planeta. É este caminho que implementa "soltar o L fecha".
+                self._atualizar_modo_lua(agora)
                 # 0-9 selecionam um corpo e 10 é o comando "visão geral".
                 contagem = self.leitura.contagem
                 valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
@@ -356,6 +398,7 @@ class Aplicacao:
             )
         self.camera.atualizar(dt)
         self.ficha.atualizar(dt)
+        self.ficha_lua.atualizar(dt)
         self.marca.atualizar(dt, self._base_canto_direito())
         if self.quiz.ativo:
             self.quiz.atualizar(dt)
@@ -379,11 +422,60 @@ class Aplicacao:
         self.narrador.anunciar(texto_do_corpo(corpo))
         self.telemetria.registrar_interacao(corpo.nome, corpo.indice_gesto, "desktop")
 
-    def _selecionar_lua(self, indice: int) -> None:
-        """Aplica o número recebido no modo luas como índice de lua.
+    def _selecionar_no_ponto(self, ponto: tuple[int, int]) -> None:
+        """Seleciona o corpo sob o cursor (porte de ``_selecionarNoPonto``).
 
-        O alvo é o planeta em contexto. Sem planeta (Sol ou visão geral) a Terra
-        assume, que é o caso mais provável de quem está começando a explorar.
+        Força o valor no estabilizador, exatamente como a web: sem isso o gesto
+        seguinte reconfirmaria o alvo antigo e desfaria o clique.
+        """
+        corpo = self.renderizador.corpo_no_ponto(self.camera, self.posicoes, ponto)
+        if corpo is None:
+            return
+        self.estabilizador.forcar(corpo.indice_gesto, time.monotonic())
+        self._selecionar(corpo)
+
+    def _atualizar_modo_lua(self, agora: float) -> None:
+        """Avança o seletor de luas e aplica o que ele decidir.
+
+        Todo o julgamento (preview, confirmação, casos de borda e as mensagens
+        de cada um) mora no ``SeletorLua``. Aqui só se traduz a decisão em
+        efeitos: destaque na órbita, ficha, narração e telemetria.
+        """
+        # O planeta em contexto é o SELECIONADO, não o corpo em foco: focar uma
+        # lua não pode fazer a lista de luas trocar debaixo do dedo do usuário.
+        self.seletor_lua.definir_planeta(self.planeta_selecionado)
+
+        resultado = self.seletor_lua.atualizar(
+            modo_lua_ativo=self.intencao.modo_luas,
+            numero=self.intencao.numero,
+            maos_visiveis=self.intencao.maos_visiveis,
+            agora=agora,
+        )
+
+        self.lua_selecionada = resultado.lua
+        self.aviso_luas = resultado.aviso
+        if resultado.lua is not None:
+            # Selecionar uma lua liga as luas na cena: destacar uma órbita que
+            # não está sendo desenhada não mostraria nada.
+            self.luas_visiveis = True
+
+        if resultado.ficha_abriu and resultado.lua is not None:
+            self.ficha_lua.mostrar(resultado.lua)
+            self.narrador.anunciar(texto_da_lua(resultado.lua))
+            self.telemetria.registrar_interacao(
+                resultado.lua.nome, GESTO_LUA_TELEMETRIA, "desktop"
+            )
+        elif resultado.ficha_fechou:
+            self.ficha_lua.ocultar()
+
+    def _selecionar_lua(self, indice: int) -> None:
+        """Aplica um índice de lua vindo do TECLADO (0-9 no modo lua).
+
+        O caminho do gesto passa pelo ``SeletorLua`` e tem confirmação por
+        permanência; a tecla é um comando explícito e abre a ficha na hora —
+        seria absurdo pedir para o usuário segurar uma tecla por 12 leituras.
+        O que os dois compartilham são as MENSAGENS e o catálogo, para teclado
+        e mão nunca discordarem sobre quantas luas um planeta tem.
         """
         alvo = self.planeta_selecionado
         if alvo is None or alvo.eh_sol:
@@ -394,8 +486,9 @@ class Aplicacao:
 
         luas = luas_do_planeta(alvo.nome)
         if not luas:
-            self.aviso_luas = f"{alvo.nome} não tem luas conhecidas."
+            self.aviso_luas = f"{alvo.nome} não tem luas cadastradas."
             self.lua_selecionada = None
+            self.ficha_lua.ocultar()
             return
 
         self.luas_visiveis = True
@@ -403,13 +496,15 @@ class Aplicacao:
             # Zero mostra TODAS: é a única forma de voltar à visão do sistema
             # de luas sem largar o modificador.
             self.lua_selecionada = None
-            self.aviso_luas = f"{alvo.nome}: todas as {len(luas)} luas."
+            self.ficha_lua.ocultar()
+            plural = "luas" if len(luas) > 1 else "lua"
+            self.aviso_luas = f"{alvo.nome}: todas as {len(luas)} {plural}."
             return
         if indice > len(luas):
             # Número maior que a quantidade não troca nada — só avisa. A lista
             # do HUD sai do catálogo, então ela nunca promete o que não existe.
-            plural = "luas" if len(luas) > 1 else "lua"
-            self.aviso_luas = f"{alvo.nome} tem {len(luas)} {plural}."
+            plural = "luas cadastradas" if len(luas) > 1 else "lua cadastrada"
+            self.aviso_luas = f"{alvo.nome} tem só {len(luas)} {plural}."
             return
 
         # O foco vem ANTES de gravar a lua: _selecionar() limpa lua_selecionada
@@ -421,8 +516,14 @@ class Aplicacao:
         if self.corpo_alvo is not alvo:
             self._selecionar(alvo)
             self.planeta_selecionado = alvo
-        self.lua_selecionada = luas[indice - 1]
+        lua = luas[indice - 1]
+        self.lua_selecionada = lua
         self.aviso_luas = ""
+        self.ficha_lua.mostrar(lua)
+        self.narrador.anunciar(texto_da_lua(lua))
+        self.telemetria.registrar_interacao(
+            lua.nome, GESTO_LUA_TELEMETRIA, "desktop"
+        )
 
     def _voltar_visao_geral(self, reiniciar_gesto: bool = True) -> None:
         """Desfaz o foco e reenquadra o sistema inteiro.
@@ -437,6 +538,8 @@ class Aplicacao:
         self.corpo_alvo = None
         # O gesto 10 e a tecla V sempre zeram o modo luas, como combinado.
         self.maquina_gestos.reiniciar()
+        self.seletor_lua.reiniciar()
+        self.ficha_lua.ocultar()
         self.lua_selecionada = None
         self.aviso_luas = ""
         self.camera.voltar_visao_geral()
@@ -462,10 +565,16 @@ class Aplicacao:
             self.tempo_dias,
             self.corpo_alvo,
             self.luas_visiveis,
+            # Nome (e não o objeto): o renderizador compara por nome ao varrer
+            # o catálogo, e passar o objeto obrigaria a importar LuaMenor lá.
+            self.lua_selecionada.nome if self.lua_selecionada else None,
         )
         # A ficha vive na coluna esquerda e só pode descer até onde o painel de
         # gesto começa — a coluna direita é da webcam e da assinatura.
         self.ficha.desenhar(self.tela, topo_do_painel_gesto(self.altura) - MARGEM_HUD)
+        # A ficha da LUA fica na coluna direita e só pode descer até o topo do
+        # preview da webcam — as duas fichas dividem a tela, uma de cada lado.
+        self.ficha_lua.desenhar(self.tela, self._base_canto_direito())
         self.hud.desenhar(
             self.tela,
             EstadoHUD(
@@ -488,6 +597,12 @@ class Aplicacao:
                 lua_selecionada=(
                     self.lua_selecionada.nome if self.lua_selecionada else None
                 ),
+                indice_lua=self.seletor_lua.indice_preview,
+                progresso_lua=self.seletor_lua.progresso,
+                ficha_lua_aberta=self.seletor_lua.ficha_aberta,
+                aviso_lua=self.aviso_luas,
+                debug_visivel=self.mostrar_debug,
+                estado_selecao=self.seletor_lua.estado.value,
             ),
         )
         self.marca.desenhar(self.tela)
@@ -508,10 +623,14 @@ def main() -> int:
 
     print(TITULO_JANELA)
     print(
-        "Teclas: 0-9 focar (9/L = Lua) | V visão geral | ESPAÇO pausa | "
-        "+/- tempo | C câmera | N voz | Q sair"
+        "Teclas: 0-9 focar | L modo lua | V visão geral | ESPAÇO pausa | "
+        "+/- tempo | C câmera | N voz | A quiz | F3 debug | ESC fecha | Q sair"
     )
-    print("Mouse: arrastar = pan | roda = zoom | janela redimensionável")
+    print(
+        "Mouse: clique = selecionar corpo | arrastar = pan | roda = zoom | "
+        "janela redimensionável"
+    )
+    print("Modo lua: uma mão em 'L' + o número da outra mão (segure para abrir a ficha)")
     versao_python = sys.version.split()[0]
     print(f"Python {versao_python} | webcam pedida: índice {argumentos.camera}")
     if not MEDIAPIPE_DISPONIVEL:

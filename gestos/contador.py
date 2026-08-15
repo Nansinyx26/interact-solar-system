@@ -11,6 +11,8 @@ from __future__ import annotations
 import numpy as np
 
 from config import (
+    FOLGA_HISTERESE_DEDO,
+    FOLGA_HISTERESE_POLEGAR,
     LIMIAR_DEDO_ESTENDIDO,
     LIMIAR_POLEGAR_ESTENDIDO,
     MARGEM_QUADRO,
@@ -83,7 +85,10 @@ def _referencial_da_palma(
 
 
 def _polegar_levantado(
-    landmarks: np.ndarray, eixo_polegar: np.ndarray, tamanho_palma: float
+    landmarks: np.ndarray,
+    eixo_polegar: np.ndarray,
+    tamanho_palma: float,
+    estava_estendido: bool = False,
 ) -> bool:
     """Decide se o polegar está aberto.
 
@@ -98,12 +103,19 @@ def _polegar_levantado(
     (A regra clássica "comparar o x da ponta com o x do IP invertendo pelo
     handedness" foi descartada: ela depende da mão estar em pé na imagem e
     quebra com a mão girada, que é o caso comum em uso real.)
+
+    ``estava_estendido`` liga a HISTERESE: um polegar já contado como aberto só
+    volta a fechado abaixo de um limiar menor. Sem isso, o polegar parado na
+    fronteira alterna a cada frame e a contagem pisca entre 4 e 5 sozinha.
     """
+    limiar = LIMIAR_POLEGAR_ESTENDIDO * (
+        FOLGA_HISTERESE_POLEGAR if estava_estendido else 1.0
+    )
     vetor = landmarks[POLEGAR_PONTA, :2] - landmarks[POLEGAR_MCP, :2]
     projecao = float(np.dot(vetor, eixo_polegar)) / tamanho_palma
-    if projecao > LIMIAR_POLEGAR_ESTENDIDO + MARGEM_ZONA_CINZENTA_POLEGAR:
+    if projecao > limiar + MARGEM_ZONA_CINZENTA_POLEGAR:
         return True
-    if projecao < LIMIAR_POLEGAR_ESTENDIDO - MARGEM_ZONA_CINZENTA_POLEGAR:
+    if projecao < limiar - MARGEM_ZONA_CINZENTA_POLEGAR:
         return False
 
     base_minimo = landmarks[MINIMO_MCP, :2]
@@ -112,30 +124,75 @@ def _polegar_levantado(
     return distancia_ponta > distancia_ip * RAZAO_POLEGAR_ABERTO
 
 
-def contar_dedos(landmarks: np.ndarray, lado: str) -> int:
-    """Conta quantos dedos de UMA mão estão levantados (0 a 5)."""
+# Estado de abertura dos cinco dedos, na ordem
+# (indicador, médio, anelar, mínimo, polegar) — os quatro longos primeiro, na
+# mesma ordem de DEDOS_LONGOS, e o polegar por último porque é o único
+# classificado por outro critério.
+EstadoDedos = tuple[bool, bool, bool, bool, bool]
+
+# Estado neutro para quem ainda não tem histórico: "tudo fechado" faz a primeira
+# leitura usar os limiares CHEIOS, que é o lado conservador da histerese.
+DEDOS_TODOS_FECHADOS: EstadoDedos = (False, False, False, False, False)
+
+
+def classificar_dedos(
+    landmarks: np.ndarray, lado: str, anteriores: EstadoDedos | None = None
+) -> EstadoDedos:
+    """Diz quais dos cinco dedos estão estendidos.
+
+    ``anteriores`` é a classificação da MESMA mão na leitura passada e é o que
+    liga a histerese. Passar ``None`` (o padrão) desliga a histerese e reproduz
+    o comportamento antigo — é assim que os chamadores que não guardam estado
+    (o classificador de forma, por exemplo) continuam funcionando.
+    """
+    if anteriores is None:
+        anteriores = DEDOS_TODOS_FECHADOS
     eixo_dedos, eixo_polegar, tamanho = _referencial_da_palma(landmarks, lado)
 
-    total = 0
-    for ponta, pip in DEDOS_LONGOS:
+    estados: list[bool] = []
+    for indice, (ponta, pip) in enumerate(DEDOS_LONGOS):
         # Projeção no eixo da palma: equivale a "a ponta está acima da junta",
         # só que válido com a mão em qualquer ângulo.
-        if _dedo_estendido(landmarks, ponta, pip, eixo_dedos, tamanho):
-            total += 1
+        estados.append(
+            _dedo_estendido(
+                landmarks, ponta, pip, eixo_dedos, tamanho, anteriores[indice]
+            )
+        )
+    estados.append(
+        _polegar_levantado(landmarks, eixo_polegar, tamanho, anteriores[4])
+    )
+    return (estados[0], estados[1], estados[2], estados[3], estados[4])
 
-    if _polegar_levantado(landmarks, eixo_polegar, tamanho):
-        total += 1
-    return total
+
+def contar_dedos(
+    landmarks: np.ndarray, lado: str, anteriores: EstadoDedos | None = None
+) -> int:
+    """Conta quantos dedos de UMA mão estão levantados (0 a 5)."""
+    return sum(classificar_dedos(landmarks, lado, anteriores))
 
 
 def _dedo_estendido(
-    landmarks: np.ndarray, ponta: int, pip: int, eixo_dedos: np.ndarray, tamanho: float
+    landmarks: np.ndarray,
+    ponta: int,
+    pip: int,
+    eixo_dedos: np.ndarray,
+    tamanho: float,
+    estava_estendido: bool = False,
 ) -> bool:
-    """Projeta ponta e junta no eixo da palma para saber se o dedo está aberto."""
+    """Projeta ponta e junta no eixo da palma para saber se o dedo está aberto.
+
+    ``estava_estendido`` liga a HISTERESE: quem já estava aberto usa um limiar
+    menor para continuar aberto. A folga é multiplicativa justamente para
+    sobreviver à normalização pela palma — em qualquer distância da câmera a
+    banda morta continua valendo a mesma fração do tamanho da mão.
+    """
+    limiar = LIMIAR_DEDO_ESTENDIDO * (
+        FOLGA_HISTERESE_DEDO if estava_estendido else 1.0
+    )
     origem = landmarks[PULSO, :2]
     projecao_ponta = float(np.dot(landmarks[ponta, :2] - origem, eixo_dedos))
     projecao_pip = float(np.dot(landmarks[pip, :2] - origem, eixo_dedos))
-    return (projecao_ponta - projecao_pip) > LIMIAR_DEDO_ESTENDIDO * tamanho
+    return (projecao_ponta - projecao_pip) > limiar * tamanho
 
 
 def medir_pinca(landmarks: np.ndarray, lado: str) -> float | None:
@@ -177,6 +234,9 @@ def contar_dedos_total(maos: list[tuple[np.ndarray, str]]) -> int | None:
 
 __all__ = [
     "DEDOS_LONGOS",
+    "DEDOS_TODOS_FECHADOS",
+    "EstadoDedos",
+    "classificar_dedos",
     "contar_dedos",
     "contar_dedos_total",
     "mao_dentro_do_quadro",

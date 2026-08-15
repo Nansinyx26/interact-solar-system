@@ -179,6 +179,43 @@ export function textoDoCorpo(corpo) {
   return partes.join(" ");
 }
 
+/**
+ * Luas cujo nome pede artigo feminino. As demais são masculinas ("o Tritão"
+ * soaria errado, mas "a Europa" e "a Titânia" pedem "a"). Sem esta tabela a
+ * frase de abertura sairia com a concordância trocada — e é justamente ela que
+ * ancora o idioma para o motor de voz (ver textoDoCorpo).
+ */
+const ARTIGO_DA_LUA = {
+  Lua: "A",
+  Europa: "A",
+  Amalteia: "A",
+  Miranda: "A",
+  Titânia: "A",
+  Larissa: "A",
+  Galateia: "A",
+  Nereida: "A",
+  Dione: "A",
+  Reia: "A",
+};
+
+/**
+ * Texto narrado ao abrir a ficha de uma lua: nome, planeta-mãe e curiosidade.
+ *
+ * Curto de propósito. A ficha do planeta narra tudo porque ela é o destino da
+ * interação; a ficha da lua aparece *durante* um gesto que o usuário está
+ * segurando, e uma narração longa continuaria falando depois de ele soltar o
+ * "L" — descrevendo algo que já saiu da tela.
+ */
+export function textoDaLua(lua) {
+  const artigo = ARTIGO_DA_LUA[lua.nome] ?? "O";
+  // "de Terra" soa errado; os outros planetas não levam artigo. A contração
+  // importa porque é esta frase que ancora o idioma para o motor de voz.
+  const preposicao = lua.planeta === "Terra" ? "da" : "de";
+  const partes = [`${artigo} ${lua.nome} é uma lua ${preposicao} ${lua.planeta}.`];
+  if (lua.fatoCurioso) partes.push(lua.fatoCurioso);
+  return partes.join(" ");
+}
+
 export class Narrador {
   constructor() {
     this.disponivel = typeof window !== "undefined" && "speechSynthesis" in window;

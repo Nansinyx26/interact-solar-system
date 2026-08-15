@@ -113,13 +113,25 @@ QUESTOES_QUIZ: list[QuestaoQuiz] = [
     ),
 ]
 
+# Séries e salas EXATAMENTE como no <select> de web/atividades.html — os dois
+# lados gravam no mesmo ranking, e um valor escrito de outro jeito ("5º Ano A"
+# contra "5º Ano" + sala "A") viraria uma linha separada na classificação.
 OPCOES_SERIE: list[str] = [
-    "5º Ano A",
-    "5º Ano B",
-    "5º Ano C",
-    "5º Ano D",
-    "Geral",
+    "1º Ano",
+    "2º Ano",
+    "3º Ano",
+    "4º Ano",
+    "5º Ano",
+    "6º Ano",
+    "7º Ano",
+    "8º Ano",
+    "9º Ano",
+    "Outro",
 ]
+
+# Sala separada da série: a classificação é comparada por sala, e juntar as duas
+# num campo só impediria esse agrupamento. (Mesmo comentário do atividades.html.)
+OPCOES_SALA: list[str] = ["A", "B", "C", "D", "E", "Única"]
 
 
 class EstadoQuiz:
@@ -148,8 +160,9 @@ class QuizDesktop:
 
         # Dados do aluno
         self.nome_aluno: str = ""
-        self.indice_serie: int = 4  # Padrão: "Geral"
-        self.campo_foco: str = "nome"  # 'nome' ou 'serie'
+        self.indice_serie: int = 4  # Padrão: "5º Ano" (o público principal)
+        self.indice_sala: int = 5  # Padrão: "Única"
+        self.campo_foco: str = "nome"  # 'nome', 'serie' ou 'sala'
         self.cursor_visivel: bool = True
         self.tempo_ultimo_cursor: float = 0.0
 
@@ -215,9 +228,11 @@ class QuizDesktop:
         self.status_envio_ranking = "enviando"
         try:
             serie = OPCOES_SERIE[self.indice_serie]
+            sala = OPCOES_SALA[self.indice_sala]
             self.telemetria.registrar_ranking(
                 nome=self.nome_aluno,
                 serie=serie,
+                sala=sala,
                 pontuacao=self.pontuacao,
                 acertos=self.acertos,
                 tempo_segundos=self.tempo_total_segundos,
@@ -265,9 +280,14 @@ class QuizDesktop:
 
         return True
 
+    # Ordem do TAB, espelhando a ordem dos campos no formulário da web.
+    _ORDEM_CAMPOS = ("nome", "serie", "sala")
+
     def _tratar_tecla_identificacao(self, evento: pygame.event.Event) -> None:
         if evento.key == pygame.K_TAB:
-            self.campo_foco = "serie" if self.campo_foco == "nome" else "nome"
+            # Com três campos o alternador binário não serve mais: cicla.
+            indice = self._ORDEM_CAMPOS.index(self.campo_foco)
+            self.campo_foco = self._ORDEM_CAMPOS[(indice + 1) % len(self._ORDEM_CAMPOS)]
         elif evento.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
             self.iniciar_questoes()
         elif self.campo_foco == "nome":
@@ -280,6 +300,11 @@ class QuizDesktop:
                 self.indice_serie = (self.indice_serie - 1) % len(OPCOES_SERIE)
             elif evento.key in (pygame.K_RIGHT, pygame.K_DOWN):
                 self.indice_serie = (self.indice_serie + 1) % len(OPCOES_SERIE)
+        elif self.campo_foco == "sala":
+            if evento.key in (pygame.K_LEFT, pygame.K_UP):
+                self.indice_sala = (self.indice_sala - 1) % len(OPCOES_SALA)
+            elif evento.key in (pygame.K_RIGHT, pygame.K_DOWN):
+                self.indice_sala = (self.indice_sala + 1) % len(OPCOES_SALA)
 
     def _tratar_clique_identificacao(self, pos: tuple[int, int]) -> None:
         if "btn_iniciar" in self._ret_botoes and self._ret_botoes["btn_iniciar"].collidepoint(pos):
@@ -295,6 +320,14 @@ class QuizDesktop:
         if "btn_serie_dir" in self._ret_botoes and self._ret_botoes["btn_serie_dir"].collidepoint(pos):
             self.indice_serie = (self.indice_serie + 1) % len(OPCOES_SERIE)
             self.campo_foco = "serie"
+            return
+        if "btn_sala_esq" in self._ret_botoes and self._ret_botoes["btn_sala_esq"].collidepoint(pos):
+            self.indice_sala = (self.indice_sala - 1) % len(OPCOES_SALA)
+            self.campo_foco = "sala"
+            return
+        if "btn_sala_dir" in self._ret_botoes and self._ret_botoes["btn_sala_dir"].collidepoint(pos):
+            self.indice_sala = (self.indice_sala + 1) % len(OPCOES_SALA)
+            self.campo_foco = "sala"
             return
         if "btn_fechar" in self._ret_botoes and self._ret_botoes["btn_fechar"].collidepoint(pos):
             self.fechar()
@@ -417,7 +450,7 @@ class QuizDesktop:
             self._desenhar_resultado(tela, rect_painel)
 
     def _desenhar_identificacao(self, tela: pygame.Surface, rect_p: pygame.Rect) -> None:
-        """Desenha a tela de entrada: Nome + Série."""
+        """Desenha a tela de entrada: Nome + Série + Sala."""
         cx = rect_p.centerx
         topo = rect_p.y + 40
 
@@ -462,36 +495,18 @@ class QuizDesktop:
             pygame.draw.line(tela, COR_DESTAQUE, (x_cursor, topo + 10), (x_cursor, topo + 36), 2)
         topo += 65
 
-        # Campo Série / Turma
-        desenhar_chapeu_formatura(tela, (x_campo + 10, topo + 8), tamanho=16, cor=COR_DESTAQUE)
-        lbl_serie = self.fontes.pequena.render("Sua Série / Turma:", True, COR_TEXTO)
-        tela.blit(lbl_serie, (x_campo + 24, topo))
-        topo += 26
+        # Campo Série (sem "Turma": a turma agora é o campo Sala, abaixo — os
+        # dois juntos num rótulo só era o que impedia agrupar por sala).
+        topo = self._desenhar_seletor(
+            tela, "serie", "Sua Série:", OPCOES_SERIE[self.indice_serie],
+            x_campo, topo, largura_campo, cx,
+        )
 
-        ret_serie = pygame.Rect(x_campo, topo, largura_campo, 46)
-        borda_cor_serie = COR_DESTAQUE if self.campo_foco == "serie" else COR_TEXTO_SECUNDARIO
-        pygame.draw.rect(tela, (20, 24, 40), ret_serie, border_radius=8)
-        pygame.draw.rect(tela, borda_cor_serie, ret_serie, width=2, border_radius=8)
-
-        # Botão Esquerda
-        ret_esq = pygame.Rect(x_campo + 6, topo + 6, 34, 34)
-        self._ret_botoes["btn_serie_esq"] = ret_esq
-        pygame.draw.rect(tela, (35, 42, 68), ret_esq, border_radius=6)
-        surf_seta_esq = self.fontes.media.render("◀", True, COR_TEXTO)
-        tela.blit(surf_seta_esq, surf_seta_esq.get_rect(center=ret_esq.center))
-
-        # Texto da Série Selecionada
-        serie_atual = OPCOES_SERIE[self.indice_serie]
-        surf_serie_val = self.fontes.media.render(serie_atual, True, COR_DESTAQUE)
-        tela.blit(surf_serie_val, surf_serie_val.get_rect(center=(cx, topo + 23)))
-
-        # Botão Direita
-        ret_dir = pygame.Rect(x_campo + largura_campo - 40, topo + 6, 34, 34)
-        self._ret_botoes["btn_serie_dir"] = ret_dir
-        pygame.draw.rect(tela, (35, 42, 68), ret_dir, border_radius=6)
-        surf_seta_dir = self.fontes.media.render("▶", True, COR_TEXTO)
-        tela.blit(surf_seta_dir, surf_seta_dir.get_rect(center=ret_dir.center))
-        topo += 75
+        # Campo Sala
+        topo = self._desenhar_seletor(
+            tela, "sala", "Sua Sala:", OPCOES_SALA[self.indice_sala],
+            x_campo, topo, largura_campo, cx,
+        )
 
         # Botão Iniciar Atividade
         ret_iniciar = pygame.Rect(x_campo, topo, largura_campo, 52)
@@ -505,9 +520,76 @@ class QuizDesktop:
 
         # Dica de rodapé
         surf_dica = self.fontes.mini.render(
-            "Pressione TAB para alternar campos | ESC para cancelar", True, COR_TEXTO_SECUNDARIO
+            "TAB alterna campos | setas mudam série e sala | ESC cancela",
+            True,
+            COR_TEXTO_SECUNDARIO,
         )
         tela.blit(surf_dica, surf_dica.get_rect(center=(cx, rect_p.bottom - 25)))
+
+    def _desenhar_seletor(
+        self,
+        tela: pygame.Surface,
+        campo: str,
+        rotulo: str,
+        valor: str,
+        x_campo: int,
+        topo: int,
+        largura_campo: int,
+        cx: int,
+    ) -> int:
+        """Desenha um seletor ◀ valor ▶ e devolve o y logo abaixo dele.
+
+        Série e sala têm exatamente o mesmo comportamento, e duplicar o bloco
+        de desenho faria os dois divergirem no primeiro ajuste de layout. As
+        chaves dos retângulos seguem o padrão ``btn_<campo>_esq/dir``, que é o
+        que o tratador de clique já espera.
+        """
+        desenhar_chapeu_formatura(tela, (x_campo + 10, topo + 8), tamanho=16, cor=COR_DESTAQUE)
+        tela.blit(self.fontes.pequena.render(rotulo, True, COR_TEXTO), (x_campo + 24, topo))
+        topo += 26
+
+        ret = pygame.Rect(x_campo, topo, largura_campo, 46)
+        borda = COR_DESTAQUE if self.campo_foco == campo else COR_TEXTO_SECUNDARIO
+        pygame.draw.rect(tela, (20, 24, 40), ret, border_radius=8)
+        pygame.draw.rect(tela, borda, ret, width=2, border_radius=8)
+
+        ret_esq = pygame.Rect(x_campo + 6, topo + 6, 34, 34)
+        self._ret_botoes[f"btn_{campo}_esq"] = ret_esq
+        pygame.draw.rect(tela, (35, 42, 68), ret_esq, border_radius=6)
+        self._desenhar_seta(tela, ret_esq.center, para_direita=False)
+
+        surf_valor = self.fontes.media.render(valor, True, COR_DESTAQUE)
+        tela.blit(surf_valor, surf_valor.get_rect(center=(cx, topo + 23)))
+
+        ret_dir = pygame.Rect(x_campo + largura_campo - 40, topo + 6, 34, 34)
+        self._ret_botoes[f"btn_{campo}_dir"] = ret_dir
+        pygame.draw.rect(tela, (35, 42, 68), ret_dir, border_radius=6)
+        self._desenhar_seta(tela, ret_dir.center, para_direita=True)
+
+        return topo + 62
+
+    @staticmethod
+    def _desenhar_seta(
+        tela: pygame.Surface, centro: tuple[int, int], para_direita: bool
+    ) -> None:
+        """Triângulo desenhado, em vez do caractere "◀"/"▶".
+
+        As setas eram renderizadas como texto e saíam como quadrados vazios: a
+        fonte padrão do sistema (via SysFont) não traz esses glifos em todas as
+        instalações do Windows. Um polígono não depende de fonte nenhuma.
+        """
+        x, y = centro
+        largura, altura = 5, 7
+        sinal = 1 if para_direita else -1
+        pygame.draw.polygon(
+            tela,
+            COR_TEXTO,
+            [
+                (x - sinal * largura, y - altura),
+                (x - sinal * largura, y + altura),
+                (x + sinal * largura, y),
+            ],
+        )
 
     def _desenhar_questoes(self, tela: pygame.Surface, rect_p: pygame.Rect) -> None:
         """Desenha a tela de questões com progresso e opções."""
@@ -646,9 +728,14 @@ class QuizDesktop:
         tela.blit(surf_tit, surf_tit.get_rect(center=(cx, topo)))
         topo += 28
 
+        # Mesma composição da mensagem da web ("nome — série, sala X"): é por
+        # série E sala que o aluno vai se procurar no ranking.
         serie = OPCOES_SERIE[self.indice_serie]
+        sala = OPCOES_SALA[self.indice_sala]
         surf_sub = self.fontes.pequena.render(
-            f"Aluno: {self.nome_aluno} ({serie})", True, COR_TEXTO_SECUNDARIO
+            f"Aluno: {self.nome_aluno} — {serie}, sala {sala}",
+            True,
+            COR_TEXTO_SECUNDARIO,
         )
         tela.blit(surf_sub, surf_sub.get_rect(center=(cx, topo)))
         topo += 32

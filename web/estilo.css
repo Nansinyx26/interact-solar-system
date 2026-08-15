@@ -416,6 +416,170 @@ body.com-foco .painel-legenda {
   line-height: 1.4;
 }
 
+/* ------------------------------------------------------------- ficha da lua */
+/* Mesma linguagem visual da ficha do planeta, espelhada para a direita. Herda
+   as regras de .ficha para os filhos (faixa, dados, fato) via seletor duplo, em
+   vez de duplicá-las: um ajuste de tipografia numa vale para as duas. */
+.ficha-lua {
+  position: fixed;
+  top: 64px;
+  /* Coluna da DIREITA. O limite de baixo é o topo do preview da webcam, que
+     mora no mesmo canto — sem isso a ficha crescia por baixo dele. */
+  right: var(--margem);
+  left: auto;
+  width: 300px;
+  max-height: calc(
+    100dvh - 64px - var(--altura-assinatura) - var(--margem) -
+      2 * var(--folga-canto)
+  );
+  overflow-y: auto;
+  /* Abaixo do preview (10) pelo mesmo motivo da ficha do planeta. */
+  z-index: 8;
+  padding: 18px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateX(24px); /* entra pela direita, o lado em que mora */
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.ficha-lua.visivel {
+  opacity: 1;
+  transform: none;
+}
+.ficha-lua .faixa {
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+.ficha-lua h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+.ficha-lua .legenda {
+  margin: 2px 0 14px;
+  color: var(--destaque);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ficha-lua .dados {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ficha-lua .item dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.ficha-lua .item dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.ficha-lua .fato {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+}
+.ficha-lua .fato h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--destaque);
+}
+.ficha-lua .fato p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+/* A ficha abre por gesto e some por gesto: sem este lembrete, quem está no
+   teclado não tem como saber que o ESC vale. */
+.ficha-lua .dica-fechar {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--texto-fraco);
+}
+
+/* --------------------------------------------------------- painel de debug */
+/* Rodapé central, acima da barra de atalhos. Fica ali porque é a única faixa
+   que nenhum bloco fixo ocupa: os cantos são do HUD normal e o topo central é
+   do modo lua — justamente o que este painel serve para diagnosticar. */
+.debug {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--margem) + var(--seguro-baixo) + 46px);
+  width: min(360px, calc(100vw - 2 * var(--margem)));
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  backdrop-filter: blur(10px);
+  /* Acima de tudo: é uma sobreposição de diagnóstico. */
+  z-index: 20;
+  font-size: 12px;
+}
+.debug .debug-titulo {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--destaque);
+}
+.debug .debug-linha {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 0;
+}
+.debug .debug-linha > span:first-child {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--texto-fraco);
+}
+/* Coluna fixa e fonte monoespaçada: alinhados, os valores são legíveis de
+   relance enquanto se mexe a mão — que é quando o painel serve. */
+.debug .debug-linha b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+}
+.debug b.sucesso {
+  color: var(--sucesso);
+}
+.debug b.aviso {
+  color: var(--aviso);
+}
+.debug b.erro {
+  color: var(--erro);
+}
+.debug b.destaque {
+  color: var(--destaque);
+}
+.debug b.neutro {
+  color: var(--texto);
+}
+.debug b.fraco {
+  color: var(--texto-fraco);
+}
+.debug .debug-barra {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.debug .debug-barra i {
+  display: block;
+  height: 100%;
+  background: var(--destaque);
+  transition: width 0.12s linear;
+}
+
 /* ----------------------------------------------------------- painel gesto */
 .painel-gesto {
   position: fixed;

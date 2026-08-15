@@ -8,6 +8,8 @@
  */
 
 import {
+  FOLGA_HISTERESE_DEDO,
+  FOLGA_HISTERESE_POLEGAR,
   LIMIAR_DEDO_ESTENDIDO,
   LIMIAR_POLEGAR_ESTENDIDO,
   MARGEM_QUADRO,
@@ -108,15 +110,26 @@ export function referencialDaPalma(landmarks, lado) {
  * O polegar aberto se afasta para o lado; o fechado cruza a palma. Na faixa
  * ambígua entra o segundo critério: comparar a distância da PONTA e da junta IP
  * até a base do dedo mínimo — abrindo o polegar a ponta se afasta.
+ *
+ * `estavaEstendido` liga a HISTERESE: um polegar já contado como aberto só volta
+ * a fechado abaixo de um limiar menor. Sem isso, o polegar parado na fronteira
+ * alterna a cada frame e a contagem pisca entre 4 e 5 sozinha.
  */
-export function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
+export function polegarLevantado(
+  landmarks,
+  eixoPolegar,
+  tamanhoPalma,
+  estavaEstendido = false,
+) {
+  const limiar =
+    LIMIAR_POLEGAR_ESTENDIDO * (estavaEstendido ? FOLGA_HISTERESE_POLEGAR : 1);
   const ponta = landmarks[POLEGAR_PONTA];
   const mcp = landmarks[POLEGAR_MCP];
   const projecao =
     ((ponta.x - mcp.x) * eixoPolegar.x + (ponta.y - mcp.y) * eixoPolegar.y) / tamanhoPalma;
 
-  if (projecao > LIMIAR_POLEGAR_ESTENDIDO + MARGEM_ZONA_CINZENTA_POLEGAR) return true;
-  if (projecao < LIMIAR_POLEGAR_ESTENDIDO - MARGEM_ZONA_CINZENTA_POLEGAR) return false;
+  if (projecao > limiar + MARGEM_ZONA_CINZENTA_POLEGAR) return true;
+  if (projecao < limiar - MARGEM_ZONA_CINZENTA_POLEGAR) return false;
 
   const base = landmarks[MINIMO_MCP];
   const ip = landmarks[POLEGAR_IP];
@@ -125,8 +138,23 @@ export function polegarLevantado(landmarks, eixoPolegar, tamanhoPalma) {
   return distanciaPonta > distanciaIp * RAZAO_POLEGAR_ABERTO;
 }
 
-/** Projeta ponta e junta no eixo da palma para saber se o dedo está aberto. */
-export function dedoEstendido(landmarks, ponta, pip, eixoDedos, tamanho) {
+/**
+ * Projeta ponta e junta no eixo da palma para saber se o dedo está aberto.
+ *
+ * `estavaEstendido` liga a HISTERESE: quem já estava aberto usa um limiar menor
+ * para continuar aberto. A folga é multiplicativa justamente para sobreviver à
+ * normalização pela palma — em qualquer distância da câmera a banda morta
+ * continua valendo a mesma fração do tamanho da mão.
+ */
+export function dedoEstendido(
+  landmarks,
+  ponta,
+  pip,
+  eixoDedos,
+  tamanho,
+  estavaEstendido = false,
+) {
+  const limiar = LIMIAR_DEDO_ESTENDIDO * (estavaEstendido ? FOLGA_HISTERESE_DEDO : 1);
   const pulso = landmarks[PULSO];
   const alvo = landmarks[ponta];
   const junta = landmarks[pip];
@@ -134,7 +162,7 @@ export function dedoEstendido(landmarks, ponta, pip, eixoDedos, tamanho) {
     (alvo.x - pulso.x) * eixoDedos.x + (alvo.y - pulso.y) * eixoDedos.y;
   const projecaoPip =
     (junta.x - pulso.x) * eixoDedos.x + (junta.y - pulso.y) * eixoDedos.y;
-  return projecaoPonta - projecaoPip > LIMIAR_DEDO_ESTENDIDO * tamanho;
+  return projecaoPonta - projecaoPip > limiar * tamanho;
 }
 
 /**
@@ -158,19 +186,47 @@ export function medirPinca(landmarks, lado) {
   return Math.hypot(polegar.x - indicador.x, polegar.y - indicador.y) / tamanho;
 }
 
-/** Conta quantos dedos de UMA mão estão levantados (0 a 5). */
-export function contarDedos(landmarks, lado) {
-  const { eixoDedos, eixoPolegar, tamanho } = referencialDaPalma(landmarks, lado);
-  let total = 0;
+/**
+ * Estado neutro para quem ainda não tem histórico: "tudo fechado" faz a primeira
+ * leitura usar os limiares CHEIOS, que é o lado conservador da histerese.
+ *
+ * A ordem é (indicador, médio, anelar, mínimo, polegar) — os quatro longos na
+ * mesma ordem de DEDOS_LONGOS, e o polegar por último porque é o único
+ * classificado por outro critério.
+ */
+export const DEDOS_TODOS_FECHADOS = [false, false, false, false, false];
 
-  for (const [indicePonta, indicePip] of DEDOS_LONGOS) {
+/**
+ * Diz quais dos cinco dedos estão estendidos.
+ *
+ * `anteriores` é a classificação da MESMA mão na leitura passada e é o que liga
+ * a histerese. Passar `null` (o padrão) desliga a histerese e reproduz o
+ * comportamento antigo — é assim que os chamadores que não guardam estado (o
+ * classificador de forma, por exemplo) continuam funcionando.
+ */
+export function classificarDedos(landmarks, lado, anteriores = null) {
+  const antes = anteriores ?? DEDOS_TODOS_FECHADOS;
+  const { eixoDedos, eixoPolegar, tamanho } = referencialDaPalma(landmarks, lado);
+  const estados = [];
+
+  for (let i = 0; i < DEDOS_LONGOS.length; i += 1) {
+    const [indicePonta, indicePip] = DEDOS_LONGOS[i];
     // Projeção no eixo da palma: equivale a "a ponta está acima da junta", só
     // que válido com a mão em qualquer ângulo.
-    if (dedoEstendido(landmarks, indicePonta, indicePip, eixoDedos, tamanho)) total += 1;
+    estados.push(
+      dedoEstendido(landmarks, indicePonta, indicePip, eixoDedos, tamanho, antes[i]),
+    );
   }
+  estados.push(polegarLevantado(landmarks, eixoPolegar, tamanho, antes[4]));
+  return estados;
+}
 
-  if (polegarLevantado(landmarks, eixoPolegar, tamanho)) total += 1;
-  return total;
+/** Conta quantos dedos de UMA mão estão levantados (0 a 5). */
+export function contarDedos(landmarks, lado, anteriores = null) {
+  return classificarDedos(landmarks, lado, anteriores).reduce(
+    (soma, aberto) => soma + (aberto ? 1 : 0),
+    0,
+  );
 }
 
 /**

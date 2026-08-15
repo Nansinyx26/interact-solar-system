@@ -39,7 +39,9 @@ from config import (
     COR_HALO_SOL,
     COR_ORBITA,
     COR_ORBITA_FOCADA,
+    COR_DESTAQUE,
     COR_ORBITA_LUA,
+    COR_TEXTO,
     COR_TEXTO_SECUNDARIO,
     ESCALA_RUIDO_TEXTURA,
     ESTRELAS_POR_CAMADA,
@@ -454,8 +456,14 @@ class Renderizador:
         tempo_dias: float,
         corpo_focado: CorpoCeleste | None,
         luas_visiveis: bool = False,
+        lua_destacada: str | None = None,
     ) -> None:
-        """Desenha um frame completo da cena."""
+        """Desenha um frame completo da cena.
+
+        ``lua_destacada`` é o NOME da lua em preview no modo lua. Ela ganha
+        anel, disco maior e rótulo sempre visível — sem isso o usuário mostra o
+        número e não tem como saber qual ponto na tela ele acabou de escolher.
+        """
         superficie.fill(COR_FUNDO)
         self._desenhar_estrelas(superficie, camera)
         self._desenhar_cinturao(superficie, camera, tempo_dias, corpo_focado)
@@ -489,6 +497,7 @@ class Renderizador:
                     posicoes[corpo.nome],
                     tempo_dias,
                     corpo_focado,
+                    lua_destacada,
                 )
 
     def _desenhar_cinturao(
@@ -530,6 +539,7 @@ class Renderizador:
         posicao: tuple[float, float],
         tempo_dias: float,
         corpo_focado: CorpoCeleste | None,
+        lua_destacada: str | None = None,
     ) -> None:
         """Luas menores em volta de um planeta, com a órbita esboçada.
 
@@ -545,6 +555,7 @@ class Renderizador:
         alpha_lua = ALPHA_CORPO_ESMAECIDO if esmaecido else 255
 
         for lua in luas:
+            destacada = lua.nome == lua_destacada
             # Comprimido na visão geral, aberto conforme a câmera aproxima.
             fator = fator_orbita_lua(lua.raio_orbita_px, camera.zoom, corpo.tem_aneis)
             raio_orbita = camera.escalar(raio_planeta * fator)
@@ -553,12 +564,20 @@ class Renderizador:
                     (int(raio_orbita * 2) + 4, int(raio_orbita * 2) + 4),
                     pygame.SRCALPHA,
                 )
+                if destacada:
+                    # A órbita da lua escolhida acende na cor DELA: é o que
+                    # liga o número mostrado com a mão ao ponto na tela.
+                    alpha_orbita = 190
+                    cor_orbita = lua.cor
+                else:
+                    alpha_orbita = ALPHA_ORBITA_LUA if not esmaecido else 20
+                    cor_orbita = COR_ORBITA_LUA
                 pygame.draw.circle(
                     camada,
-                    (*COR_ORBITA_LUA, ALPHA_ORBITA_LUA if not esmaecido else 20),
+                    (*cor_orbita, alpha_orbita),
                     (int(raio_orbita) + 2, int(raio_orbita) + 2),
                     int(raio_orbita),
-                    width=1,
+                    width=2 if destacada else 1,
                 )
                 superficie.blit(
                     camada,
@@ -569,7 +588,11 @@ class Renderizador:
                 lua, posicao, raio_planeta, tempo_dias, fator
             )
             tela = camera.mundo_para_tela(posicao_lua)
+            # A lua destacada é desenhada maior: com 2,2 px de raio ela some
+            # entre as vizinhas, e o ponto do preview é justamente distinguir.
             raio_desenho = max(1.5, camera.escalar(RAIO_LUA_MENOR_PX))
+            if destacada:
+                raio_desenho = max(raio_desenho * 1.8, 4.0)
             disco = pygame.Surface(
                 (int(raio_desenho * 2) + 2, int(raio_desenho * 2) + 2), pygame.SRCALPHA
             )
@@ -582,9 +605,25 @@ class Renderizador:
             superficie.blit(
                 disco, (tela[0] - raio_desenho - 1, tela[1] - raio_desenho - 1)
             )
+            if destacada:
+                # Anel em volta do disco, como a mira de um alvo.
+                pygame.draw.circle(
+                    superficie,
+                    COR_DESTAQUE,
+                    (int(tela[0]), int(tela[1])),
+                    int(raio_desenho) + 5,
+                    width=2,
+                )
 
-            # O nome só cabe quando o planeta está realmente próximo.
-            if not esmaecido and camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6:
+            # O nome só cabe quando o planeta está realmente próximo — mas o da
+            # lua destacada aparece SEMPRE: sem ele o preview não diz qual lua é.
+            if destacada:
+                rotulo = self._fonte_rotulo.render(lua.nome, True, COR_TEXTO)
+                superficie.blit(
+                    rotulo,
+                    (tela[0] + raio_desenho + 6, tela[1] - rotulo.get_height() / 2),
+                )
+            elif not esmaecido and camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6:
                 rotulo = self._fonte_rotulo.render(
                     lua.nome, True, COR_TEXTO_SECUNDARIO
                 )
@@ -593,6 +632,32 @@ class Renderizador:
                     rotulo,
                     (tela[0] + raio_desenho + 4, tela[1] - rotulo.get_height() / 2),
                 )
+
+    def corpo_no_ponto(
+        self,
+        camera: Camera2D,
+        posicoes: dict[str, tuple[float, float]],
+        ponto: tuple[float, float],
+    ) -> CorpoCeleste | None:
+        """Corpo cujo disco contém o ponto de tela (usado no toque/clique).
+
+        Porte de ``corpoNoPonto`` da versão web, com o mesmo raio mínimo de 22
+        px: na visão geral Mercúrio tem 3 px de raio na tela e seria impossível
+        de acertar com o dedo. O piso vale como área de toque, não como desenho.
+
+        Quando dois alvos se sobrepõem (uma lua sobre o planeta, por exemplo)
+        vence o de centro mais próximo do clique.
+        """
+        escolhido: CorpoCeleste | None = None
+        menor_distancia = float("inf")
+        for corpo in CORPOS:
+            centro = camera.mundo_para_tela(posicoes[corpo.nome])
+            raio = max(22.0, camera.escalar(raio_corpo_px(corpo)))
+            distancia = math.hypot(centro[0] - ponto[0], centro[1] - ponto[1])
+            if distancia <= raio and distancia < menor_distancia:
+                menor_distancia = distancia
+                escolhido = corpo
+        return escolhido
 
     def _desenhar_estrelas(self, superficie: pygame.Surface, camera: Camera2D) -> None:
         """Campo de estrelas com deslocamento proporcional à profundidade."""

@@ -21,17 +21,24 @@ import { CORPOS, CORPOS_POR_GESTO, corpoPorGesto, luasDoPlaneta } from "./dados/
 import { DetectorMaos, StatusCamera } from "./gestos/detector.js";
 import { EstabilizadorGestos } from "./gestos/estabilizador.js";
 import { MaquinaGestos } from "./gestos/estado_gesto.js";
+import { SeletorLua } from "./gestos/seletor_lua.js";
 import { Camera2D } from "./nucleo/camera.js";
 import { posicoesDoSistema, raioCorpoPx } from "./nucleo/orbita.js";
 import { Renderizador } from "./nucleo/renderizador.js";
 import { ControladorPinca } from "./gestos/pinca.js";
 import { Ficha } from "./ui/ficha.js";
+import { FichaLua } from "./ui/ficha_lua.js";
 import { HUD } from "./ui/hud.js";
-import { Narrador, textoDoCorpo } from "./ui/narrador.js";
+import { Narrador, textoDaLua, textoDoCorpo } from "./ui/narrador.js";
 import { registrarSessaoWeb, registrarInteracaoWeb } from "./dados/telemetria.js";
 
 /** Se o quadro demorar demais (aba em segundo plano), não damos um salto. */
 const DT_MAXIMO = 0.1;
+
+// Índice registrado na telemetria para as luas do modo lua. Elas não têm gesto
+// numérico próprio (0-10 estão todos ocupados), mas a telemetria espera um
+// inteiro — 11 fica logo acima do maior gesto real e não colide com nada.
+const GESTO_LUA_TELEMETRIA = 11;
 
 class Aplicacao {
   constructor() {
@@ -49,6 +56,7 @@ class Aplicacao {
     this.camera = new Camera2D(this.canvas.width, this.canvas.height);
     this.hud = new HUD(document.body);
     this.ficha = new Ficha(document.getElementById("ficha"));
+    this.fichaLua = new FichaLua(document.getElementById("ficha-lua"));
 
     this.tempoDias = 0;
     registrarSessaoWeb();
@@ -61,9 +69,13 @@ class Aplicacao {
     // Estado do modo luas, separado do foco da câmera de propósito: focar uma
     // lua não pode fazer a lista de luas trocar debaixo do dedo do usuário.
     this.maquinaGestos = new MaquinaGestos();
+    // A confirmação da lua (preview -> ficha) mora aqui, não na MaquinaGestos:
+    // a máquina lê MÃOS, o seletor conhece o CATÁLOGO.
+    this.seletorLua = new SeletorLua();
     this.planetaSelecionado = null;
     this.luaSelecionada = null;
     this.avisoLuas = "";
+    this.mostrarDebug = false;
     this.intencao = {
       modoLuas: false,
       numero: null,
@@ -71,6 +83,7 @@ class Aplicacao {
       modoMudou: false,
       lDetectado: false,
       luaConfirmada: null,
+      maosVisiveis: 0,
     };
     this.cameraLivre = false;
     this.posicoes = posicoesDoSistema(0);
@@ -282,6 +295,16 @@ class Aplicacao {
       this._alternarNarracao();
     } else if (tecla === "c" || tecla === "C") {
       this._alternarCamera();
+    } else if (tecla === "Escape") {
+      // ESC fecha a ficha da lua. Na web não há "sair do app", então ele só
+      // tem este significado — no desktop ele encerra quando nada está aberto.
+      if (this.seletorLua.fecharFicha()) {
+        this.fichaLua.ocultar();
+        this.avisoLuas = "";
+      }
+    } else if (tecla === "F3") {
+      evento.preventDefault();
+      this.mostrarDebug = !this.mostrarDebug;
     }
   }
 
@@ -372,13 +395,14 @@ class Aplicacao {
       this.intencao = this.maquinaGestos.atualizar(leitura.maos ?? [], agora);
 
       if (this.intencao.modoLuas) {
-        // No modo luas o número significa índice de lua, não planeta: o
+        // No modo lua o número significa índice de lua, não planeta: o
         // estabilizador de corpos fica de fora.
-        if (this.intencao.luaConfirmada !== null) {
-          this._selecionarLua(this.intencao.luaConfirmada);
-        }
+        this._atualizarModoLua(agora);
         this.resultadoGesto = { ...this.resultadoGesto, confirmado: null };
       } else {
+        // Sem "L" na tela: avisa o seletor, que fecha a ficha e volta ao
+        // planeta. É este caminho que implementa "soltar o L fecha".
+        this._atualizarModoLua(agora);
         // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
         // Qualquer outra contagem entra como leitura inválida.
         const contagem = leitura.contagem;
@@ -441,6 +465,42 @@ class Aplicacao {
   }
 
   /**
+   * Avança o seletor de luas e aplica o que ele decidir.
+   *
+   * Todo o julgamento (preview, confirmação, casos de borda e as mensagens de
+   * cada um) mora no SeletorLua. Aqui só se traduz a decisão em efeitos:
+   * destaque na órbita, ficha, narração e telemetria.
+   */
+  _atualizarModoLua(agora) {
+    // O planeta em contexto é o SELECIONADO, não o corpo em foco: focar uma lua
+    // não pode fazer a lista de luas trocar debaixo do dedo do usuário.
+    this.seletorLua.definirPlaneta(this.planetaSelecionado);
+
+    const resultado = this.seletorLua.atualizar(
+      this.intencao.modoLuas,
+      this.intencao.numero,
+      this.intencao.maosVisiveis ?? 0,
+      agora,
+    );
+
+    this.luaSelecionada = resultado.lua;
+    this.avisoLuas = resultado.aviso;
+    if (resultado.lua) {
+      // Selecionar uma lua liga as luas na cena: destacar uma órbita que não
+      // está sendo desenhada não mostraria nada.
+      this.luasVisiveis = true;
+    }
+
+    if (resultado.fichaAbriu && resultado.lua) {
+      this.fichaLua.mostrar(resultado.lua);
+      this.narrador.anunciar(textoDaLua(resultado.lua));
+      registrarInteracaoWeb(resultado.lua.nome, GESTO_LUA_TELEMETRIA);
+    } else if (resultado.fichaFechou) {
+      this.fichaLua.ocultar();
+    }
+  }
+
+  /**
    * Aplica o número recebido no modo luas como índice de lua.
    *
    * O alvo é o planeta em contexto. Sem planeta (Sol ou visão geral) a Terra
@@ -456,8 +516,9 @@ class Aplicacao {
 
     const luas = luasDoPlaneta(alvo.nome);
     if (!luas.length) {
-      this.avisoLuas = `${alvo.nome} não tem luas conhecidas.`;
+      this.avisoLuas = `${alvo.nome} não tem luas cadastradas.`;
       this.luaSelecionada = null;
+      this.fichaLua.ocultar();
       return;
     }
 
@@ -466,14 +527,16 @@ class Aplicacao {
       // Zero mostra TODAS: é a única forma de voltar à visão do sistema de
       // luas sem largar o modificador.
       this.luaSelecionada = null;
-      this.avisoLuas = `${alvo.nome}: todas as ${luas.length} luas.`;
+      this.fichaLua.ocultar();
+      const plural = luas.length > 1 ? "luas" : "lua";
+      this.avisoLuas = `${alvo.nome}: todas as ${luas.length} ${plural}.`;
       return;
     }
     if (indice > luas.length) {
       // Número maior que a quantidade não troca nada — só avisa. A lista do
       // HUD sai do catálogo, então ela nunca promete o que não existe.
-      const plural = luas.length > 1 ? "luas" : "lua";
-      this.avisoLuas = `${alvo.nome} tem ${luas.length} ${plural}.`;
+      const plural = luas.length > 1 ? "luas cadastradas" : "lua cadastrada";
+      this.avisoLuas = `${alvo.nome} tem só ${luas.length} ${plural}.`;
       return;
     }
 
@@ -487,8 +550,15 @@ class Aplicacao {
       this._selecionar(alvo);
       this.planetaSelecionado = alvo;
     }
-    this.luaSelecionada = luas[indice - 1];
+    // O caminho do GESTO passa pelo SeletorLua e tem confirmação por
+    // permanência; a tecla é um comando explícito e abre a ficha na hora —
+    // seria absurdo pedir para o usuário segurar uma tecla por 12 leituras.
+    const lua = luas[indice - 1];
+    this.luaSelecionada = lua;
     this.avisoLuas = "";
+    this.fichaLua.mostrar(lua);
+    this.narrador.anunciar(textoDaLua(lua));
+    registrarInteracaoWeb(lua.nome, GESTO_LUA_TELEMETRIA);
   }
 
   _voltarVisaoGeral(reiniciarGesto = true) {
@@ -497,6 +567,8 @@ class Aplicacao {
     this.corpoAlvo = null;
     // O gesto 10 e a tecla V sempre zeram o modo luas, como combinado.
     this.maquinaGestos.reiniciar();
+    this.seletorLua.reiniciar();
+    this.fichaLua.ocultar();
     this.luaSelecionada = null;
     this.avisoLuas = "";
     this.camera.voltarVisaoGeral();
@@ -521,6 +593,9 @@ class Aplicacao {
         this.tempoDias,
         this.corpoAlvo,
         this.luasVisiveis,
+        // Nome (e não o objeto): o renderizador compara por nome ao varrer o
+        // catálogo, e passar o objeto acoplaria os dois módulos.
+        this.luaSelecionada?.nome ?? null,
       );
       this.hud.atualizar({
         leitura: this.detector.leitura,
@@ -540,6 +615,11 @@ class Aplicacao {
         planetaSelecionado: this.planetaSelecionado ?? this.corpoAlvo,
         luaSelecionada: this.luaSelecionada,
         avisoLuas: this.avisoLuas,
+        indiceLua: this.seletorLua.indicePreview,
+        progressoLua: this.seletorLua.progresso,
+        fichaLuaAberta: this.seletorLua.fichaAberta,
+        debugVisivel: this.mostrarDebug,
+        estadoSelecao: this.seletorLua.estado,
       });
       requestAnimationFrame(quadro);
     };

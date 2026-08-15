@@ -44,7 +44,15 @@ class IntencaoGesto:
     # Serve para o HUD mostrar o ícone assim que reconhece a forma.
     l_detectado: bool
     # Índice de lua confirmado neste frame (só no modo luas). None = sem troca.
+    #
+    # OBSOLETO: a confirmação passou para gestos/seletor_lua.py, que separa
+    # PREVIEW de FICHA. O campo continua aqui porque a versão web ainda o lê e
+    # o teclado ainda o alimenta; quem decide hoje é o SeletorLua.
     lua_confirmada: int | None = None
+    # Quantas mãos utilizáveis havia no quadro. O seletor precisa disto para
+    # distinguir "não mostrou número" de "só tem uma mão na tela" — são avisos
+    # de HUD diferentes, e o número sozinho não conta essa história.
+    maos_visiveis: int = 0
 
 
 class MaquinaGestos:
@@ -95,15 +103,15 @@ class MaquinaGestos:
         maos_em_l = [f for f in formas if f[2]]
         outras = [f for f in formas if not f[2]]
 
-        # 3. Duas mãos em L é estado inválido: não muda nada.
+        # 3. Duas mãos em L: a PRIMEIRA detectada vira âncora e a segunda passa
+        #    a valer como mão de número. Antes isto era estado inválido e não
+        #    mudava nada — mas fazer o L com as duas mãos é um erro comum de
+        #    quem está aprendendo o gesto, e congelar a tela sem explicação era
+        #    o pior desfecho possível. Um L conta como 2 dedos, então o usuário
+        #    vê a lua 2 em preview e entende sozinho o que fazer.
         if len(maos_em_l) >= 2:
-            return IntencaoGesto(
-                modo_luas=self.modo_luas,
-                numero=None,
-                progresso_modo=self._progresso(),
-                modo_mudou=False,
-                l_detectado=True,
-            )
+            outras = [maos_em_l[1]] + outras
+            maos_em_l = maos_em_l[:1]
 
         tem_l = len(maos_em_l) == 1
         modo_mudou = self._atualizar_histerese(tem_l)
@@ -126,6 +134,7 @@ class MaquinaGestos:
             modo_mudou=modo_mudou,
             l_detectado=tem_l,
             lua_confirmada=lua,
+            maos_visiveis=len(usaveis),
         )
 
     # ------------------------------------------------------------- internos

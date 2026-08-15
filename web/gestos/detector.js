@@ -15,7 +15,11 @@ import {
   URL_MODELO_MAOS,
   URL_WASM_MEDIAPIPE,
 } from "../config.js";
-import { contarDedosTotal, medirPinca } from "./contador.js";
+import {
+  LeitorMaos,
+  comoPares,
+  contagemTotal,
+} from "./leitor_maos.js";
 
 /** Situação atual da captura de vídeo. */
 export const StatusCamera = {
@@ -46,6 +50,7 @@ export class DetectorMaos {
     this.ctxPreview = canvasPreview.getContext("2d");
     this.status = StatusCamera.PARADA;
     this.mensagem = "";
+    this._leitor = new LeitorMaos();
     this.leitura = {
       contagem: null,
       porMao: [],
@@ -99,6 +104,9 @@ export class DetectorMaos {
     }
     this.video.srcObject = null;
     if (this.status === StatusCamera.ATIVA) this.status = StatusCamera.PARADA;
+    // A mão vai reaparecer em outro ponto do quadro quando a câmera voltar:
+    // manter o histórico do filtro faria a pose atravessar a tela.
+    this._leitor.reiniciar();
     this.leitura = {
       ...this.leitura,
       contagem: null,
@@ -189,30 +197,31 @@ export class DetectorMaos {
         score: classificacao?.score ?? 1,
       });
     }
-    // Três ou mais mãos: fica só com as duas de maior confiança.
-    maos.sort((a, b) => b.score - a.score);
-    const selecionadas = maos.slice(0, MAX_MAOS);
+    // Daqui em diante quem manda é o leitor: corte por confiança,
+    // reaproveitamento da última pose boa, filtro One Euro, classificação com
+    // histerese e votação temporal. O detector ficou só com o que é de câmera.
+    const pose = this._leitor.atualizar(maos, performance.now() / 1000);
+    const usaveis = pose.maos.filter((m) => m.noQuadro);
 
-    const { total, porMao, descartadaPorBorda } = contarDedosTotal(selecionadas);
-    // Medida em TODAS as mãos visíveis (a lista já vem ordenada por
-    // confiança): a primeira comanda o zoom, e as duas juntas formam o gesto
-    // de comando das luas — o único ainda livre.
-    const razoesPinca = selecionadas.map((m) => medirPinca(m.landmarks, m.lado));
     this.leitura = {
-      contagem: total,
-      porMao,
-      razoesPinca,
-      razaoPinca: razoesPinca[0] ?? null,
-      maosVisiveis: selecionadas.length,
-      confiancaMedia: selecionadas.length
-        ? selecionadas.reduce((soma, m) => soma + m.score, 0) / selecionadas.length
-        : 0,
-      descartadaPorBorda,
-      // As mãos cruas seguem no resultado MESMO com o frame descartado pela
-      // borda: quem lê formato (o "L") filtra mão por mão e ainda aproveita a
-      // que está inteira. Sem isso, uma segunda mão encostando na borda zerava
-      // o modo luas — e o polegar do L encosta na borda com frequência.
-      maos: selecionadas.map(({ landmarks, lado }) => ({ landmarks, lado })),
+      // A contagem já vem da pose (null quando não há mão inteira). Note que
+      // uma mão na borda NÃO zera mais a leitura das outras: a pose marca mão
+      // por mão, então o "L" de uma mão sobrevive à outra encostando no canto
+      // — e o polegar do L encosta na borda com frequência.
+      contagem: contagemTotal(pose),
+      porMao: usaveis.map((m) => m.contagem),
+      razoesPinca: pose.maos.map((m) => m.razaoPinca),
+      razaoPinca: pose.maos[0]?.razaoPinca ?? null,
+      maosVisiveis: pose.maos.length,
+      confiancaMedia: pose.confiancaMedia,
+      descartadaPorBorda: pose.descartadaPorBorda,
+      maos: comoPares(pose),
+      // Pose completa (dedos por mão, forma, score) + diagnóstico do leitor.
+      // É o caminho novo; os campos acima seguem preenchidos para não quebrar
+      // quem já os lia.
+      pose,
+      reaproveitada: pose.reaproveitada,
+      estabilidade: this._leitor.razaoEstabilidade,
       sequencia: this._sequencia,
     };
     return true;

@@ -37,6 +37,7 @@ from config import (
     COR_ERRO,
     COR_PAINEL,
     COR_SUCESSO,
+    COR_TRILHO_BARRA,
     COR_TEXTO,
     COR_TEXTO_SECUNDARIO,
     ESPESSURA_ANEL_PROGRESSO,
@@ -87,6 +88,13 @@ _MAXIMO_LUAS_LISTADAS = 6
 
 _MAXIMO_DEDOS_UMA_MAO = GESTO_MINIMO_DUAS_MAOS - 1
 
+# Painel de debug (tecla F3), ancorado no rodapé central. Fica ali porque é a
+# única faixa que nenhum bloco fixo ocupa: os cantos são do HUD normal e o topo
+# central é do modo lua — justamente o que este painel serve para diagnosticar.
+_LARGURA_PAINEL_DEBUG = 360
+_PADDING_DEBUG = 12
+_ALTURA_LINHA_DEBUG = 17
+
 
 def topo_do_painel_gesto(altura_janela: int) -> int:
     """Y onde começa o painel de gesto, ancorado na base da coluna esquerda.
@@ -108,11 +116,11 @@ ALTURA_BLOCO_PREVIEW = ALTURA_PREVIEW_CAMERA + 22
 # Texto da barra de atalhos, em duas versões: a janela estreita perde a cauda
 # sobre o mouse, que é a parte descobrível sem ajuda.
 _ATALHOS_COMPLETOS = (
-    "0–9 focar   L modo luas   V visão geral   A Quiz   R Ranking   ESPAÇO pausa   +/− tempo   "
-    "C câmera   N voz   Q sair   ·   arraste com o mouse, roda = zoom"
+    "0–9 focar   clique seleciona   L modo lua   V visão geral   A Quiz   R Ranking   ESPAÇO pausa   +/− tempo   "
+    "C câmera   N voz   F3 debug   Q sair   ·   arraste com o mouse, roda = zoom"
 )
 _ATALHOS_CURTOS = (
-    "0–9 focar   L modo luas   V visão geral   A Quiz   R Ranking   ESPAÇO pausa   +/− tempo   C câmera   N voz   Q sair"
+    "0–9 focar   L modo lua   V visão geral   A Quiz   ESPAÇO pausa   +/− tempo   C câmera   N voz   F3 debug   Q sair"
 )
 
 # Rótulo do gesto de comando na legenda.
@@ -163,6 +171,15 @@ class EstadoHUD:
     progresso_modo: float = 0.0  # 0 a 1: quanto falta para o modo trocar
     planeta_luas: CorpoCeleste | None = None  # de quem as luas estão listadas
     lua_selecionada: str | None = None
+    # Número mostrado pela mão B (1..N). Em PREVIEW ele já destaca a lua, mas a
+    # ficha ainda não abriu — é o que a barra de confirmação está medindo.
+    indice_lua: int | None = None
+    progresso_lua: float = 0.0  # 0 a 1: quanto falta para a FICHA abrir
+    ficha_lua_aberta: bool = False
+    aviso_lua: str = ""  # mensagem vinda do SeletorLua (casos de borda)
+    # --- HUD de debug (tecla F3) ---
+    debug_visivel: bool = False
+    estado_selecao: str = ""  # nome do estado da máquina, para diagnóstico
 
 
 def desenhar_painel(
@@ -263,6 +280,10 @@ class HUD:
         self._desenhar_avisos(superficie, estado, topo_avisos)
         if estado.mostrar_preview:
             self._desenhar_preview(superficie, estado.leitura)
+        # Por último: o debug é uma sobreposição de diagnóstico e precisa ficar
+        # acima de tudo, inclusive do preview da webcam.
+        if estado.debug_visivel:
+            self._desenhar_debug(superficie, estado)
 
     # --------------------------------------------------------------- blocos
     def _estado_camera(self, leitura: LeituraGestos) -> tuple[str, tuple[int, int, int]]:
@@ -498,7 +519,12 @@ class HUD:
         pygame.draw.rect(superficie, cor_cracha, moldura, width=2, border_radius=5)
         superficie.blit(icone, icone.get_rect(center=moldura.center))
 
-        rotulo = "MODO LUAS" if estado.modo_luas else "reconhecendo L..."
+        if estado.ficha_lua_aberta:
+            rotulo = "FICHA DA LUA"
+        elif estado.modo_luas:
+            rotulo = "MODO LUA"
+        else:
+            rotulo = "reconhecendo L..."
         superficie.blit(
             self._fontes.pequena.render(rotulo, True, cor_cracha), (x + 30, y + 2)
         )
@@ -531,6 +557,23 @@ class HUD:
                 self._fontes.mini.render(f"{indice}  {lua.nome}", True, cor),
                 (x + 14, y),
             )
+            # Barra de confirmação POR LINHA, só na lua em preview: é ela que
+            # está enchendo, e desenhá-la ao lado do nome mostra exatamente o
+            # que vai abrir. Some quando a ficha já abriu.
+            if (
+                escolhida
+                and estado.progresso_lua > 0.0
+                and not estado.ficha_lua_aberta
+            ):
+                trilho = pygame.Rect(
+                    retangulo.right - _PADDING_LUAS - 60, y + 6, 60, 3
+                )
+                pygame.draw.rect(
+                    superficie, COR_TRILHO_BARRA, trilho, border_radius=2
+                )
+                cheio = trilho.copy()
+                cheio.width = int(trilho.width * min(1.0, estado.progresso_lua))
+                pygame.draw.rect(superficie, COR_DESTAQUE, cheio, border_radius=2)
             y += _ALTURA_LINHA_LUA
         if restantes > 0:
             superficie.blit(
@@ -545,7 +588,7 @@ class HUD:
         # não pegou, e a repetição atrapalha justamente a contagem de frames.
         if not estado.modo_luas and estado.progresso_modo > 0.0:
             trilho = pygame.Rect(x, y + 2, retangulo.width - _PADDING_LUAS * 2, 4)
-            pygame.draw.rect(superficie, (255, 255, 255, 40), trilho, border_radius=2)
+            pygame.draw.rect(superficie, COR_TRILHO_BARRA, trilho, border_radius=2)
             preenchido = trilho.copy()
             preenchido.width = int(trilho.width * min(1.0, estado.progresso_modo))
             pygame.draw.rect(superficie, COR_DESTAQUE, preenchido, border_radius=2)
@@ -558,6 +601,11 @@ class HUD:
         """Mensagens de webcam, iluminação e dica das duas mãos."""
         avisos: list[tuple[str, tuple[int, int, int]]] = []
         leitura = estado.leitura
+
+        # O aviso do modo lua vem primeiro: quando ele existe, é a resposta
+        # direta ao que o usuário acabou de fazer com as mãos.
+        if estado.aviso_lua:
+            avisos.append((estado.aviso_lua, COR_AVISO))
 
         if estado.pinca_ativa:
             # Enquanto a pinça comanda o zoom a seleção por dedos fica suspensa:
@@ -586,7 +634,10 @@ class HUD:
                 )
             if leitura.descartada_por_borda:
                 avisos.append(("Mão saindo do quadro — leitura descartada.", COR_AVISO))
-            if leitura.contagem == _MAXIMO_DEDOS_UMA_MAO:
+            # A dica dos números altos só faz sentido FORA do modo lua: lá o
+            # total é "L (2 dedos) + número da outra mão" e não seleciona corpo
+            # nenhum, então sugerir 5+4 mandaria o usuário para o lugar errado.
+            if leitura.contagem == _MAXIMO_DEDOS_UMA_MAO and not estado.modo_luas:
                 avisos.append(
                     ("Use as duas mãos para 6–9 (ex.: 5 + 4 = Lua).", COR_DESTAQUE)
                 )
@@ -611,6 +662,103 @@ class HUD:
             )
             superficie.blit(renderizado, (retangulo.x + 16, retangulo.y + 6))
             y += retangulo.height + 6
+
+    def _desenhar_debug(self, superficie: pygame.Surface, estado: EstadoHUD) -> None:
+        """Painel de diagnóstico do reconhecimento (tecla F3).
+
+        Existe porque quase todo problema relatado como "o gesto não pega" é na
+        verdade uma de quatro coisas, e sem ver os números não dá para saber
+        qual: FPS no chão, confiança baixa, leitura instável, ou o número certo
+        chegando mas a confirmação nunca completando. O painel mostra as quatro
+        lado a lado.
+        """
+        leitura = estado.leitura
+        pose = leitura.pose
+
+        planeta = estado.planeta_luas.nome if estado.planeta_luas else "—"
+        numero = "—" if leitura.contagem is None else str(leitura.contagem)
+        por_mao = " + ".join(str(c) for c in leitura.contagens_por_mao) or "—"
+        lados = " / ".join(f"{m.lado[:1]}:{m.score:.2f}" for m in pose.maos) or "—"
+
+        linhas: list[tuple[str, str, tuple[int, int, int]]] = [
+            ("FPS", f"{estado.fps:5.1f}", self._cor_por_limiar(estado.fps, 50, 30)),
+            ("PLANETA", planeta, COR_TEXTO),
+            (
+                "MODO LUA",
+                estado.estado_selecao or ("ativo" if estado.modo_luas else "—"),
+                COR_DESTAQUE if estado.modo_luas else COR_TEXTO_SECUNDARIO,
+            ),
+            ("NÚMERO", f"{numero}  (por mão: {por_mao})", COR_TEXTO),
+            ("ÍNDICE LUA", str(estado.indice_lua or "—"), COR_TEXTO),
+            ("MÃOS", f"{leitura.maos_visiveis}  [{lados}]", COR_TEXTO),
+            (
+                "CONFIANÇA",
+                f"{leitura.confianca_media:.2f}",
+                self._cor_por_limiar(leitura.confianca_media, 0.85, 0.70),
+            ),
+            (
+                "ESTABILIDADE",
+                f"{leitura.estabilidade:.2f}"
+                + ("  (reaproveitada)" if leitura.reaproveitada else ""),
+                self._cor_por_limiar(leitura.estabilidade, 0.80, 0.60),
+            ),
+        ]
+
+        # +1 linha para a barra de confirmação, sempre desenhada (mesmo vazia):
+        # o painel não pode mudar de altura a cada frame, senão pisca.
+        altura = _PADDING_DEBUG * 2 + 22 + len(linhas) * _ALTURA_LINHA_DEBUG + 22
+        retangulo = pygame.Rect(
+            (self._largura - _LARGURA_PAINEL_DEBUG) // 2,
+            self._altura - MARGEM_HUD - ALTURA_BARRA_ATALHOS - int(altura),
+            _LARGURA_PAINEL_DEBUG,
+            int(altura),
+        )
+        desenhar_painel(superficie, retangulo)
+
+        x = retangulo.x + _PADDING_DEBUG
+        y = retangulo.y + _PADDING_DEBUG
+        superficie.blit(
+            self._fontes.mini.render("DEBUG DE GESTOS  ·  F3", True, COR_DESTAQUE),
+            (x, y),
+        )
+        y += 22
+
+        for rotulo, valor, cor in linhas:
+            superficie.blit(
+                self._fontes.mini.render(rotulo, True, COR_TEXTO_SECUNDARIO), (x, y)
+            )
+            # Coluna fixa para os valores: alinhados, eles são legíveis de
+            # relance enquanto se mexe a mão — que é quando o painel serve.
+            superficie.blit(self._fontes.mono.render(valor, True, cor), (x + 108, y))
+            y += _ALTURA_LINHA_DEBUG
+
+        # Barra de confirmação da ficha da lua.
+        y += 4
+        superficie.blit(
+            self._fontes.mini.render("CONFIRMAÇÃO", True, COR_TEXTO_SECUNDARIO), (x, y)
+        )
+        trilho = pygame.Rect(x + 108, y + 5, retangulo.right - _PADDING_DEBUG - x - 108, 5)
+        pygame.draw.rect(superficie, COR_TRILHO_BARRA, trilho, border_radius=2)
+        cheio = trilho.copy()
+        cheio.width = int(trilho.width * min(1.0, max(0.0, estado.progresso_lua)))
+        if cheio.width > 0:
+            pygame.draw.rect(
+                superficie,
+                COR_SUCESSO if estado.ficha_lua_aberta else COR_DESTAQUE,
+                cheio,
+                border_radius=2,
+            )
+
+    @staticmethod
+    def _cor_por_limiar(
+        valor: float, bom: float, aceitavel: float
+    ) -> tuple[int, int, int]:
+        """Verde/amarelo/vermelho conforme o valor cai abaixo dos limiares."""
+        if valor >= bom:
+            return COR_SUCESSO
+        if valor >= aceitavel:
+            return COR_AVISO
+        return COR_ERRO
 
     def _desenhar_preview(
         self, superficie: pygame.Surface, leitura: LeituraGestos

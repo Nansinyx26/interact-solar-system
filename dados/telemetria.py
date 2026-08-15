@@ -152,6 +152,7 @@ class TelemetriaMongo:
         self,
         nome: str,
         serie: str = "Geral",
+        sala: str = "Única",
         pontuacao: int = 100,
         acertos: int = 10,
         tempo_segundos: float = 0.0,
@@ -166,8 +167,13 @@ class TelemetriaMongo:
                 return
             try:
                 doc = {
+                    # Os mesmos limites de tamanho e os mesmos padrões da
+                    # api/ranking.js: os dois lados escrevem na MESMA coleção,
+                    # e um valor truncado de forma diferente vira outra linha
+                    # na classificação.
                     "nome": nome.strip()[:50],
                     "serie": serie.strip()[:30] or "Geral",
+                    "sala": sala.strip()[:20] or "Única",
                     "pontuacao": max(0, pontuacao),
                     "acertos": max(0, acertos),
                     "tempoSegundos": max(0.0, tempo_segundos),
@@ -177,20 +183,32 @@ class TelemetriaMongo:
                     "timestamp": time.time(),
                 }
                 self._colecao_ranking.insert_one(doc)
-                print(f"[ranking] Pontuação de '{nome}' ({serie}) registrada no MongoDB.", flush=True)
+                print(
+                    f"[ranking] Pontuação de '{nome}' ({serie}, sala {sala}) "
+                    "registrada no MongoDB.",
+                    flush=True,
+                )
             except Exception as erro:
                 print(f"[ranking] Erro ao registrar pontuação: {erro}", flush=True)
 
         threading.Thread(target=_tarefa, daemon=True, name="ranking_registro").start()
 
-    def obter_top_ranking(self, serie: str = "Todas", limite: int = 10) -> list[dict[str, Any]]:
-        """Retorna as melhores pontuações do ranking no MongoDB."""
+    def obter_top_ranking(
+        self, serie: str = "Todas", sala: str = "Todas", limite: int = 10
+    ) -> list[dict[str, Any]]:
+        """Retorna as melhores pontuações do ranking no MongoDB.
+
+        Os filtros espelham o GET de ``api/ranking.js``: a classificação pode
+        ser vista por sala, que é o recorte que a turma usa.
+        """
         if not self._disponivel or not self._conectar():
             return []
         try:
             filtro = {}
             if serie and serie != "Todas":
                 filtro["serie"] = serie
+            if sala and sala != "Todas":
+                filtro["sala"] = sala
             cursor = (
                 self._colecao_ranking.find(filtro)
                 .sort([("pontuacao", -1), ("tempoSegundos", 1), ("timestamp", -1)])

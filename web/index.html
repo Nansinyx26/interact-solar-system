@@ -78,6 +78,26 @@
       </div>
     </aside>
 
+    <!-- Ficha da LUA em foco. Coluna DIREITA, ao contrário da ficha do
+         planeta: no modo lua o planeta-mãe continua selecionado e a ficha dele
+         segue aberta à esquerda, e é a comparação entre as duas que dá sentido
+         a olhar uma lua. -->
+    <aside id="ficha-lua" class="ficha-lua" hidden>
+      <div class="faixa" data-lua-faixa></div>
+      <h2 data-lua-titulo>Europa</h2>
+      <p class="legenda" data-lua-legenda>Lua de Júpiter</p>
+      <dl class="dados" data-lua-dados></dl>
+      <div class="fato">
+        <h3>Curiosidade</h3>
+        <p data-lua-curiosidade></p>
+      </div>
+      <p class="dica-fechar">solte o L ou aperte ESC para fechar</p>
+    </aside>
+
+    <!-- Diagnóstico do reconhecimento (tecla F3). Rodapé central: é a única
+         faixa que nenhum bloco fixo ocupa. -->
+    <section class="debug" data-debug hidden></section>
+
     <!-- Painel de gesto: número detectado, anel de progresso e confirmado -->
     <section class="painel-gesto">
       <div class="coluna-anel">
