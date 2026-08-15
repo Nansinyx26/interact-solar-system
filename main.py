@@ -411,10 +411,15 @@ class Aplicacao:
         self.camera_livre = False  # um comando novo devolve a câmera ao app
         self.corpo_alvo = corpo
         if not corpo.eh_satelite:
-            # Guarda o contexto: é este planeta que o modo luas vai consultar.
+            # Guarda o contexto: é este planeta que o modo lua vai consultar.
             self.planeta_selecionado = corpo
             self.lua_selecionada = None
             self.aviso_luas = ""
+            # A ficha da lua some junto: ela é de uma lua do planeta ANTERIOR, e
+            # deixá-la aberta ao lado do planeta novo afirmaria que Europa é lua
+            # de Marte. Limpar só `lua_selecionada` apagava o destaque na órbita
+            # mas não o card.
+            self.ficha_lua.ocultar()
         self.camera.focar_corpo(
             self.posicoes[corpo.nome], raio_corpo_px(corpo), reiniciar=True
         )
@@ -599,7 +604,12 @@ class Aplicacao:
                 ),
                 indice_lua=self.seletor_lua.indice_preview,
                 progresso_lua=self.seletor_lua.progresso,
-                ficha_lua_aberta=self.seletor_lua.ficha_aberta,
+                # O card DE VERDADE, não só o estado da máquina: o caminho do
+                # teclado abre a ficha por fora do seletor, e o HUD precisa
+                # descrever o que está na tela.
+                ficha_lua_aberta=(
+                    self.seletor_lua.ficha_aberta or self.ficha_lua.visivel
+                ),
                 aviso_lua=self.aviso_luas,
                 debug_visivel=self.mostrar_debug,
                 estado_selecao=self.seletor_lua.estado.value,

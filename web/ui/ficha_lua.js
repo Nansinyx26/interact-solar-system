@@ -107,6 +107,11 @@ export class FichaLua {
     this.raiz.hidden = false;
   }
 
+  /** True enquanto o card estiver na tela (o HUD descreve o que se vê). */
+  get visivel() {
+    return Boolean(this.luaAtual);
+  }
+
   /** Esconde a ficha (soltar o "L" ou tecla ESC). */
   ocultar() {
     if (!this.luaAtual) return;

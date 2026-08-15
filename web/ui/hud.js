@@ -29,6 +29,32 @@ const PERIMETRO_ANEL = 2 * Math.PI * 34;
 /** O catálogo guarda a cor como "48, 104, 196" (mesmo literal do desktop). */
 const rgb = (cor) => `rgb(${cor})`;
 
+/**
+ * Texto da linha "MODO LUA" do debug, fiel ao que está na TELA.
+ *
+ * A máquina de estados só é alimentada pelo caminho do GESTO; abrir uma lua
+ * pela tecla passa por fora dela. Sem esta correção o painel dizia "ocioso" com
+ * a ficha da lua aberta na frente do usuário — justamente o tipo de informação
+ * errada que um painel de diagnóstico não pode dar.
+ */
+function estadoLua(estado) {
+  if (estado.fichaLuaAberta && estado.estadoSelecao !== "ficha") {
+    return "ficha (teclado)";
+  }
+  // Sem câmera o seletor nunca é alimentado e fica parado em "ocioso", o que
+  // esconderia o modo ligado pela tecla L. Aqui o teclado é o caso normal, não
+  // a exceção: o app inteiro funciona sem webcam.
+  if (estado.modoLuas && (!estado.estadoSelecao || estado.estadoSelecao === "ocioso")) {
+    return "ativo (teclado)";
+  }
+  return estado.estadoSelecao || (estado.modoLuas ? "ativo" : "—");
+}
+
+/** Aceso quando há modo lua ou ficha na tela; apagado quando não há. */
+function corEstadoLua(estado) {
+  return estado.modoLuas || estado.fichaLuaAberta ? "destaque" : "fraco";
+}
+
 /** Verde/amarelo/vermelho conforme o valor cai abaixo dos limiares. */
 function faixa(valor, bom, aceitavel) {
   if (valor >= bom) return "sucesso";
@@ -185,11 +211,7 @@ export class HUD {
     const linhas = [
       ["FPS", estado.fps.toFixed(1), faixa(estado.fps, 50, 30)],
       ["PLANETA", estado.planetaSelecionado?.nome ?? "—", "neutro"],
-      [
-        "MODO LUA",
-        estado.estadoSelecao || (estado.modoLuas ? "ativo" : "—"),
-        estado.modoLuas ? "destaque" : "fraco",
-      ],
+      ["MODO LUA", estadoLua(estado), corEstadoLua(estado)],
       ["NÚMERO", `${numero}  (por mão: ${porMao})`, "neutro"],
       ["ÍNDICE LUA", String(estado.indiceLua ?? "—"), "neutro"],
       ["MÃOS", `${leitura.maosVisiveis}  [${lados}]`, "neutro"],

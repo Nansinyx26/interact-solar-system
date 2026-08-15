@@ -683,11 +683,7 @@ class HUD:
         linhas: list[tuple[str, str, tuple[int, int, int]]] = [
             ("FPS", f"{estado.fps:5.1f}", self._cor_por_limiar(estado.fps, 50, 30)),
             ("PLANETA", planeta, COR_TEXTO),
-            (
-                "MODO LUA",
-                estado.estado_selecao or ("ativo" if estado.modo_luas else "—"),
-                COR_DESTAQUE if estado.modo_luas else COR_TEXTO_SECUNDARIO,
-            ),
+            ("MODO LUA", self._estado_lua(estado), self._cor_estado_lua(estado)),
             ("NÚMERO", f"{numero}  (por mão: {por_mao})", COR_TEXTO),
             ("ÍNDICE LUA", str(estado.indice_lua or "—"), COR_TEXTO),
             ("MÃOS", f"{leitura.maos_visiveis}  [{lados}]", COR_TEXTO),
@@ -748,6 +744,33 @@ class HUD:
                 cheio,
                 border_radius=2,
             )
+
+    @staticmethod
+    def _estado_lua(estado: EstadoHUD) -> str:
+        """Texto da linha "MODO LUA" do debug, fiel ao que está na TELA.
+
+        A máquina de estados só é alimentada pelo caminho do GESTO; abrir uma
+        lua pela tecla passa por fora dela. Sem esta correção o painel dizia
+        "ocioso" com a ficha da lua aberta na frente do usuário — justamente o
+        tipo de informação errada que um painel de diagnóstico não pode dar.
+        """
+        if estado.ficha_lua_aberta and estado.estado_selecao != "ficha":
+            return "ficha (teclado)"
+        # Sem câmera o seletor nunca é alimentado e fica parado em "ocioso", o
+        # que esconderia o modo ligado pela tecla L. Aqui o teclado é o caso
+        # normal, não a exceção: o app inteiro funciona sem webcam.
+        if estado.modo_luas and estado.estado_selecao in ("", "ocioso"):
+            return "ativo (teclado)"
+        if estado.estado_selecao:
+            return estado.estado_selecao
+        return "ativo" if estado.modo_luas else "—"
+
+    @staticmethod
+    def _cor_estado_lua(estado: EstadoHUD) -> tuple[int, int, int]:
+        """Aceso quando há modo lua ou ficha na tela; apagado quando não há."""
+        if estado.modo_luas or estado.ficha_lua_aberta:
+            return COR_DESTAQUE
+        return COR_TEXTO_SECUNDARIO
 
     @staticmethod
     def _cor_por_limiar(

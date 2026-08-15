@@ -451,10 +451,15 @@ class Aplicacao {
     this.cameraLivre = false;
     this.corpoAlvo = corpo;
     if (!corpo.ehSatelite) {
-      // Guarda o contexto: é este planeta que o modo luas vai consultar.
+      // Guarda o contexto: é este planeta que o modo lua vai consultar.
       this.planetaSelecionado = corpo;
       this.luaSelecionada = null;
       this.avisoLuas = "";
+      // A ficha da lua some junto: ela é de uma lua do planeta ANTERIOR, e
+      // deixá-la aberta ao lado do planeta novo afirmaria que Europa é lua de
+      // Marte. Limpar só `luaSelecionada` apagava o destaque na órbita mas não
+      // o card.
+      this.fichaLua.ocultar();
     }
     this.camera.focarCorpo(this.posicoes.get(corpo.nome), raioCorpoPx(corpo), true);
     this.ficha.mostrar(corpo);
@@ -617,7 +622,10 @@ class Aplicacao {
         avisoLuas: this.avisoLuas,
         indiceLua: this.seletorLua.indicePreview,
         progressoLua: this.seletorLua.progresso,
-        fichaLuaAberta: this.seletorLua.fichaAberta,
+        // O card DE VERDADE, não só o estado da máquina: o caminho do teclado
+        // abre a ficha por fora do seletor, e o HUD precisa descrever o que
+        // está na tela.
+        fichaLuaAberta: this.seletorLua.fichaAberta || this.fichaLua.visivel,
         debugVisivel: this.mostrarDebug,
         estadoSelecao: this.seletorLua.estado,
       });
