@@ -60,7 +60,7 @@ const QUESTOES = [
   {
     id: 10,
     pergunta: "10. Quanto tempo a Terra leva para dar uma volta completa ao redor do Sol?",
-    opcoes: ["24 horas", "30 dias", "365 dias (1 ano)", "12 anos"],
+    opcoes: ["24 horas", "30 dias", "365 dias e 6 horas (1 ano)", "12 anos"],
     correta: 2, // 365 dias
   },
 ];
