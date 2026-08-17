@@ -108,7 +108,10 @@ QUESTOES_QUIZ: list[QuestaoQuiz] = [
     QuestaoQuiz(
         id=10,
         pergunta="10. Quanto tempo a Terra leva para dar uma volta completa ao redor do Sol?",
-        opcoes=["24 horas", "30 dias", "365 dias (1 ano)", "12 anos"],
+        # As 6 horas a mais são o motivo do ano bissexto: quatro voltas somam
+        # um dia inteiro de sobra. A ficha da Terra no simulador mostra o mesmo
+        # "365 dias e 6 horas", que é onde a resposta pode ser conferida.
+        opcoes=["24 horas", "30 dias", "365 dias e 6 horas (1 ano)", "12 anos"],
         correta=2,
     ),
 ]

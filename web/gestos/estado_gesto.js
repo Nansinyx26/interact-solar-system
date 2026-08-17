@@ -13,6 +13,7 @@
 
 import {
   BUFFER_SELECAO_LUA,
+  COOLDOWN_APOS_L_S,
   COOLDOWN_SELECAO_LUA_S,
   FRAMES_PARA_ENTRAR_MODO_LUAS,
   FRAMES_PARA_SAIR_MODO_LUAS,
@@ -30,6 +31,8 @@ export class MaquinaGestos {
     this._bufferLua = [];
     this._luaConfirmada = null;
     this._instanteUltimaLua = -COOLDOWN_SELECAO_LUA_S;
+    // Quando o "L" foi visto pela última vez. Alimenta bloqueandoPlanetas().
+    this._instanteUltimoL = -COOLDOWN_APOS_L_S;
   }
 
   /** Volta ao modo normal (usado pelo gesto 10 e pelo ESC). */
@@ -39,6 +42,29 @@ export class MaquinaGestos {
     this._framesSemL = 0;
     this._bufferLua = [];
     this._luaConfirmada = null;
+    this._instanteUltimoL = -COOLDOWN_APOS_L_S;
+  }
+
+  /**
+   * True quando a contagem de dedos NÃO deve selecionar um planeta.
+   *
+   * Existe porque a seleção de planeta é alimentada pela contagem CRUA do
+   * detector, que soma todas as mãos do quadro e desconhece a forma de cada
+   * uma. Com o planeta X selecionado, "L" numa mão + 2 dedos na outra devia
+   * abrir a lua 2 de X — mas aquele 2 (ou o 4 da soma com os dois dedos do
+   * próprio L) chegava ao estabilizador de planetas e levava para Vênus ou
+   * Marte antes de o modo lua sequer ligar.
+   *
+   * A regra passa a ser: havendo um "L" no quadro, o número da outra mão é
+   * índice de LUA e nada mais. Só uma contagem sem nenhum L no quadro pode
+   * virar planeta — que é a leitura natural de "mostrar dois dedos".
+   *
+   * Vale também por COOLDOWN_APOS_L_S depois que o L some, cobrindo tanto o
+   * piscar do rastreio quanto as poses intermediárias de desfazer o gesto.
+   */
+  bloqueandoPlanetas(agora) {
+    if (this.modoLuas) return true;
+    return agora - this._instanteUltimoL < COOLDOWN_APOS_L_S;
   }
 
   /**
@@ -58,16 +84,34 @@ export class MaquinaGestos {
 
   /** Classifica as mãos e devolve a intenção do frame. */
   atualizar(maos, agora) {
-    // 1. Descartar mãos cortadas pela borda antes de qualquer decisão.
-    const usaveis = maos.filter(({ landmarks }) => maoDentroDoQuadro(landmarks));
-
-    // 2. Classificar a FORMA de cada mão antes de contar qualquer dedo.
-    const formas = usaveis.map((mao) => ({
+    // 1. Classificar a FORMA de TODAS as mãos, antes de qualquer contagem e
+    //    ANTES do filtro de borda.
+    //
+    //    A ordem antiga descartava primeiro as mãos cortadas pela borda e só
+    //    então olhava a forma — e o "L" é justamente o gesto que mais cai nesse
+    //    filtro: o polegar aponta para a lateral e encosta no limite do quadro.
+    //    Descartada a mão, sobrava só a do número, `temL` dava false e
+    //    "L + 2 dedos" virava um simples "2" — ou seja, Vênus, em vez da lua 2
+    //    do planeta selecionado.
+    //
+    //    Reconhecer a forma primeiro é seguro porque o "L" é geometria relativa
+    //    à própria palma (ver formatos_mao.js): ele sobrevive a landmarks um
+    //    pouco fora de [0, 1], que o MediaPipe extrapola de qualquer jeito. O
+    //    que NÃO sobrevive à borda é a contagem de dedos.
+    const formas = maos.map((mao) => ({
       ...mao,
       ehL: ehFormatoL(mao.landmarks, mao.lado),
+      noQuadro: maoDentroDoQuadro(mao.landmarks),
     }));
     let maosEmL = formas.filter((f) => f.ehL);
-    const outras = formas.filter((f) => !f.ehL);
+
+    // 2. Para CONTAR dedos, aí sim só valem mãos inteiras: numa mão cortada ao
+    //    meio a contagem é lixo, e é dela que sai o índice da lua.
+    const outras = formas.filter((f) => !f.ehL && f.noQuadro);
+    // Uma mão conta como presente se está inteira no quadro OU se foi
+    // reconhecida como "L" — o seletor de lua exige duas mãos na tela, e sem
+    // esta segunda cláusula a mão do L não entrava na conta.
+    const usaveis = formas.filter((f) => f.ehL || f.noQuadro);
 
     // 3. Duas mãos em L: a PRIMEIRA detectada vira âncora e a segunda passa a
     //    valer como mão de número. Antes isto era estado inválido e não mudava
@@ -81,6 +125,11 @@ export class MaquinaGestos {
     }
 
     const temL = maosEmL.length === 1;
+    // Marca a presença do L ANTES da histerese: o bloqueio da seleção de
+    // planeta precisa valer já no primeiro frame em que a forma aparece, e não
+    // só depois das FRAMES_PARA_ENTRAR_MODO_LUAS leituras que confirmam o modo.
+    // Era nessa janela que o número escapava para o planeta.
+    if (temL) this._instanteUltimoL = agora;
     const modoMudou = this._atualizarHisterese(temL);
 
     // 4. O número sai da mão que NÃO faz o L.
@@ -118,7 +167,13 @@ export class MaquinaGestos {
       this._framesSemL = 0;
     } else {
       this._framesSemL += 1;
-      this._framesComL = 0;
+      // DESCONTA em vez de zerar. Zerando, uma única leitura ruim no meio do
+      // gesto obrigava a recomeçar do zero — e como o "L" precisa de 6 leituras
+      // SEGUIDAS, bastava o rastreio piscar uma vez a cada cinco para o modo
+      // lua nunca ligar, por mais que o usuário insistisse. Descontando, 4
+      // acertos em 5 leituras ainda chegam lá; alternar meio a meio (que não é
+      // um L firme) continua não chegando.
+      this._framesComL = Math.max(0, this._framesComL - 1);
     }
 
     if (!this.modoLuas && this._framesComL >= FRAMES_PARA_ENTRAR_MODO_LUAS) {

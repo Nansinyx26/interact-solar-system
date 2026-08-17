@@ -143,7 +143,11 @@ CORPOS: list[CorpoCeleste] = [
         luas=2,
         temperatura_media_c=-65.0,
         inclinacao_axial_graus=25.19,
-        fato_curioso="Abriga o Olympus Mons, vulcão de ~22 km — o maior conhecido.",
+        # A cor entra no texto de propósito: a questão 2 do quiz pergunta qual é
+        # o "Planeta Vermelho", e o aluno precisa poder conferir a resposta aqui.
+        # O texto cabe em DUAS linhas da ficha — a terceira seria cortada pelo
+        # limite do card (ver _LIMITE de altura em ui/ficha_planeta.py).
+        fato_curioso="É o Planeta Vermelho e tem o Olympus Mons, o maior vulcão conhecido.",
         cor_base=(191, 88, 54),
         cor_secundaria=(138, 58, 40),
         cor_detalhe=(233, 168, 130),
@@ -183,7 +187,11 @@ CORPOS: list[CorpoCeleste] = [
         luas=146,
         temperatura_media_c=-140.0,
         inclinacao_axial_graus=26.73,
-        fato_curioso="Sua densidade é menor que a da água: flutuaria numa banheira.",
+        # Os anéis entram no texto de propósito: a questão 5 do quiz pergunta
+        # qual planeta tem os anéis mais impressionantes, e a ficha precisa
+        # responder por escrito, não só pelo desenho na cena. Cabe em DUAS
+        # linhas — a terceira seria cortada pelo limite do card.
+        fato_curioso="Tem os anéis mais brilhantes do Sistema Solar e flutuaria numa banheira.",
         cor_base=(228, 205, 152),
         cor_secundaria=(182, 152, 104),
         cor_detalhe=(248, 236, 206),

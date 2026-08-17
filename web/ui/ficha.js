@@ -15,12 +15,40 @@ function formatarDecimal(valor, casas = 2) {
   }).format(valor);
 }
 
+// Acima deste período, a sobra de horas deixa de ser informação e vira ruído:
+// ninguém aprende nada com "4.333 dias e 14 horas". Abaixo dele a sobra é o
+// ponto (a Terra: 365 dias e 6 horas, que é a origem do ano bissexto).
+const LIMITE_HORAS_NO_PERIODO_DIAS = 400;
+
+/**
+ * Dias inteiros e, quando a sobra importa, as horas restantes.
+ *
+ * A Terra leva 365 dias **e 6 horas** para dar uma volta, e são essas 6 horas
+ * que explicam o ano bissexto: quatro voltas acumulam um dia inteiro de sobra.
+ * Arredondar para "365 dias" apagava justamente a parte que a ficha existe para
+ * ensinar — e é a resposta da questão 10 do quiz, que o aluno deveria conseguir
+ * conferir aqui.
+ */
+function diasEHoras(dias) {
+  if (dias >= LIMITE_HORAS_NO_PERIODO_DIAS) {
+    return `${formatadorInteiro.format(dias)} dias`;
+  }
+  let inteiros = Math.trunc(dias);
+  let horas = Math.round((dias - inteiros) * 24);
+  if (horas >= 24) {
+    inteiros += 1;
+    horas = 0;
+  }
+  if (horas === 0) return `${formatadorInteiro.format(inteiros)} dias`;
+  return `${formatadorInteiro.format(inteiros)} dias e ${horas} horas`;
+}
+
 /** Período orbital em anos terrestres quando faz sentido, senão em dias. */
 function formatarPeriodoOrbital(corpo) {
   if (corpo.periodoOrbitalDias <= 0) return "— (orbita o centro da Galáxia)";
   const dias = corpo.periodoOrbitalDias;
   if (dias < 365.26) return `${formatarDecimal(dias)} dias`;
-  return `${formatarDecimal(dias / 365.26)} anos (${formatadorInteiro.format(dias)} dias)`;
+  return `${formatarDecimal(dias / 365.26)} anos (${diasEHoras(dias)})`;
 }
 
 /** Período de rotação, sinalizando giro retrógrado. */

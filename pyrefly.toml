@@ -4,7 +4,23 @@
 # mediapipe, pygame, cv2 e pyttsx3 não estão instalados — e sublinha os imports
 # em vermelho mesmo com o programa funcionando. As dependências vivem no .venv
 # do projeto.
+#
+# ATENÇÃO: o `.venv` está no .gitignore, então quem baixa o projeto como ZIP
+# começa SEM ele. Nesse estado o Pyrefly não acha pacote nenhum e marca
+# `import cv2`, `import numpy` e `import pygame` como erro — em código que roda
+# perfeitamente. Não é bug do código: é ambiente não montado. Ver o README:
+#
+#     python -m venv .venv
+#     .venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# Depois de criar o venv, é preciso RECARREGAR a janela do editor: o Pyrefly
+# consulta o interpretador na inicialização e mantém o resultado em cache.
 python-interpreter = ".venv/Scripts/python.exe"
+
+# Caminho explícito dos pacotes, além do interpretador. É redundante quando a
+# consulta ao interpretador funciona, e é justamente o que salva quando ela
+# falha — em vez de "não achei módulo nenhum", o Pyrefly ainda tem onde olhar.
+site-package-path = [".venv/Lib/site-packages"]
 
 project-includes = ["**/*.py"]
 project-excludes = [

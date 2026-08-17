@@ -391,6 +391,20 @@ ANGULO_L_MAXIMO_GRAUS: Final[float] = 130.0
 # sem querer no meio de uma seleção.
 FRAMES_PARA_ENTRAR_MODO_LUAS: Final[int] = 6
 FRAMES_PARA_SAIR_MODO_LUAS: Final[int] = 8
+# Enquanto houver um "L" no quadro — e por este tempo depois que ele sumir — a
+# contagem de dedos NÃO seleciona planeta.
+#
+# Sem isso, o "L" + 2 dedos virava planeta 2 (Vênus) em vez da lua 2. O motivo é
+# que a seleção de planeta era alimentada pela contagem CRUA do detector, que
+# soma todas as mãos e não sabe o que é forma: nos frames em que o L ainda não
+# tinha completado a histerese (ou piscava por um instante), aquele número
+# escapava para o estabilizador e trocava o planeta debaixo do usuário.
+#
+# A folga depois do L sumir existe pelo mesmo motivo do COOLDOWN_APOS_PINCA_S:
+# desfazer um L passa por poses intermediárias que são lidas como 1, 2 ou 3
+# dedos, e sem a pausa o gesto de SAIR do modo lua terminava escolhendo um
+# planeta ao acaso.
+COOLDOWN_APOS_L_S: Final[float] = 0.6
 # Votação da lua escolhida, no mesmo espírito do estabilizador de planetas.
 BUFFER_SELECAO_LUA: Final[int] = 6
 VOTOS_SELECAO_LUA: Final[int] = 5

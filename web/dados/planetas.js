@@ -106,7 +106,11 @@ export const CORPOS = [
     luas: 2,
     temperaturaMediaC: -65,
     inclinacaoAxialGraus: 25.19,
-    fatoCurioso: "Abriga o Olympus Mons, vulcão de ~22 km — o maior conhecido.",
+    // A cor entra no texto de propósito: a questão 2 do quiz pergunta qual é o
+    // "Planeta Vermelho", e o aluno precisa poder conferir a resposta aqui.
+    // O texto cabe em DUAS linhas da ficha do desktop — a terceira seria
+    // cortada pelo limite do card.
+    fatoCurioso: "É o Planeta Vermelho e tem o Olympus Mons, o maior vulcão conhecido.",
     corBase: [191, 88, 54],
     corSecundaria: [138, 58, 40],
     corDetalhe: [233, 168, 130],
@@ -148,7 +152,11 @@ export const CORPOS = [
     luas: 146,
     temperaturaMediaC: -140,
     inclinacaoAxialGraus: 26.73,
-    fatoCurioso: "Sua densidade é menor que a da água: flutuaria numa banheira.",
+    // Os anéis entram no texto de propósito: a questão 5 do quiz pergunta qual
+    // planeta tem os anéis mais impressionantes, e a ficha precisa responder
+    // por escrito, não só pelo desenho na cena. Cabe em DUAS linhas da ficha do
+    // desktop — a terceira seria cortada pelo limite do card.
+    fatoCurioso: "Tem os anéis mais brilhantes do Sistema Solar e flutuaria numa banheira.",
     corBase: [228, 205, 152],
     corSecundaria: [182, 152, 104],
     corDetalhe: [248, 236, 206],

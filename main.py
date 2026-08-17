@@ -361,10 +361,20 @@ class Aplicacao:
                 # ao planeta. É este caminho que implementa "soltar o L fecha".
                 self._atualizar_modo_lua(agora)
                 # 0-9 selecionam um corpo e 10 é o comando "visão geral".
+                #
+                # `leitura.contagem` é a soma CRUA de todas as mãos do quadro:
+                # ela não sabe que uma delas pode estar fazendo o "L", e os dois
+                # dedos do L entram na soma como qualquer outro. Por isso a
+                # máquina de gestos — que classifica a FORMA antes de contar —
+                # tem poder de veto aqui: com um L no quadro, nenhum número vira
+                # planeta, porque naquele momento ele significa índice de lua.
                 contagem = self.leitura.contagem
                 valido = contagem in CORPOS_POR_GESTO or contagem == GESTO_VISAO_GERAL
                 leitura_valida = contagem if valido else None
-                if self.pinca.bloqueando_gestos(agora):
+                bloqueado = self.pinca.bloqueando_gestos(
+                    agora
+                ) or self.maquina_gestos.bloqueando_planetas(agora)
+                if bloqueado:
                     leitura_valida = None
                 self.resultado_gesto = self.estabilizador.atualizar(
                     leitura_valida, agora

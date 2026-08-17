@@ -415,10 +415,19 @@ class Aplicacao {
         this._atualizarModoLua(agora);
         // 0-9 selecionam um corpo (9 = Lua) e 10 é o comando "visão geral".
         // Qualquer outra contagem entra como leitura inválida.
+        //
+        // `leitura.contagem` é a soma CRUA de todas as mãos do quadro: ela não
+        // sabe que uma delas pode estar fazendo o "L", e os dois dedos do L
+        // entram na soma como qualquer outro. Por isso a máquina de gestos —
+        // que classifica a FORMA antes de contar — tem poder de veto aqui: com
+        // um L no quadro, nenhum número vira planeta, porque naquele momento
+        // ele significa índice de lua.
         const contagem = leitura.contagem;
         const valido =
           CORPOS_POR_GESTO.has(contagem) || contagem === GESTO_VISAO_GERAL;
-        const bloqueado = this.pinca.bloqueandoGestos(agora);
+        const bloqueado =
+          this.pinca.bloqueandoGestos(agora) ||
+          this.maquinaGestos.bloqueandoPlanetas(agora);
         this.resultadoGesto = this.estabilizador.atualizar(
           valido && !bloqueado ? contagem : null,
           agora,

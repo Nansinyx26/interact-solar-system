@@ -29,6 +29,11 @@ _ALTURA_ROTULO = 17
 _ALTURA_LINHA_VALOR = 17
 _RESPIRO_ITEM = 10
 
+# Acima deste período, a sobra de horas deixa de ser informação e vira ruído:
+# ninguém aprende nada com "4.333 dias e 14 horas". Abaixo dele a sobra é o
+# ponto (a Terra: 365 dias e 6 horas, que é a origem do ano bissexto).
+_LIMITE_HORAS_NO_PERIODO_DIAS = 400.0
+
 
 def formatar_inteiro(valor: float) -> str:
     """Inteiro no padrão pt-BR (1.392.700)."""
@@ -41,6 +46,30 @@ def formatar_decimal(valor: float, casas: int = 2) -> str:
     return texto.replace(",", "@").replace(".", ",").replace("@", ".")
 
 
+def _dias_e_horas(dias: float) -> str:
+    """Dias inteiros e, quando a sobra importa, as horas restantes.
+
+    A Terra leva 365 dias **e 6 horas** para dar uma volta, e são essas 6 horas
+    que explicam o ano bissexto: quatro voltas acumulam um dia inteiro de
+    sobra. Arredondar para "365 dias" apagava justamente a parte que a ficha
+    existe para ensinar — e é a resposta da questão 10 do quiz, que o aluno
+    deveria conseguir conferir aqui.
+
+    Acima de ~400 dias as horas viram ruído (Júpiter leva 4.333 dias; as 14 h de
+    sobra não dizem nada a ninguém), então só os corpos de período curto as
+    recebem.
+    """
+    if dias >= _LIMITE_HORAS_NO_PERIODO_DIAS:
+        return f"{formatar_inteiro(dias)} dias"
+    inteiros = int(dias)
+    horas = round((dias - inteiros) * 24.0)
+    if horas >= 24:
+        inteiros, horas = inteiros + 1, 0
+    if horas == 0:
+        return f"{formatar_inteiro(inteiros)} dias"
+    return f"{formatar_inteiro(inteiros)} dias e {horas} horas"
+
+
 def _formatar_periodo_orbital(corpo: CorpoCeleste) -> str:
     """Período orbital em dias e, quando faz sentido, em anos terrestres."""
     if corpo.periodo_orbital_dias <= 0:
@@ -49,7 +78,7 @@ def _formatar_periodo_orbital(corpo: CorpoCeleste) -> str:
     if dias < 365.26:
         return f"{formatar_decimal(dias, 2)} dias"
     anos = dias / 365.26
-    return f"{formatar_decimal(anos, 2)} anos ({formatar_inteiro(dias)} dias)"
+    return f"{formatar_decimal(anos, 2)} anos ({_dias_e_horas(dias)})"
 
 
 def _formatar_rotacao(corpo: CorpoCeleste) -> str:
