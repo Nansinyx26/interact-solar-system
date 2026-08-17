@@ -290,6 +290,11 @@ for (const corpo of CORPOS) {
     // renderizador já usava para ela.
     raioOrbitaPx: 2.8,
     cor: corpo.corBase,
+    // Os 9 corpos principais já carregam uma paleta de três tons para a textura
+    // equirretangular; reaproveitá-la aqui faz a Lua ganhar o mesmo relevo das
+    // outras em vez de virar o único disco chapado.
+    corClara: corpo.corDetalhe,
+    corEscura: corpo.corSecundaria,
     faseInicial: corpo.faseInicial,
     fatoCurioso: corpo.fatoCurioso,
     // Massa e composição não existem nos 9 corpos principais (nenhum deles

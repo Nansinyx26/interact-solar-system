@@ -8,6 +8,7 @@
 
 import {
   DETECTAR_A_CADA_N_FRAMES,
+  INTERVALO_DETECCAO_S,
   LUAS_VISIVEIS_PADRAO,
   FATOR_AJUSTE_TEMPO,
   FATOR_ZOOM_RODA,
@@ -90,6 +91,9 @@ class Aplicacao {
     this.resultadoGesto = { confirmado: null, candidato: null, progresso: 0 };
     this._ultimaSequencia = -1;
     this._contadorFrames = 0;
+    // -Infinity para a primeira inferência sair no primeiro frame, sem esperar
+    // um intervalo com a câmera já aberta.
+    this._ultimaDeteccao = -Infinity;
     this._ultimoInstante = performance.now();
     this._fps = 0;
     this._arrastando = false;
@@ -364,10 +368,16 @@ class Aplicacao {
 
     const agora = performance.now() / 1000;
     this._contadorFrames += 1;
-    // Inferência 1 a cada N frames: ~30 leituras/s já é muito mais rápido que
-    // os ~0,5 s de confirmação, e sobra CPU para o render.
-    if (this._contadorFrames % DETECTAR_A_CADA_N_FRAMES === 0) {
+    // Inferência agendada pelo RELÓGIO, não pela contagem de frames: assim o
+    // ritmo de leitura (e portanto o tempo até um gesto ser confirmado) não
+    // depende do FPS. Ver INTERVALO_DETECCAO_S.
+    if (agora - this._ultimaDeteccao >= INTERVALO_DETECCAO_S) {
+      this._ultimaDeteccao = agora;
       this.detector.processarFrame();
+    }
+    // O preview é só feedback visual e pode ficar preso ao frame: ele não entra
+    // na conta da latência do gesto.
+    if (this._contadorFrames % DETECTAR_A_CADA_N_FRAMES === 0) {
       this.detector.desenharPreview();
     }
 

@@ -16,7 +16,7 @@ from typing import Final
 # qualquer uma delas, suba este número aqui E em web/config.js — o
 # verificar_paridade.py falha se os dois ficarem diferentes, e o
 # publicar.py regenera o ZIP de download com a versão nova.
-VERSAO: Final[str] = "1.4.2"
+VERSAO: Final[str] = "1.5.0"
 
 # ---------------------------------------------------------------------------
 # Janela e loop principal
@@ -287,12 +287,52 @@ GESTO_MINIMO_DUAS_MAOS: Final[int] = 6
 # Ligadas por padrão: as luas são conteúdo, não um extra escondido atrás de
 # um atalho. Na visão geral elas aparecem comprimidas (ver FATOR_LUA_COMPACTO_*).
 LUAS_VISIVEIS_PADRAO: Final[bool] = True
-# Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
-# proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
+# Raio desenhado de uma lua do TAMANHO DA NOSSA, em pixels de mundo. Não é mais
+# o raio de todas: ver EXPOENTE_RAIO_LUA logo abaixo.
 RAIO_LUA_MENOR_PX: Final[float] = 2.2
 # Zoom a partir do qual as luas usam o raio orbital cheio. Abaixo dele o
 # sistema é comprimido (ver FATOR_LUA_COMPACTO_*), não escondido.
 ZOOM_MINIMO_PARA_LUAS: Final[float] = 1.6
+
+# --- tamanho desenhado da lua ----------------------------------------------
+# Mesma lei de potência dos planetas (expoente < 1 comprime a faixa), com a
+# nossa Lua como referência. Antes TODAS as luas tinham 2,2 px: Titã (5.150 km)
+# e Fobos (22 km) saíam idênticos na tela, e comparar tamanhos é justamente o
+# que se espera de um sistema de luas desenhado lado a lado.
+#
+# Em escala real a razão Ganimedes/Fobos é 234x; com expoente 0,32 ela vira 5,7x
+# — Fobos continua sendo um ponto e Ganimedes um disco, sem que nenhum dos dois
+# saia da tela. Os números reais estão sempre na ficha.
+DIAMETRO_LUA_REFERENCIA_KM: Final[float] = 3474.0  # a nossa Lua
+EXPOENTE_RAIO_LUA: Final[float] = 0.32
+# Pisos e tetos em pixels de mundo: abaixo de ~1,1 px a lua vira ruído de
+# antisserrilhado e acima de ~3,4 px ela começa a competir com o planeta.
+# O piso foi calibrado para NÃO achatar a faixa média: com 1,25 as luas de gelo
+# de 400-500 km (Encélado, Miranda, Proteu) caíam todas nele e saíam do mesmo
+# tamanho de Fobos, que tem 22 km. Com 1,10 só as cinco realmente minúsculas
+# ficam no piso, e é o que se espera — elas são pontos mesmo.
+RAIO_LUA_MENOR_MIN_PX: Final[float] = 1.10
+RAIO_LUA_MENOR_MAX_PX: Final[float] = 3.40
+
+# --- sprite esférico da lua -------------------------------------------------
+# Cada lua deixou de ser um círculo de cor chapada: ganha um sprite
+# pré-renderizado com manchas de terreno, escurecimento de limbo e borda suave,
+# mais um terminador dia/noite apontado para o Sol — as mesmas três coisas que
+# já davam volume aos planetas.
+RAIO_TEXTURA_LUA_PX: Final[int] = 20
+# Fases do terminador pré-rotacionadas. Bem menos que os 36 dos planetas
+# (PASSO_ANGULO_SOMBRA_GRAUS): num disco de 20 px de raio, os 22,5° de erro
+# máximo desta granularidade valem meio pixel na borda da sombra.
+QUADROS_ILUMINACAO_LUA: Final[int] = 16
+ALPHA_SOMBRA_LUA: Final[int] = 165
+# Contraste das manchas de terreno, como fração da distância entre cor_escura e
+# cor_clara. Alto demais e toda lua vira Jápeto.
+CONTRASTE_TERRENO_LUA: Final[float] = 0.62
+# Blocos da primeira oitava do ruído da lua — bem menos que os 10 dos planetas.
+# O sprite tem 40 px de lado: com 10 blocos as manchas ficam com 4 px e somem
+# no primeiro downscale, que é o caso normal (a lua raramente passa de 8 px na
+# tela). Com 4 blocos as manchas têm 10 px e sobrevivem à redução.
+ESCALA_RUIDO_LUA: Final[int] = 4
 
 # Raio orbital COMPACTO, usado na visão geral — múltiplo do raio do planeta.
 # Sem isso as luas invadem o planeta vizinho: em volta de Júpiter elas
@@ -305,6 +345,20 @@ FATOR_LUA_COMPACTO_MAX: Final[float] = 1.45
 FOLGA_LUA_APOS_ANEL: Final[float] = 0.15
 COR_ORBITA_LUA: Final[tuple[int, int, int]] = (150, 160, 190)
 ALPHA_ORBITA_LUA: Final[int] = 45
+
+# --- legibilidade dos rótulos de lua ---------------------------------------
+# O nome era desenhado direto sobre a cena. Contra o campo de estrelas passava,
+# mas em cima do disco de Júpiter (bege claro) ou dos anéis de Saturno um texto
+# cinza de 11 px some. Agora todo rótulo sai com um contorno escuro atrás — é o
+# mesmo truque de legenda de mapa, e custa quatro blits pré-renderizados.
+ALPHA_ROTULO_LUA: Final[int] = 205
+COR_CONTORNO_ROTULO: Final[tuple[int, int, int]] = (6, 8, 18)
+ESPESSURA_CONTORNO_ROTULO_PX: Final[int] = 2
+# Distância mínima entre dois nomes de lua na tela. Abaixo dela o segundo é
+# omitido: com Júpiter comprimido na visão geral, cinco rótulos empilhados no
+# mesmo ponto viram uma mancha ilegível — e nenhum deles é lido. O rótulo da lua
+# em DESTAQUE nunca é omitido, porque ele é a resposta ao gesto do usuário.
+DISTANCIA_MINIMA_ROTULO_LUA_PX: Final[float] = 26.0
 
 # ---------------------------------------------------------------------------
 # Cinturão de asteroides
@@ -448,10 +502,14 @@ LARGURA_MINIMA_ATALHOS: Final[int] = 1040
 
 # Ficha do planeta
 LARGURA_FICHA: Final[int] = 330
-# A ficha da LUA vive na coluna direita (a esquerda é do planeta-mãe, que
-# continua visível: comparar lua e planeta lado a lado é o ponto de olhar uma
-# lua). Um pouco mais estreita porque tem menos linhas.
+# A ficha da LUA fica ao LADO da do planeta, na mesma coluna esquerda: o
+# planeta-mãe continua visível e comparar os dois lado a lado é o ponto de olhar
+# uma lua. Um pouco mais estreita porque tem menos linhas.
+#
+# Ela já morou no canto direito, e era um erro: aquele canto é da webcam e da
+# assinatura, e o preview é desenhado DEPOIS — a ficha abria atrás dele.
 LARGURA_FICHA_LUA: Final[int] = 300
+FOLGA_ENTRE_FICHAS: Final[int] = 12
 DURACAO_ANIMACAO_FICHA_S: Final[float] = 0.45
 DESLOCAMENTO_ENTRADA_FICHA_PX: Final[float] = 60.0
 

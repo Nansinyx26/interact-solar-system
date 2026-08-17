@@ -16,10 +16,15 @@ from config import (
     FATOR_LUA_COMPACTO_MIN,
     FOLGA_LUA_APOS_ANEL,
     CINTURAO_UA_INTERNO,
+    DIAMETRO_LUA_REFERENCIA_KM,
     EXPOENTE_RAIO_CORPO,
     EXPOENTE_PERIODO_LUA,
+    EXPOENTE_RAIO_LUA,
     FATOR_ROTACAO_PROPRIA,
     PERIODO_LUA_REFERENCIA_DIAS,
+    RAIO_LUA_MENOR_MAX_PX,
+    RAIO_LUA_MENOR_MIN_PX,
+    RAIO_LUA_MENOR_PX,
     RAIO_LUA_PX,
     RAIO_ORBITA_LUA_PX,
     RAIO_ORBITA_MAX_PX,
@@ -69,6 +74,21 @@ def raio_corpo_px(corpo: CorpoCeleste) -> float:
         return RAIO_LUA_PX
     razao = corpo.diametro_km / DIAMETRO_REFERENCIA_KM
     return RAIO_PLANETA_BASE_PX * (razao**EXPOENTE_RAIO_CORPO)
+
+
+def raio_lua_menor_px(lua: LuaMenor) -> float:
+    """Raio DESENHADO de uma lua menor, em unidades de mundo.
+
+    Mesma lei de potência de ``raio_corpo_px``, com a nossa Lua como referência
+    e limites duros nas pontas. Antes toda lua tinha o mesmo raio fixo, o que
+    apagava a única comparação de tamanho que a cena consegue oferecer: Titã e
+    Ganimedes são maiores que Mercúrio, Fobos tem 22 km.
+    """
+    razao = abs(lua.diametro_km) / DIAMETRO_LUA_REFERENCIA_KM
+    if razao <= 0.0:
+        return RAIO_LUA_MENOR_MIN_PX
+    raio = RAIO_LUA_MENOR_PX * (razao**EXPOENTE_RAIO_LUA)
+    return min(RAIO_LUA_MENOR_MAX_PX, max(RAIO_LUA_MENOR_MIN_PX, raio))
 
 
 def periodo_aparente_da_lua(periodo_real_dias: float) -> float:
@@ -256,5 +276,6 @@ __all__ = [
     "posicao_orbital",
     "posicoes_do_sistema",
     "raio_corpo_px",
+    "raio_lua_menor_px",
     "raio_orbital_px",
 ]

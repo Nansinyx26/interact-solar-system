@@ -13,10 +13,15 @@ import {
   FATOR_LUA_COMPACTO_MIN,
   FOLGA_LUA_APOS_ANEL,
   CINTURAO_UA_INTERNO,
+  DIAMETRO_LUA_REFERENCIA_KM,
   EXPOENTE_RAIO_CORPO,
   EXPOENTE_PERIODO_LUA,
+  EXPOENTE_RAIO_LUA,
   FATOR_ROTACAO_PROPRIA,
   PERIODO_LUA_REFERENCIA_DIAS,
+  RAIO_LUA_MENOR_MAX_PX,
+  RAIO_LUA_MENOR_MIN_PX,
+  RAIO_LUA_MENOR_PX,
   RAIO_LUA_PX,
   RAIO_ORBITA_LUA_PX,
   RAIO_ORBITA_MAX_PX,
@@ -60,6 +65,21 @@ export function raioCorpoPx(corpo) {
   if (ehSatelite(corpo)) return RAIO_LUA_PX;
   const razao = corpo.diametroKm / DIAMETRO_REFERENCIA_KM;
   return RAIO_PLANETA_BASE_PX * razao ** EXPOENTE_RAIO_CORPO;
+}
+
+/**
+ * Raio DESENHADO de uma lua menor, em unidades de mundo.
+ *
+ * Mesma lei de potência de `raioCorpoPx`, com a nossa Lua como referência e
+ * limites duros nas pontas. Antes toda lua tinha o mesmo raio fixo, o que
+ * apagava a única comparação de tamanho que a cena consegue oferecer: Titã e
+ * Ganimedes são maiores que Mercúrio, Fobos tem 22 km.
+ */
+export function raioLuaMenorPx(lua) {
+  const razao = Math.abs(lua.diametroKm) / DIAMETRO_LUA_REFERENCIA_KM;
+  if (!(razao > 0)) return RAIO_LUA_MENOR_MIN_PX;
+  const raio = RAIO_LUA_MENOR_PX * razao ** EXPOENTE_RAIO_LUA;
+  return Math.min(RAIO_LUA_MENOR_MAX_PX, Math.max(RAIO_LUA_MENOR_MIN_PX, raio));
 }
 
 /**

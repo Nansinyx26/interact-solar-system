@@ -28,6 +28,12 @@
   --altura-painel-gesto: 120px;
   /* Respiro entre os blocos empilhados no canto inferior direito. */
   --folga-canto: 13px;
+  /* Larguras das duas fichas. Ficam aqui porque a ficha da LUA se posiciona a
+     partir da largura da ficha do PLANETA (elas dividem a coluna esquerda): com
+     os números soltos nas duas regras, mexer numa desalinhava a outra. */
+  --largura-ficha: 330px;
+  --largura-ficha-lua: 300px;
+  --folga-entre-fichas: 12px;
 }
 
 * {
@@ -334,7 +340,7 @@ button.ativo {
      lá, ela crescia por baixo do preview e o final dos dados sumia. */
   left: var(--margem);
   right: auto;
-  width: 330px;
+  width: var(--largura-ficha);
   /* Ocupa daqui até o topo do painel de gesto, que está ancorado embaixo. */
   max-height: calc(
     100dvh - 64px - var(--altura-painel-gesto) - var(--margem) -
@@ -417,23 +423,31 @@ body.com-foco .painel-legenda {
 }
 
 /* ------------------------------------------------------------- ficha da lua */
-/* Mesma linguagem visual da ficha do planeta, espelhada para a direita. Herda
-   as regras de .ficha para os filhos (faixa, dados, fato) via seletor duplo, em
-   vez de duplicá-las: um ajuste de tipografia numa vale para as duas. */
+/* Mesma linguagem visual da ficha do planeta, ao lado dela. Herda as regras de
+   .ficha para os filhos (faixa, dados, fato) via seletor duplo, em vez de
+   duplicá-las: um ajuste de tipografia numa vale para as duas. */
 .ficha-lua {
   position: fixed;
   top: 64px;
-  /* Coluna da DIREITA. O limite de baixo é o topo do preview da webcam, que
-     mora no mesmo canto — sem isso a ficha crescia por baixo dele. */
-  right: var(--margem);
-  left: auto;
-  width: 300px;
+  /* Coluna da ESQUERDA, na segunda faixa — logo à direita da ficha do planeta.
+     Ela ficava ancorada em `right`, no canto da webcam, e como o preview tem
+     z-index 10 contra os 8 daqui, a ficha simplesmente abria ATRÁS dele: o
+     usuário confirmava a lua por gesto e não via card nenhum.
+     À esquerda as duas ficham lado a lado, que é o arranjo que o modo lua
+     pressupõe — o planeta-mãe continua aberto, e comparar os dois é o ponto de
+     olhar para uma lua. */
+  left: calc(var(--margem) + var(--largura-ficha) + var(--folga-entre-fichas));
+  right: auto;
+  width: var(--largura-ficha-lua);
+  /* Mesmo limite inferior da ficha do planeta: as duas param no topo do painel
+     de gesto, não mais na assinatura (que fica no outro canto). */
   max-height: calc(
-    100dvh - 64px - var(--altura-assinatura) - var(--margem) -
+    100dvh - 64px - var(--altura-painel-gesto) - var(--margem) -
       2 * var(--folga-canto)
   );
   overflow-y: auto;
-  /* Abaixo do preview (10) pelo mesmo motivo da ficha do planeta. */
+  /* Abaixo do preview (10) pelo mesmo motivo da ficha do planeta. Agora isso é
+     só uma garantia: elas não dividem mais o mesmo canto. */
   z-index: 8;
   padding: 18px;
   border-radius: var(--raio);
@@ -441,7 +455,7 @@ body.com-foco .painel-legenda {
   border: 1px solid var(--borda);
   backdrop-filter: blur(10px);
   opacity: 0;
-  transform: translateX(24px); /* entra pela direita, o lado em que mora */
+  transform: translateX(-24px); /* entra pela esquerda, o lado em que mora */
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 .ficha-lua.visivel {
@@ -945,10 +959,29 @@ body.com-foco .painel-legenda {
    câmera recalcula o enquadramento a partir do tamanho corrente.
    ========================================================================= */
 
+/* Faixa intermediária: janela de desktop estreita (901-1180 px).
+   Aqui ainda valem as duas colunas, mas 330 + 300 px de ficha comeriam dois
+   terços da largura e sobraria pouca cena entre elas e a webcam. Encolher as
+   duas juntas mantém o arranjo lado a lado sem espremer o Sistema Solar. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  :root {
+    --largura-ficha: 280px;
+    --largura-ficha-lua: 250px;
+  }
+  .ficha h2,
+  .ficha-lua h2 {
+    font-size: 26px;
+  }
+}
+
 /* Monitores grandes: sem isto o HUD vira um selo no canto de uma tela 4K. */
 @media (min-width: 1600px) {
   :root {
     --margem: 24px;
+    /* As duas fichas crescem juntas: elas dividem a coluna esquerda e uma só
+       larga ficaria desalinhada com a vizinha. */
+    --largura-ficha: 390px;
+    --largura-ficha-lua: 340px;
   }
   .marca strong {
     font-size: 17px;
@@ -957,7 +990,6 @@ body.com-foco .painel-legenda {
     font-size: 13px;
   }
   .ficha {
-    width: 390px;
     padding: 22px;
   }
   .ficha h2 {

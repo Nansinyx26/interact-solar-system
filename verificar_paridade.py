@@ -43,6 +43,8 @@ ALPHAS_EM_ESCALAS_DIFERENTES = {
     "ALPHA_ORBITA_LUA",
     "ALPHA_ASTEROIDE_MIN",
     "ALPHA_ASTEROIDE_MAX",
+    "ALPHA_SOMBRA_LUA",
+    "ALPHA_ROTULO_LUA",
 }
 TOLERANCIA_ALPHA = 2.0
 
@@ -54,7 +56,8 @@ SO_DESKTOP = {
     "ALTURA_MINIMA_JANELA", "FPS_ALVO", "FAMILIA_FONTE", "FAMILIA_FONTE_MONO",
     "TAM_FONTE_TITULO", "TAM_FONTE_GRANDE", "TAM_FONTE_MEDIA", "TAM_FONTE_PEQUENA",
     "TAM_FONTE_MINI", "MARGEM_HUD", "LARGURA_PREVIEW_CAMERA", "ALTURA_PREVIEW_CAMERA",
-    "LARGURA_FICHA", "LARGURA_FICHA_LUA", "ALPHA_PAINEL", "RAIO_ANEL_PROGRESSO", "ESPESSURA_ANEL_PROGRESSO",
+    "LARGURA_FICHA", "LARGURA_FICHA_LUA", "FOLGA_ENTRE_FICHAS",
+    "ALPHA_PAINEL", "RAIO_ANEL_PROGRESSO", "ESPESSURA_ANEL_PROGRESSO",
     "DURACAO_ANIMACAO_FICHA_S", "DESLOCAMENTO_ENTRADA_FICHA_PX",
     "ALPHA_LINHA_LEGENDA_ATIVA", "ALTURA_BARRA_ATALHOS", "ALTURA_MINIMA_LEGENDA",
     "LARGURA_MINIMA_ATALHOS", "RAIO_PONTO_LEGENDA",
@@ -64,6 +67,9 @@ SO_DESKTOP = {
     # Render: o Canvas resolve com gradiente o que o pygame faz por pixel.
     "PASSO_ANGULO_SOMBRA_GRAUS", "RAIO_ORBITA_MAX_DESENHAVEL_PX", "ALPHA_ANEL_MAX",
     "ALPHA_HALO_SOL", "ALPHA_ROTULO_CORPO", "COR_HALO_SOL",
+    # O terminador da lua: o pygame precisa de um quadro pré-rotacionado por
+    # ângulo, o Canvas gira o mesmo sprite no próprio drawImage.
+    "QUADROS_ILUMINACAO_LUA",
     # Narração: o desktop fala direto com a ElevenLabs, a web passa por uma
     # função serverless (a chave não pode chegar ao navegador). Os parâmetros da
     # chamada ficam só do lado que a executa.
@@ -78,6 +84,11 @@ DIVERGENCIAS_ACEITAS: set[str] = set()
 SO_WEB = {
     "ALTURA_REFERENCIA", "URL_WASM_MEDIAPIPE", "URL_MODELO_MAOS",
     "CONFIANCA_MIN_PRESENCA",
+    # Agendamento da inferência: no desktop ela roda na thread da câmera, a cada
+    # N frames CAPTURADOS (taxa já constante). Na web ela é chamada do laço de
+    # render, cuja taxa varia com o dispositivo, então lá o agendamento precisa
+    # ser por relógio — é a mesma intenção com o mecanismo de cada plataforma.
+    "INTERVALO_DETECCAO_S",
 }
 # A marca d'água é CSS puro na web e desenhada com pygame no desktop, então as
 # constantes do desenho existem só do lado Python.

@@ -1,10 +1,14 @@
 """Ficha da lua: painel com os dados do satélite em foco.
 
-Vive na coluna DIREITA, ao contrário da ficha do planeta. Não é preciosismo de
-layout: no modo lua o planeta-mãe continua selecionado e a ficha dele continua
-aberta à esquerda, e é exatamente a comparação entre as duas — Europa tem 1/4 do
-diâmetro da Terra, Titã é maior que Mercúrio — que dá sentido a olhar uma lua.
-Empilhar uma ficha sobre a outra jogaria fora essa leitura.
+Vive AO LADO da ficha do planeta, na mesma metade esquerda da tela. Não é
+preciosismo de layout: no modo lua o planeta-mãe continua selecionado e a ficha
+dele continua aberta, e é exatamente a comparação entre as duas — Europa tem 1/4
+do diâmetro da Terra, Titã é maior que Mercúrio — que dá sentido a olhar uma
+lua. Empilhar uma ficha sobre a outra jogaria fora essa leitura.
+
+Ela já morou no canto DIREITO, e era um erro: aquele canto pertence ao preview
+da webcam e à assinatura, ambos desenhados depois dela — a ficha abria atrás do
+preview e o usuário confirmava a lua por gesto sem ver card nenhum.
 
 Reaproveita a animação, o painel e os formatadores numéricos da ficha do
 planeta: são as mesmas convenções visuais, e duplicá-las faria as duas
@@ -22,6 +26,8 @@ from config import (
     COR_TEXTO_SECUNDARIO,
     DESLOCAMENTO_ENTRADA_FICHA_PX,
     DURACAO_ANIMACAO_FICHA_S,
+    FOLGA_ENTRE_FICHAS,
+    LARGURA_FICHA,
     LARGURA_FICHA_LUA,
     LARGURA_JANELA,
     MARGEM_HUD,
@@ -180,11 +186,25 @@ class FichaLua:
         altura = 78 + altura_itens + 34 + len(curiosidade) * 18 + 16 + 26
         altura = max(120, min(altura, limite_inferior - MARGEM_HUD))
 
-        # Entra pela DIREITA (a ficha do planeta entra pela esquerda): as duas
-        # animações apontam para fora da tela, cada uma do seu lado.
+        # Coluna da ESQUERDA, na segunda faixa: logo à direita da ficha do
+        # planeta. O card morava no canto direito e crescia por baixo do preview
+        # da webcam, que ocupa o mesmo canto — o usuário confirmava a lua por
+        # gesto e via metade de um painel atrás da própria imagem.
+        #
+        # À esquerda as duas ficham lado a lado, que é o arranjo que o modo lua
+        # pressupõe: o planeta-mãe continua aberto, e comparar os dois é o ponto
+        # de olhar para uma lua.
+        #
+        # A entrada é pela esquerda, como a do planeta: as duas animações
+        # apontam para o mesmo lado, já que agora saem do mesmo lado.
         deslocamento = (1.0 - fator) * DESLOCAMENTO_ENTRADA_FICHA_PX
+        esquerda = MARGEM_HUD + LARGURA_FICHA + FOLGA_ENTRE_FICHAS
+        # Em janelas estreitas as duas colunas não cabem: a da lua encosta na
+        # borda direita em vez de sair da tela. Nunca invade a do planeta.
+        maximo = self._largura - LARGURA_FICHA_LUA - MARGEM_HUD
+        esquerda = max(MARGEM_HUD + LARGURA_FICHA + 4, min(esquerda, maximo))
         retangulo = pygame.Rect(
-            int(self._largura - LARGURA_FICHA_LUA - MARGEM_HUD + deslocamento),
+            int(esquerda - deslocamento),
             MARGEM_HUD,
             LARGURA_FICHA_LUA,
             int(altura),

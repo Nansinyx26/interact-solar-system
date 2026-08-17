@@ -12,7 +12,7 @@
 // qualquer uma delas, suba este número aqui E em config.py — o
 // verificar_paridade.py falha se os dois ficarem diferentes, e o publicar.py
 // regenera o ZIP de download com a versão nova.
-export const VERSAO = "1.4.2";
+export const VERSAO = "1.5.0";
 
 // Destino do botão "Baixar versão desktop".
 //
@@ -141,9 +141,25 @@ export const MAX_MAOS = 2;
 export const CONFIANCA_MIN_DETECCAO = 0.5;
 export const CONFIANCA_MIN_PRESENCA = 0.5;
 export const CONFIANCA_MIN_RASTREIO = 0.5;
-// Detectar a cada N frames de render: a inferência custa ~10 ms e não precisa
-// rodar a 60 Hz para uma confirmação que leva ~0,5 s.
+// Throttle do PREVIEW da webcam (o desenho do vídeo + esqueleto no canto). É só
+// feedback visual: a 30 Hz ninguém percebe diferença para 60, e o tempo que
+// sobra vai para a cena.
 export const DETECTAR_A_CADA_N_FRAMES = 2;
+
+// Intervalo MÍNIMO entre duas inferências, em segundos.
+//
+// A inferência era agendada por contagem de frames de render ("1 a cada 2"), e
+// isso amarrava a resposta do gesto ao FPS: num celular a 24 fps saíam 12
+// leituras/s, e as 10 leituras que o estabilizador exige para confirmar um
+// gesto passavam de ~0,5 s para ~0,9 s. Justamente no aparelho mais fraco o app
+// ficava mais lento para obedecer.
+//
+// Amarrado ao RELÓGIO, o ritmo de leitura é o mesmo em qualquer dispositivo: a
+// confirmação leva ~0,5 s no desktop e no celular. O teto de 30 Hz continua
+// valendo (a webcam entrega ~30 fps, e o detector já descarta frame repetido),
+// então isto não aumenta o custo de CPU em tela rápida — só remove a espera
+// artificial em tela lenta.
+export const INTERVALO_DETECCAO_S = 1 / 30;
 
 export const LARGURA_CAPTURA = 640;
 export const ALTURA_CAPTURA = 480;
@@ -229,12 +245,62 @@ export const GESTO_MINIMO_DUAS_MAOS = 6;
 // Ligadas por padrão: as luas são conteúdo, não um extra escondido atrás de
 // um atalho. Na visão geral elas aparecem comprimidas (FATOR_LUA_COMPACTO_*).
 export const LUAS_VISIVEIS_PADRAO = true;
-// Raio desenhado de cada lua menor, em pixels de mundo. Fixo, como o da Lua: em
-// proporção real Encélado (504 km) teria 0,2 px ao lado de Saturno.
+// Raio desenhado de uma lua do TAMANHO DA NOSSA, em pixels de mundo. Não é mais
+// o raio de todas: ver EXPOENTE_RAIO_LUA logo abaixo.
 export const RAIO_LUA_MENOR_PX = 2.2;
 // Zoom a partir do qual as luas usam o raio orbital cheio. Abaixo dele o
 // sistema é comprimido (ver FATOR_LUA_COMPACTO_*), não escondido.
 export const ZOOM_MINIMO_PARA_LUAS = 1.6;
+
+// --- tamanho desenhado da lua ----------------------------------------------
+// Mesma lei de potência dos planetas (expoente < 1 comprime a faixa), com a
+// nossa Lua como referência. Antes TODAS as luas tinham 2,2 px: Titã (5.150 km)
+// e Fobos (22 km) saíam idênticos na tela, e comparar tamanhos é justamente o
+// que se espera de um sistema de luas desenhado lado a lado.
+//
+// Em escala real a razão Ganimedes/Fobos é 234x; com expoente 0,32 ela vira
+// 5,7x — Fobos continua sendo um ponto e Ganimedes um disco, sem que nenhum dos
+// dois saia da tela. Os números reais estão sempre na ficha.
+export const DIAMETRO_LUA_REFERENCIA_KM = 3474.0; // a nossa Lua
+export const EXPOENTE_RAIO_LUA = 0.32;
+// Pisos e tetos em pixels de mundo: abaixo de ~1,1 px a lua vira ruído de
+// antisserrilhado e acima de ~3,4 px ela começa a competir com o planeta.
+// O piso foi calibrado para NÃO achatar a faixa média: com 1,25 as luas de gelo
+// de 400-500 km (Encélado, Miranda, Proteu) caíam todas nele e saíam do mesmo
+// tamanho de Fobos, que tem 22 km. Com 1,10 só as cinco realmente minúsculas
+// ficam no piso, e é o que se espera — elas são pontos mesmo.
+export const RAIO_LUA_MENOR_MIN_PX = 1.1;
+export const RAIO_LUA_MENOR_MAX_PX = 3.4;
+
+// --- sprite esférico da lua -------------------------------------------------
+// Cada lua deixou de ser um círculo de cor chapada: ganha um sprite
+// pré-renderizado com manchas de terreno, escurecimento de limbo e borda suave,
+// mais um terminador dia/noite apontado para o Sol — as mesmas três coisas que
+// já davam volume aos planetas.
+export const RAIO_TEXTURA_LUA_PX = 20;
+export const ALPHA_SOMBRA_LUA = 0.65;
+// Contraste das manchas de terreno, como fração da distância entre corEscura e
+// corClara. Alto demais e toda lua vira Jápeto.
+export const CONTRASTE_TERRENO_LUA = 0.62;
+// Blocos da primeira oitava do ruído da lua — bem menos que os 10 dos planetas.
+// O sprite tem 40 px de lado: com 10 blocos as manchas ficam com 4 px e somem
+// no primeiro downscale, que é o caso normal (a lua raramente passa de 8 px na
+// tela). Com 4 blocos as manchas têm 10 px e sobrevivem à redução.
+export const ESCALA_RUIDO_LUA = 4;
+
+// --- legibilidade dos rótulos de lua ---------------------------------------
+// O nome era desenhado direto sobre a cena. Contra o campo de estrelas passava,
+// mas em cima do disco de Júpiter (bege claro) ou dos anéis de Saturno um texto
+// cinza de 11 px some. Agora todo rótulo sai com um contorno escuro atrás — é o
+// mesmo truque de legenda de mapa, e no Canvas custa um strokeText.
+export const ALPHA_ROTULO_LUA = 0.8;
+export const COR_CONTORNO_ROTULO = "6, 8, 18";
+export const ESPESSURA_CONTORNO_ROTULO_PX = 2;
+// Distância mínima entre dois nomes de lua na tela. Abaixo dela o segundo é
+// omitido: com Júpiter comprimido na visão geral, cinco rótulos empilhados no
+// mesmo ponto viram uma mancha ilegível — e nenhum deles é lido. O rótulo da lua
+// em DESTAQUE nunca é omitido, porque ele é a resposta ao gesto do usuário.
+export const DISTANCIA_MINIMA_ROTULO_LUA_PX = 26.0;
 
 // Raio orbital COMPACTO, usado na visão geral — múltiplo do raio do planeta.
 // Sem isso as luas invadem o planeta vizinho: em volta de Júpiter elas

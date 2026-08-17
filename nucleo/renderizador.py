@@ -26,15 +26,19 @@ from config import (
     ALPHA_ORBITA_NORMAL,
     ALPHA_ORBITA_TENUE,
     ALPHA_ROTULO_CORPO,
+    ALPHA_ROTULO_LUA,
+    ALPHA_SOMBRA_LUA,
     ALPHA_SOMBRA_MAX,
     ALTURA_JANELA,
     ASTEROIDES_DESENHADOS,
     CAMADAS_ESTRELAS,
     COMPRIMENTO_EIXO_URANO,
+    CONTRASTE_TERRENO_LUA,
     COR_ANEL_DESTAQUE,
     COR_ANEL_SATURNO,
     COR_ANEL_URANO,
     COR_ASTEROIDE,
+    COR_CONTORNO_ROTULO,
     COR_FUNDO,
     COR_HALO_SOL,
     COR_ORBITA,
@@ -43,6 +47,9 @@ from config import (
     COR_ORBITA_LUA,
     COR_TEXTO,
     COR_TEXTO_SECUNDARIO,
+    DISTANCIA_MINIMA_ROTULO_LUA_PX,
+    ESPESSURA_CONTORNO_ROTULO_PX,
+    ESCALA_RUIDO_LUA,
     ESCALA_RUIDO_TEXTURA,
     ESTRELAS_POR_CAMADA,
     FAIXAS_GIGANTE_GASOSO,
@@ -60,14 +67,16 @@ from config import (
     LARGURA_JANELA,
     LARGURA_TIRA_EM_RAIOS,
     PASSO_ANGULO_SOMBRA_GRAUS,
+    QUADROS_ILUMINACAO_LUA,
     QUADROS_ROTACAO,
-    RAIO_LUA_MENOR_PX,
     RAIO_ORBITA_LUA_PX,
     RAIO_ORBITA_MAX_DESENHAVEL_PX,
+    RAIO_TEXTURA_LUA_PX,
     RAIO_TEXTURA_PX,
     SEMENTE_ALEATORIA,
     ZOOM_MINIMO_PARA_LUAS,
 )
+from dados.luas import LuaMenor
 from dados.planetas import CORPOS, CorpoCeleste, luas_do_planeta
 from nucleo.camera import Camera2D
 from nucleo.orbita import (
@@ -78,6 +87,7 @@ from nucleo.orbita import (
     fator_orbita_lua,
     posicao_da_lua_menor,
     raio_corpo_px,
+    raio_lua_menor_px,
     raio_orbital_px,
 )
 
@@ -87,6 +97,9 @@ _RAIO_TEX = RAIO_TEXTURA_PX
 _TAM_TEX = _RAIO_TEX * 2
 _LARGURA_TIRA = _RAIO_TEX * LARGURA_TIRA_EM_RAIOS
 _ALTURA_TIRA = _TAM_TEX
+
+_RAIO_TEX_LUA = RAIO_TEXTURA_LUA_PX
+_TAM_TEX_LUA = _RAIO_TEX_LUA * 2
 
 # Corpos que ganham calotas polares brancas na textura.
 _CORPOS_COM_CALOTAS: tuple[str, ...] = ("Terra", "Marte")
@@ -114,14 +127,23 @@ def _redimensionar_bilinear(mapa: np.ndarray, altura: int, largura: int) -> np.n
 
 
 def _ruido_suave(
-    rng: np.random.Generator, altura: int, largura: int, oitavas: int = 3
+    rng: np.random.Generator,
+    altura: int,
+    largura: int,
+    oitavas: int = 3,
+    escala: int = ESCALA_RUIDO_TEXTURA,
 ) -> np.ndarray:
-    """Ruído fractal em [0, 1], contínuo na emenda horizontal da tira."""
+    """Ruído fractal em [0, 1], contínuo na emenda horizontal da tira.
+
+    ``escala`` é o número de blocos da primeira oitava: quanto menor, maiores as
+    manchas. As luas usam um valor bem menor que os planetas — ver
+    ESCALA_RUIDO_LUA.
+    """
     total = np.zeros((altura, largura), dtype=np.float64)
     amplitude = 1.0
     soma_amplitudes = 0.0
     for oitava in range(oitavas):
-        blocos = max(2, ESCALA_RUIDO_TEXTURA * (2**oitava))
+        blocos = max(2, escala * (2**oitava))
         # A coluna extra repete a primeira: a textura fecha ao dar a volta.
         base = rng.random((blocos, blocos + 1))
         base[:, -1] = base[:, 0]
@@ -266,6 +288,99 @@ def _superficies_sombra(mapa: tuple) -> list[pygame.Surface]:
     return quadros
 
 
+def _semente_do_nome(nome: str) -> int:
+    """Semente estável a partir do nome (FNV-1a de 32 bits).
+
+    As luas não têm ``indice_gesto`` para semear o ruído como os 9 corpos, e
+    usar a posição no catálogo faria a textura de todas mudar ao inserir uma lua
+    nova no meio da lista.
+    """
+    hash_ = 2166136261
+    for caractere in nome:
+        hash_ = ((hash_ ^ ord(caractere)) * 16777619) & 0xFFFFFFFF
+    return hash_
+
+
+def _sprite_lua(lua: LuaMenor) -> pygame.Surface:
+    """Disco esférico de uma lua: manchas de terreno + escurecimento de limbo.
+
+    É o mesmo princípio dos planetas, sem a tira equirretangular: as luas não
+    têm rotação própria animada (todas as grandes são síncronas — mostram
+    sempre a mesma face ao planeta), então projetar um mapa que gira seria custo
+    puro. O que falta para o disco parecer esférico é o escurecimento na borda,
+    e isso o ruído sozinho não dá.
+    """
+    rng = np.random.default_rng(SEMENTE_ALEATORIA + _semente_do_nome(lua.nome))
+    ruido = _ruido_suave(
+        rng, _TAM_TEX_LUA, _TAM_TEX_LUA, escala=ESCALA_RUIDO_LUA
+    )
+    # Normalização: a soma de oitavas puxa o ruído para perto de 0,5, e sem
+    # esticar de volta para [0, 1] o terreno usa só o miolo da paleta. Era isso
+    # que fazia Jápeto — a lua de DOIS hemisférios, um branco e um preto — sair
+    # como um bege uniforme, igual a todas as outras.
+    minimo = float(ruido.min())
+    amplitude_ruido = float(ruido.max()) - minimo
+    if amplitude_ruido > 1e-6:
+        ruido = (ruido - minimo) / amplitude_ruido
+
+    coord_y, coord_x = np.mgrid[0:_TAM_TEX_LUA, 0:_TAM_TEX_LUA].astype(np.float64)
+    u = (coord_x - _RAIO_TEX_LUA + 0.5) / _RAIO_TEX_LUA
+    v = (coord_y - _RAIO_TEX_LUA + 0.5) / _RAIO_TEX_LUA
+    raio_quadrado = u * u + v * v
+
+    base = np.array(lua.cor, dtype=np.float64)
+    clara = np.array(lua.realce, dtype=np.float64)
+    escura = np.array(lua.sombra, dtype=np.float64)
+
+    # Terreno: o ruído puxa para o tom claro acima de 0,5 e para o escuro
+    # abaixo. Centrado, para que a cor média do disco continue sendo `cor`.
+    desvio = (ruido - 0.5) * 2.0 * CONTRASTE_TERRENO_LUA
+    peso_claro = np.clip(desvio, 0.0, 1.0)[..., None]
+    peso_escuro = np.clip(-desvio, 0.0, 1.0)[..., None]
+    cor = (
+        base[None, None, :] * (1.0 - peso_claro - peso_escuro)
+        + clara[None, None, :] * peso_claro
+        + escura[None, None, :] * peso_escuro
+    )
+
+    brilho = 0.45 + 0.55 * np.clip(1.0 - raio_quadrado, 0.0, 1.0) ** 0.35
+    # Mesma borda suave de 1 px dos planetas: antisserrilhado barato.
+    alpha = np.clip((1.0 - raio_quadrado) * _RAIO_TEX_LUA * 0.9, 0.0, 1.0) * 255.0
+
+    rgba = np.empty((_TAM_TEX_LUA, _TAM_TEX_LUA, 4), dtype=np.uint8)
+    rgba[..., :3] = np.clip(cor * brilho[..., None], 0, 255).astype(np.uint8)
+    rgba[..., 3] = alpha.astype(np.uint8)
+    return _superficie_rgba(rgba)
+
+
+def _superficies_sombra_lua() -> list[pygame.Surface]:
+    """Terminador dia/noite da lua, um quadro a cada 360/N graus.
+
+    Uma série só para TODAS as luas: a sombra não depende da cor, e 22 cópias
+    idênticas na memória não comprariam nada.
+    """
+    coord_y, coord_x = np.mgrid[0:_TAM_TEX_LUA, 0:_TAM_TEX_LUA].astype(np.float64)
+    u = (coord_x - _RAIO_TEX_LUA + 0.5) / _RAIO_TEX_LUA
+    v = (coord_y - _RAIO_TEX_LUA + 0.5) / _RAIO_TEX_LUA
+    disco = np.clip((1.0 - (u * u + v * v)) * _RAIO_TEX_LUA * 0.9, 0.0, 1.0)
+
+    # Escuro no lado +x; a rotação leva esse lado para a direção oposta ao Sol.
+    escuridao = np.clip((u + 0.15) * 1.5, 0.0, 1.0) ** 1.2
+    rgba = np.zeros((_TAM_TEX_LUA, _TAM_TEX_LUA, 4), dtype=np.uint8)
+    rgba[..., 3] = (escuridao * disco * ALPHA_SOMBRA_LUA).astype(np.uint8)
+    base = _superficie_rgba(rgba)
+
+    quadros: list[pygame.Surface] = []
+    for indice in range(QUADROS_ILUMINACAO_LUA):
+        graus = indice * 360.0 / QUADROS_ILUMINACAO_LUA
+        girada = pygame.transform.rotate(base, graus)
+        recorte = pygame.Surface((_TAM_TEX_LUA, _TAM_TEX_LUA), pygame.SRCALPHA)
+        destino = girada.get_rect(center=(_RAIO_TEX_LUA, _RAIO_TEX_LUA))
+        recorte.blit(girada, destino.topleft)
+        quadros.append(recorte.convert_alpha())
+    return quadros
+
+
 def _criar_anel(
     fator_interno: float,
     fator_externo: float,
@@ -359,19 +474,76 @@ class Renderizador:
                 "vertical",
             ),
         }
+        # Um sprite por lua do catálogo, gerado uma vez. São 22 discos de 40x40
+        # — menos memória que UM quadro de rotação de planeta.
+        self._sprites_lua: dict[str, pygame.Surface] = {}
+        for corpo in CORPOS:
+            for lua in luas_do_planeta(corpo.nome):
+                if lua.nome not in self._sprites_lua:
+                    self._sprites_lua[lua.nome] = _sprite_lua(lua)
+        self._sombras_lua = _superficies_sombra_lua()
+
         self._asteroides = self._criar_asteroides()
         self._estrelas_normalizadas = self._criar_estrelas()
         self._estrelas: list[list[tuple[int, int, int, tuple[int, int, int]]]] = []
         self._camada_orbitas = pygame.Surface((largura, altura), pygame.SRCALPHA)
         self._posicionar_estrelas()
         self._cache_escala: dict[tuple, pygame.Surface] = {}
+        # Pastilhas do cinturão, por (lado, alpha). Antes cada asteroide criava
+        # uma Surface NOVA a cada frame: 340 alocações por quadro, 20 mil por
+        # segundo, e o coletor pagando a conta no meio da animação.
+        self._pastilhas: dict[tuple[int, int], pygame.Surface] = {}
         self._rotulos: dict[str, pygame.Surface] = {}
         for corpo in CORPOS:
-            rotulo = self._fonte_rotulo.render(corpo.nome, True, COR_TEXTO_SECUNDARIO)
-            rotulo.set_alpha(ALPHA_ROTULO_CORPO)
-            self._rotulos[corpo.nome] = rotulo
+            self._rotulos[corpo.nome] = self._rotulo_contornado(
+                corpo.nome, COR_TEXTO_SECUNDARIO, ALPHA_ROTULO_CORPO
+            )
+        # Rótulos de lua: dois por lua (normal e em destaque), pré-renderizados.
+        # Renderizar texto é a operação mais cara do pygame e antes acontecia a
+        # cada frame, para cada lua visível.
+        self._rotulos_lua: dict[tuple[str, bool], pygame.Surface] = {}
+        for corpo in CORPOS:
+            for lua in luas_do_planeta(corpo.nome):
+                self._rotulos_lua[(lua.nome, True)] = self._rotulo_contornado(
+                    lua.nome, COR_TEXTO, 255
+                )
+                self._rotulos_lua[(lua.nome, False)] = self._rotulo_contornado(
+                    lua.nome, COR_TEXTO_SECUNDARIO, ALPHA_ROTULO_LUA
+                )
+        # Reaproveitada a cada frame para o antiempilhamento de rótulos.
+        self._rotulos_desenhados: list[tuple[float, float]] = []
 
     # ------------------------------------------------------------- recursos
+    def _rotulo_contornado(
+        self, texto: str, cor: tuple[int, int, int], alpha: int
+    ) -> pygame.Surface:
+        """Texto com contorno escuro, pré-renderizado uma única vez.
+
+        O contorno não é enfeite: o mesmo cinza de 14 px que se lê contra o
+        campo de estrelas desaparece sobre o disco bege de Júpiter ou sobre os
+        anéis de Saturno — exatamente onde os rótulos de lua caem.
+
+        O pygame não tem ``strokeText``, então o contorno sai de oito cópias do
+        texto deslocadas em volta. Como isto roda uma vez por rótulo na
+        inicialização e nunca mais, o custo é irrelevante.
+        """
+        espessura = ESPESSURA_CONTORNO_ROTULO_PX
+        frente = self._fonte_rotulo.render(texto, True, cor)
+        fundo = self._fonte_rotulo.render(texto, True, COR_CONTORNO_ROTULO)
+        largura = frente.get_width() + espessura * 2
+        altura = frente.get_height() + espessura * 2
+        camada = pygame.Surface((largura, altura), pygame.SRCALPHA)
+        for dx in (-espessura, 0, espessura):
+            for dy in (-espessura, 0, espessura):
+                if dx or dy:
+                    camada.blit(fundo, (espessura + dx, espessura + dy))
+        camada.blit(frente, (espessura, espessura))
+        # convert_alpha() ANTES do set_alpha: a conversão devolve uma Surface
+        # nova, e o alfa global definido na antiga não viria junto.
+        pronta = camada.convert_alpha()
+        pronta.set_alpha(alpha)
+        return pronta
+
     def _criar_asteroides(self) -> list[tuple[float, float, float, int]]:
         """Sorteia (raio, ângulo, brilho, tamanho) de cada asteroide.
 
@@ -465,10 +637,11 @@ class Renderizador:
         número e não tem como saber qual ponto na tela ele acabou de escolher.
         """
         superficie.fill(COR_FUNDO)
+        self._rotulos_desenhados.clear()
         self._desenhar_estrelas(superficie, camera)
         self._desenhar_cinturao(superficie, camera, tempo_dias, corpo_focado)
         self._desenhar_orbitas(
-            superficie, camera, posicoes, corpo_focado, luas_visiveis
+            superficie, camera, posicoes, corpo_focado, luas_visiveis, lua_destacada
         )
         for corpo in CORPOS:
             # Satélites seguem a regra das luas menores: sumem na visão geral,
@@ -516,20 +689,38 @@ class Renderizador:
         giro = angulo_do_cinturao(tempo_dias)
         # Durante o foco em um corpo, o cinturão recua junto com as órbitas.
         alpha_max = ALPHA_ASTEROIDE_MAX if corpo_focado is None else ALPHA_ASTEROIDE_MIN
+        faixa = alpha_max - ALPHA_ASTEROIDE_MIN
+        escala_lado = min(2.0, camera.zoom)
+        # A projeção é feita à mão dentro do laço: `mundo_para_tela` monta uma
+        # tupla nova, e 340 tuplas descartadas por frame são 20 mil por segundo.
+        # Mesma conta de `Camera2D.mundo_para_tela`, com as dimensões da CÂMERA
+        # (não as do renderizador) para não divergir dela em nenhum frame.
+        zoom = camera.zoom
+        base_x = camera.largura / 2 + camera.deslocamento_x - camera.centro_x * zoom
+        base_y = camera.altura / 2 - camera.centro_y * zoom
+        limite_x = self._largura + 8
+        limite_y = self._altura + 8
+
         for raio, angulo, brilho, tamanho in self._asteroides:
             a = angulo + giro
-            tela = camera.mundo_para_tela((raio * math.cos(a), raio * math.sin(a)))
-            fora_x = not (-8 <= tela[0] <= self._largura + 8)
-            fora_y = not (-8 <= tela[1] <= self._altura + 8)
-            if fora_x or fora_y:
+            tela_x = raio * math.cos(a) * zoom + base_x
+            if tela_x < -8 or tela_x > limite_x:
                 continue
-            faixa = alpha_max - ALPHA_ASTEROIDE_MIN
-            alpha = int(ALPHA_ASTEROIDE_MIN + brilho * faixa)
-            cor = (*COR_ASTEROIDE, max(0, min(255, alpha)))
-            lado = max(1, int(tamanho * min(2.0, camera.zoom)))
-            pastilha = pygame.Surface((lado, lado), pygame.SRCALPHA)
-            pastilha.fill(cor)
-            superficie.blit(pastilha, (int(tela[0]), int(tela[1])))
+            tela_y = raio * math.sin(a) * zoom + base_y
+            if tela_y < -8 or tela_y > limite_y:
+                continue
+            # O alfa é quantizado em passos de 8 para que a mesma pastilha sirva
+            # a muitos asteroides: são ~24 Surfaces no cache em vez de uma nova
+            # por partícula por frame, e a diferença entre dois passos vizinhos
+            # é de 3% de opacidade num ponto de 1 px.
+            alpha = int(ALPHA_ASTEROIDE_MIN + brilho * faixa) & ~7
+            lado = max(1, int(tamanho * escala_lado))
+            pastilha = self._pastilhas.get((lado, alpha))
+            if pastilha is None:
+                pastilha = pygame.Surface((lado, lado), pygame.SRCALPHA)
+                pastilha.fill((*COR_ASTEROIDE, max(0, min(255, alpha))))
+                self._pastilhas[(lado, alpha)] = pastilha
+            superficie.blit(pastilha, (int(tela_x), int(tela_y)))
 
     def _desenhar_luas(
         self,
@@ -541,70 +732,87 @@ class Renderizador:
         corpo_focado: CorpoCeleste | None,
         lua_destacada: str | None = None,
     ) -> None:
-        """Luas menores em volta de um planeta, com a órbita esboçada.
+        """Luas menores de um planeta: disco esférico, terminador e rótulo.
 
-        Só aparecem com zoom suficiente: de longe viram um borrão de pontos
-        colado no disco do planeta.
+        A ÓRBITA não é desenhada aqui — ela vai junto com as demais em
+        ``_desenhar_orbitas``, para o anel passar por trás do planeta como as
+        órbitas dos planetas passam por trás do Sol.
+
+        Cada lua sai como um sprite pré-renderizado, não como um círculo de cor
+        chapada: com o disco liso, cinco luas de tons parecidos em volta de
+        Saturno eram cinco pontos iguais, e não havia como dizer qual estava
+        iluminada por qual lado.
         """
         luas = luas_do_planeta(corpo.nome)
         if not luas:
             return
         raio_planeta = raio_corpo_px(corpo)
         centro = camera.mundo_para_tela(posicao)
+        # Descarte barato: com um planeta em foco, os outros oito estão quase
+        # sempre fora da tela e as luas deles custariam dois blits cada. O 5 é o
+        # teto de `raio_orbita_px` no catálogo (4,1 em Jápeto) com folga.
+        margem = camera.escalar(raio_planeta * 5.0) + 80.0
+        if (
+            centro[0] < -margem
+            or centro[0] > self._largura + margem
+            or centro[1] < -margem
+            or centro[1] > self._altura + margem
+        ):
+            return
+
         esmaecido = corpo_focado is not None and corpo_focado.nome != corpo.nome
         alpha_lua = ALPHA_CORPO_ESMAECIDO if esmaecido else 255
+        # Uma direção de luz por PLANETA, não por lua: a lua mais externa fica a
+        # poucos pixels do planeta contra as centenas que os separam do Sol,
+        # então o ângulo é o mesmo dentro de bem menos de um grau.
+        graus_luz = math.degrees(angulo_iluminacao(posicao)) % 360.0
+        indice_sombra = int(
+            graus_luz / (360.0 / QUADROS_ILUMINACAO_LUA)
+        ) % QUADROS_ILUMINACAO_LUA
 
         for lua in luas:
             destacada = lua.nome == lua_destacada
             # Comprimido na visão geral, aberto conforme a câmera aproxima.
             fator = fator_orbita_lua(lua.raio_orbita_px, camera.zoom, corpo.tem_aneis)
-            raio_orbita = camera.escalar(raio_planeta * fator)
-            if raio_orbita > 3:
-                camada = pygame.Surface(
-                    (int(raio_orbita * 2) + 4, int(raio_orbita * 2) + 4),
-                    pygame.SRCALPHA,
-                )
-                if destacada:
-                    # A órbita da lua escolhida acende na cor DELA: é o que
-                    # liga o número mostrado com a mão ao ponto na tela.
-                    alpha_orbita = 190
-                    cor_orbita = lua.cor
-                else:
-                    alpha_orbita = ALPHA_ORBITA_LUA if not esmaecido else 20
-                    cor_orbita = COR_ORBITA_LUA
-                pygame.draw.circle(
-                    camada,
-                    (*cor_orbita, alpha_orbita),
-                    (int(raio_orbita) + 2, int(raio_orbita) + 2),
-                    int(raio_orbita),
-                    width=2 if destacada else 1,
-                )
-                superficie.blit(
-                    camada,
-                    (centro[0] - raio_orbita - 2, centro[1] - raio_orbita - 2),
-                )
-
             posicao_lua = posicao_da_lua_menor(
                 lua, posicao, raio_planeta, tempo_dias, fator
             )
             tela = camera.mundo_para_tela(posicao_lua)
-            # A lua destacada é desenhada maior: com 2,2 px de raio ela some
-            # entre as vizinhas, e o ponto do preview é justamente distinguir.
-            raio_desenho = max(1.5, camera.escalar(RAIO_LUA_MENOR_PX))
+
+            # O tamanho agora vem do diâmetro real (comprimido): Titã e
+            # Ganimedes saem visivelmente maiores que Fobos, como deve ser.
+            raio_desenho = max(1.4, camera.escalar(raio_lua_menor_px(lua)))
+            # A destacada cresce: com 2 px ela some entre as vizinhas, e o ponto
+            # do preview é justamente distinguir qual foi escolhida.
             if destacada:
-                raio_desenho = max(raio_desenho * 1.8, 4.0)
-            disco = pygame.Surface(
-                (int(raio_desenho * 2) + 2, int(raio_desenho * 2) + 2), pygame.SRCALPHA
-            )
-            pygame.draw.circle(
-                disco,
-                (*lua.cor, alpha_lua),
-                (int(raio_desenho) + 1, int(raio_desenho) + 1),
-                int(raio_desenho),
-            )
-            superficie.blit(
-                disco, (tela[0] - raio_desenho - 1, tela[1] - raio_desenho - 1)
-            )
+                raio_desenho = max(raio_desenho * 1.7, 5.0)
+
+            diametro = max(2, int(raio_desenho * 2))
+            sprite = self._sprites_lua.get(lua.nome)
+            canto = (tela[0] - diametro / 2, tela[1] - diametro / 2)
+            if sprite is not None:
+                disco = self._escalar(
+                    ("lua", lua.nome, diametro), sprite, (diametro, diametro)
+                )
+                disco.set_alpha(255 if destacada else alpha_lua)
+                superficie.blit(disco, canto)
+                # Terminador: só compensa acima de ~5 px de diâmetro. Abaixo
+                # disso a sombra ocuparia meio pixel e o único efeito seria
+                # escurecer a lua inteira.
+                if diametro >= 5:
+                    sombra = self._escalar(
+                        ("sombra_lua", indice_sombra, diametro),
+                        self._sombras_lua[indice_sombra],
+                        (diametro, diametro),
+                    )
+                    sombra.set_alpha(255 if destacada else alpha_lua)
+                    superficie.blit(sombra, canto)
+            else:
+                # Lua fora do catálogo pré-renderizado: o disco chapado serve.
+                pygame.draw.circle(
+                    superficie, lua.cor, (int(tela[0]), int(tela[1])), max(1, diametro // 2)
+                )
+
             if destacada:
                 # Anel em volta do disco, como a mira de um alvo.
                 pygame.draw.circle(
@@ -617,21 +825,40 @@ class Renderizador:
 
             # O nome só cabe quando o planeta está realmente próximo — mas o da
             # lua destacada aparece SEMPRE: sem ele o preview não diz qual lua é.
-            if destacada:
-                rotulo = self._fonte_rotulo.render(lua.nome, True, COR_TEXTO)
-                superficie.blit(
-                    rotulo,
-                    (tela[0] + raio_desenho + 6, tela[1] - rotulo.get_height() / 2),
-                )
-            elif not esmaecido and camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6:
-                rotulo = self._fonte_rotulo.render(
-                    lua.nome, True, COR_TEXTO_SECUNDARIO
-                )
-                rotulo.set_alpha(170)
-                superficie.blit(
-                    rotulo,
-                    (tela[0] + raio_desenho + 4, tela[1] - rotulo.get_height() / 2),
-                )
+            mostrar = destacada or (
+                not esmaecido
+                and camera.zoom >= ZOOM_MINIMO_PARA_LUAS * 1.6
+                and self._cabe_rotulo(tela)
+            )
+            if not mostrar:
+                continue
+            rotulo = self._rotulos_lua.get((lua.nome, destacada))
+            if rotulo is None:
+                continue
+            superficie.blit(
+                rotulo,
+                (
+                    tela[0] + raio_desenho + (7 if destacada else 5),
+                    tela[1] - rotulo.get_height() / 2,
+                ),
+            )
+            self._rotulos_desenhados.append(tela)
+
+    def _cabe_rotulo(self, ponto: tuple[float, float]) -> bool:
+        """Há espaço para mais um nome neste ponto da tela?
+
+        Sem esta checagem, um planeta com cinco luas próximas empilhava cinco
+        nomes na mesma faixa de pixels — e o resultado não é "cinco nomes
+        densos", é zero nome legível. Omitir os que colidem deixa pelo menos um
+        ser lido.
+        """
+        for anterior in self._rotulos_desenhados:
+            if (
+                abs(anterior[0] - ponto[0]) < DISTANCIA_MINIMA_ROTULO_LUA_PX
+                and abs(anterior[1] - ponto[1]) < DISTANCIA_MINIMA_ROTULO_LUA_PX
+            ):
+                return False
+        return True
 
     def corpo_no_ponto(
         self,
@@ -677,11 +904,16 @@ class Renderizador:
         posicoes: dict[str, tuple[float, float]],
         corpo_focado: CorpoCeleste | None,
         luas_visiveis: bool = False,
+        lua_destacada: str | None = None,
     ) -> None:
         """Círculos orbitais; os não focados ficam tênues durante um foco."""
         self._camada_orbitas.fill((0, 0, 0, 0))
         centro_sol = camera.mundo_para_tela((0.0, 0.0))
         desenhou = False
+        if luas_visiveis:
+            desenhou = self._desenhar_orbitas_de_luas(
+                camera, posicoes, corpo_focado, lua_destacada
+            )
         for corpo in CORPOS:
             if corpo.eh_sol:
                 continue
@@ -730,6 +962,72 @@ class Renderizador:
             desenhou = True
         if desenhou:
             superficie.blit(self._camada_orbitas, (0, 0))
+
+    def _desenhar_orbitas_de_luas(
+        self,
+        camera: Camera2D,
+        posicoes: dict[str, tuple[float, float]],
+        corpo_focado: CorpoCeleste | None,
+        lua_destacada: str | None,
+    ) -> bool:
+        """Anéis orbitais das luas, na MESMA camada das demais órbitas.
+
+        Ficam antes dos planetas de propósito: assim o anel passa por trás do
+        disco do planeta, do mesmo jeito que a órbita de Mercúrio passa por trás
+        do Sol. Antes eram desenhados depois, e o traço cruzava o planeta por
+        cima — o que lia como um anel de Saturno extra em volta de Júpiter.
+
+        Reaproveitar ``_camada_orbitas`` também elimina as ~22 Surfaces que
+        antes nasciam e morriam a cada frame, uma por órbita de lua.
+
+        Devolve True se desenhou alguma coisa (a camada só é blitada se sim).
+        """
+        desenhou = False
+        for corpo in CORPOS:
+            luas = luas_do_planeta(corpo.nome)
+            if not luas:
+                continue
+            posicao = posicoes.get(corpo.nome)
+            if posicao is None:
+                continue
+
+            raio_planeta = raio_corpo_px(corpo)
+            centro = camera.mundo_para_tela(posicao)
+            margem = camera.escalar(raio_planeta * 5.0) + 80.0
+            if (
+                centro[0] < -margem
+                or centro[0] > self._largura + margem
+                or centro[1] < -margem
+                or centro[1] > self._altura + margem
+            ):
+                continue
+            esmaecido = corpo_focado is not None and corpo_focado.nome != corpo.nome
+
+            for lua in luas:
+                # Comprimido na visão geral, aberto conforme a câmera aproxima.
+                fator = fator_orbita_lua(
+                    lua.raio_orbita_px, camera.zoom, corpo.tem_aneis
+                )
+                raio_orbita = camera.escalar(raio_planeta * fator)
+                if raio_orbita <= 3:
+                    continue
+                if lua.nome == lua_destacada:
+                    # A órbita da lua escolhida acende na cor DELA: é o que liga
+                    # o número mostrado com a mão ao ponto na tela.
+                    cor_orbita, alpha_orbita, espessura = lua.cor, 190, 2
+                else:
+                    cor_orbita = COR_ORBITA_LUA
+                    alpha_orbita = 20 if esmaecido else ALPHA_ORBITA_LUA
+                    espessura = 1
+                pygame.draw.circle(
+                    self._camada_orbitas,
+                    (*cor_orbita, alpha_orbita),
+                    (int(centro[0]), int(centro[1])),
+                    int(raio_orbita),
+                    width=espessura,
+                )
+                desenhou = True
+        return desenhou
 
     def _desenhar_corpo(
         self,

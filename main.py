@@ -574,12 +574,14 @@ class Aplicacao:
             # o catálogo, e passar o objeto obrigaria a importar LuaMenor lá.
             self.lua_selecionada.nome if self.lua_selecionada else None,
         )
-        # A ficha vive na coluna esquerda e só pode descer até onde o painel de
-        # gesto começa — a coluna direita é da webcam e da assinatura.
-        self.ficha.desenhar(self.tela, topo_do_painel_gesto(self.altura) - MARGEM_HUD)
-        # A ficha da LUA fica na coluna direita e só pode descer até o topo do
-        # preview da webcam — as duas fichas dividem a tela, uma de cada lado.
-        self.ficha_lua.desenhar(self.tela, self._base_canto_direito())
+        # As duas fichas dividem a metade ESQUERDA, lado a lado, e param onde o
+        # painel de gesto começa — a coluna direita é da webcam e da assinatura.
+        # A da lua seguia o preview da webcam como limite porque morava naquele
+        # canto; agora que está à esquerda, o limite passou a ser o mesmo da do
+        # planeta, senão ela parava bem antes do espaço que tem de sobra.
+        limite_coluna_esquerda = topo_do_painel_gesto(self.altura) - MARGEM_HUD
+        self.ficha.desenhar(self.tela, limite_coluna_esquerda)
+        self.ficha_lua.desenhar(self.tela, limite_coluna_esquerda)
         self.hud.desenhar(
             self.tela,
             EstadoHUD(

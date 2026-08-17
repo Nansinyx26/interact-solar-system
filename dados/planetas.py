@@ -305,6 +305,11 @@ for _corpo in CORPOS:
             # o renderizador já usava para ela.
             raio_orbita_px=2.8,
             cor=_corpo.cor_base,
+            # Os 9 corpos principais já carregam uma paleta de três tons para a
+            # textura equirretangular; reaproveitá-la aqui faz a Lua ganhar o
+            # mesmo relevo das outras em vez de virar o único disco chapado.
+            cor_clara=_corpo.cor_detalhe,
+            cor_escura=_corpo.cor_secundaria,
             fase_inicial=_corpo.fase_inicial,
             fato_curioso=_corpo.fato_curioso,
             # Massa e composição não existem em CorpoCeleste (nenhum dos 9
