@@ -61,6 +61,9 @@ SO_DESKTOP = {
     "DURACAO_ANIMACAO_FICHA_S", "DESLOCAMENTO_ENTRADA_FICHA_PX",
     "ALPHA_LINHA_LEGENDA_ATIVA", "ALTURA_BARRA_ATALHOS", "ALTURA_MINIMA_LEGENDA",
     "LARGURA_MINIMA_ATALHOS", "RAIO_PONTO_LEGENDA",
+    # A tecla R abre o ranking no navegador; na web o ranking é uma página do
+    # próprio site e o link é relativo, então a URL só existe do lado desktop.
+    "URL_RANKING",
     # Captura via OpenCV: a web usa getUserMedia, com outra API de reconexão.
     "INDICE_CAMERA", "FPS_CAPTURA", "SEGUNDOS_ENTRE_RECONEXOES", "MAX_FALHAS_LEITURA",
     "FALHAS_ATE_DESCONEXAO", "COMPLEXIDADE_MODELO", "LIMIAR_BRILHO_BAIXO",

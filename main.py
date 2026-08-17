@@ -36,6 +36,7 @@ from config import (
     TIME_SCALE_MAX,
     TIME_SCALE_MIN,
     TITULO_JANELA,
+    URL_RANKING,
 )
 from dados.planetas import (
     CORPOS_POR_GESTO,
@@ -281,7 +282,7 @@ class Aplicacao:
             # luas menores entram e saem por tecla.
             self.luas_visiveis = not self.luas_visiveis
         elif tecla == pygame.K_r:
-            webbrowser.open("https://sistema-solar-gestos.vercel.app/ranking.html")
+            webbrowser.open(URL_RANKING)
         elif tecla == pygame.K_a:
             if self.quiz.ativo:
                 self.quiz.fechar()

@@ -18,6 +18,21 @@ from typing import Final
 # publicar.py regenera o ZIP de download com a versão nova.
 VERSAO: Final[str] = "1.5.0"
 
+# Página de ranking aberta pela tecla R. É a ÚNICA URL que o desktop abre além
+# da assinatura do autor, e por isso mora aqui e não solta no meio do main.py.
+#
+# O endereço antigo (sistema-solar-gestos.vercel.app) era um hostname obsoleto:
+# responde `X-Vercel-Error: DEPLOYMENT_NOT_FOUND`, e a tecla R abria uma página
+# de erro. O deployment sempre esteve no ar em interact-solar-system.vercel.app
+# — que é o endereço documentado no README.
+#
+# Tem de ser a VERCEL, e não o GitHub Pages: só ela roda as funções de
+# `api/` (o ranking é servido por /api/ranking, com os dados no MongoDB). O
+# mesmo ranking.html no Pages carrega, mas sem backend renderiza vazio.
+#
+# Sem extensão porque o vercel.json usa `cleanUrls: true`.
+URL_RANKING: Final[str] = "https://interact-solar-system.vercel.app/ranking"
+
 # ---------------------------------------------------------------------------
 # Janela e loop principal
 # ---------------------------------------------------------------------------
