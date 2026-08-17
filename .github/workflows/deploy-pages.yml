@@ -1,8 +1,29 @@
 name: Deploy Versao Web para GitHub Pages
 
+# DESLIGADO NO PUSH — DE PROPOSITO. Leia antes de reativar.
+#
+# O GitHub Pages deste repositorio esta configurado como "Deploy from a
+# branch". Nesse modo o proprio GitHub roda um workflow embutido
+# ("pages build and deployment") a cada push, e e ELE quem publica o site:
+# a raiz do repositorio inteira, com o app em /web/index.html e o index.html
+# da raiz servindo de redirecionamento.
+#
+# Este workflow aqui faz outra coisa: publica SO a pasta web/, na raiz. Com os
+# dois disparando no mesmo push, os dois criavam deployments no mesmo ambiente
+# github-pages e o resultado dependia de qual terminasse por ultimo — na
+# pratica o embutido sempre vencia, e este ficava so gerando ruido. Em
+# 2026-08-17 ele passou a falhar de vez (503 do Pages durante um incidente do
+# GitHub) e virou um X vermelho permanente num deploy que, na verdade, ja tinha
+# dado certo pelo caminho embutido.
+#
+# COMO REATIVAR, se um dia quiser o app na raiz (URL sem o /web/):
+#   1. Settings > Pages > Source: trocar para "GitHub Actions".
+#      Isso desliga o workflow embutido — os dois deixam de competir.
+#   2. Apagar o index.html de redirecionamento da raiz: com este workflow
+#      no comando, web/index.html JA e a raiz, e o stub viraria um link morto.
+#   3. Devolver o gatilho de push abaixo.
+# Sem o passo 1, reativar so traz o conflito de volta.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
