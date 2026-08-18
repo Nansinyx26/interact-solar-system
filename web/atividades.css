@@ -2,13 +2,34 @@
    Estilos da Página de Atividades / Quiz — Tema Dark Monocromático (Preto & Branco)
    ========================================================================== */
 
-/* Override do overflow:hidden do estilo.css (necessário para o simulador,
-   mas bloqueia rolagem nesta página) */
-html, body {
+/* ==========================================================================
+   Habilitação e Suporte Completo à Rolagem (Mobile, Tablet e Desktop)
+   ========================================================================== */
+html {
+  height: 100%;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
-  overflow-x: hidden;
-  height: auto;
+  overscroll-behavior-y: auto !important;
+  overscroll-behavior-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
+}
+
+body {
   min-height: 100%;
+  min-height: 100dvh;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.tema-claro {
+  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05);
 }
 
 .quiz-container,
@@ -601,7 +622,20 @@ html.tema-claro .opcoes-lista::-webkit-scrollbar-thumb {
 
   .quiz-container {
     margin-top: 20px;
+    margin-bottom: 90px;
     padding: 0 12px;
+  }
+
+  .opcoes-lista {
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .gabarito-lista {
+    max-height: 420px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   .cartao-quiz {

@@ -2,13 +2,34 @@
    Estilos da Página de Ranking — Tema Dark Monocromático (Preto & Branco)
    ========================================================================== */
 
-/* Override do overflow:hidden do estilo.css (necessário para o simulador,
-   mas bloqueia rolagem nesta página) */
-html, body {
+/* ==========================================================================
+   Habilitação e Suporte Completo à Rolagem (Mobile, Tablet e Desktop)
+   ========================================================================== */
+html {
+  height: 100%;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
-  overflow-x: hidden;
-  height: auto;
+  overscroll-behavior-y: auto !important;
+  overscroll-behavior-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
+}
+
+body {
   min-height: 100%;
+  min-height: 100dvh;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.tema-claro {
+  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05);
 }
 
 .ranking-container,
@@ -386,12 +407,16 @@ select option {
 
 /* ── Tabela de Classificação com Scroll ────────────────────────────────── */
 .tabela-wrapper {
-  max-height: 480px;
+  max-height: 520px;
   overflow-y: auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
 }
 
 .tabela-wrapper::-webkit-scrollbar {
@@ -561,7 +586,14 @@ select option {
 
   .ranking-container {
     margin-top: 20px;
+    margin-bottom: 90px;
     padding: 0 12px;
+  }
+
+  .tabela-wrapper {
+    max-height: 440px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
   }
 
   .cabecalho-ranking {

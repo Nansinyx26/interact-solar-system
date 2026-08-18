@@ -96,7 +96,7 @@ QUESTOES_QUIZ: list[QuestaoQuiz] = [
     QuestaoQuiz(
         id=8,
         pergunta="8. Qual é o planeta mais distante do Sol no nosso Sistema Solar?",
-        opcoes=["Urano", "Saturno", "Netuno", "Plutão"],
+        opcoes=["Urano", "Saturno", "Netuno", "Júpiter"],
         correta=2,
     ),
     QuestaoQuiz(
