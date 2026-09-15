@@ -941,3 +941,24 @@ html.tema-claro .carregando {
   font-size: 0.85em;
   font-weight: 600;
 }
+/* Ajuste após remoção do formulário Cadastrar Resultado */
+.grade-ranking {
+  display: block;
+  width: 100%;
+}
+
+.cartao-tabela {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.tabela-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabela-ranking {
+  width: 100%;
+  min-width: 850px;
+}
