@@ -84,47 +84,7 @@
       </section>
 
       <div class="grade-ranking">
-        <!-- Formulário de Novo Registro -->
-        <aside class="cartao-form">
-          <h2><i class="bi bi-plus-circle"></i> Cadastrar Resultado</h2>
-          <form id="form-ranking">
-            <div class="campo">
-              <label for="nome"><i class="bi bi-person"></i> Nome do Aluno(a):</label>
-              <input
-                type="text"
-                id="nome"
-                name="nome"
-                placeholder="Ex: Ana Silva"
-                required
-                maxlength="50"
-              />
-            </div>
-            <div class="campo">
-              <label for="serie"><i class="bi bi-mortarboard"></i> Série / Turma:</label>
-              <select id="serie" name="serie" required>
-                <option value="5º Ano A">5º Ano A</option>
-                <option value="5º Ano B">5º Ano B</option>
-                <option value="5º Ano C">5º Ano C</option>
-                <option value="5º Ano D">5º Ano D</option>
-                <option value="Geral" selected>Geral / Outro</option>
-              </select>
-            </div>
-            <div class="campo-linha">
-              <div class="campo">
-                <label for="pontuacao"><i class="bi bi-star"></i> Pontuação:</label>
-                <input type="number" id="pontuacao" name="pontuacao" min="0" value="100" required />
-              </div>
-              <div class="campo">
-                <label for="acertos"><i class="bi bi-check2-circle"></i> Acertos (0–10):</label>
-                <input type="number" id="acertos" name="acertos" min="0" max="10" value="10" />
-              </div>
-            </div>
-            <button type="submit" id="btn-salvar" class="btn-destaque">
-              <i class="bi bi-star-fill"></i> Cadastrar Pontuação
-            </button>
-            <div id="mensagem-form" class="mensagem-status"></div>
-          </form>
-        </aside>
+       
 
         <!-- Tabela do Ranking -->
         <section class="cartao-tabela">
