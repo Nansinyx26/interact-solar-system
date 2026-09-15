@@ -9,15 +9,18 @@
       content="Placar de líderes e resultados dos alunos do Sistema Solar Interativo."
     />
     <meta name="theme-color" content="#09090b" />
+
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ffffff'/%3E%3Cellipse cx='16' cy='16' rx='15' ry='5' fill='none' stroke='%23888888' stroke-width='1.5'/%3E%3C/svg%3E"
     />
+
     <!-- Bootstrap Icons CDN -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     />
+
     <!-- Google Font: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,8 +28,10 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
     <link rel="stylesheet" href="estilo.css" />
     <link rel="stylesheet" href="ranking.css" />
+
     <script>
       // Aplica o tema salvo antes de renderizar para evitar FOUT
       if (localStorage.getItem('tema_sistema_solar') === 'claro') {
@@ -34,6 +39,7 @@
       }
     </script>
   </head>
+
   <body>
     <!-- Fundo Estelar Neutro -->
     <div class="fundo-estelar"></div>
@@ -44,18 +50,34 @@
         <strong><i class="bi bi-trophy"></i> Ranking dos Alunos</strong>
         <span>Sistema Solar Interativo</span>
       </div>
+
       <div class="acoes">
-        <button type="button" id="btn-alternar-tema" class="btn-tema" title="Alternar Modo Claro / Escuro">
-          <i class="bi bi-sun"></i> <span>Tema</span>
+        <button
+          type="button"
+          id="btn-alternar-tema"
+          class="btn-tema"
+          title="Alternar Modo Claro / Escuro"
+        >
+          <i class="bi bi-sun"></i>
+          <span>Tema</span>
         </button>
-        <a class="download" href="atividades.html"><i class="bi bi-pencil-square"></i> Atividades (Quiz)</a>
-        <a class="download" href="index.html"><i class="bi bi-stars"></i> Simulador</a>
+
+        <a class="download" href="atividades.html">
+          <i class="bi bi-pencil-square"></i> Atividades (Quiz)
+        </a>
+
+        <a class="download" href="index.html">
+          <i class="bi bi-stars"></i> Simulador
+        </a>
       </div>
     </header>
 
     <main class="ranking-container">
       <section class="cabecalho-ranking">
-        <div class="icone-cabecalho"><i class="bi bi-award"></i></div>
+        <div class="icone-cabecalho">
+          <i class="bi bi-award"></i>
+        </div>
+
         <h1>Quadro de Honra e Resultados</h1>
         <p>Acompanhe a pontuação e o desempenho dos alunos por série e turma.</p>
       </section>
@@ -63,34 +85,45 @@
       <!-- Pódio Top 3 (Destaques) -->
       <section class="podio-container" id="podio" hidden>
         <div class="podio-card segundo" id="podio-2">
-          <div class="medalha-badge"><i class="bi bi-award-fill"></i> 2º Lugar</div>
+          <div class="medalha-badge">
+            <i class="bi bi-award-fill"></i> 2º Lugar
+          </div>
           <h3 class="nome-aluno">—</h3>
           <span class="serie-aluno">—</span>
           <div class="pontos-aluno">0 pts</div>
         </div>
+
         <div class="podio-card primeiro" id="podio-1">
-          <div class="coroa-badge"><i class="bi bi-crown-fill"></i></div>
-          <div class="medalha-badge"><i class="bi bi-trophy-fill"></i> 1º Lugar</div>
+          <div class="coroa-badge">
+            <i class="bi bi-crown-fill"></i>
+          </div>
+          <div class="medalha-badge">
+            <i class="bi bi-trophy-fill"></i> 1º Lugar
+          </div>
           <h3 class="nome-aluno">—</h3>
           <span class="serie-aluno">—</span>
           <div class="pontos-aluno">0 pts</div>
         </div>
+
         <div class="podio-card terceiro" id="podio-3">
-          <div class="medalha-badge"><i class="bi bi-award"></i> 3º Lugar</div>
+          <div class="medalha-badge">
+            <i class="bi bi-award"></i> 3º Lugar
+          </div>
           <h3 class="nome-aluno">—</h3>
           <span class="serie-aluno">—</span>
           <div class="pontos-aluno">0 pts</div>
         </div>
       </section>
 
+      <!-- Tabela do Ranking -->
       <div class="grade-ranking">
-       
-
-        <!-- Tabela do Ranking -->
         <section class="cartao-tabela">
           <div class="filtros-bar">
             <div class="grupo-filtro">
-              <label for="filtro-serie"><i class="bi bi-funnel"></i> Filtrar:</label>
+              <label for="filtro-serie">
+                <i class="bi bi-funnel"></i> Filtrar:
+              </label>
+
               <select id="filtro-serie">
                 <option value="Todas">Todas as Séries</option>
                 <option value="5º Ano A">5º Ano A</option>
@@ -104,9 +137,19 @@
             <div class="grupo-busca">
               <div class="input-busca-wrapper">
                 <i class="bi bi-search icone-busca"></i>
-                <input type="search" id="busca-nome" placeholder="Buscar por aluno..." />
+                <input
+                  type="search"
+                  id="busca-nome"
+                  placeholder="Buscar por aluno..."
+                />
               </div>
-              <button type="button" id="btn-limpar-ranking" class="btn-apagar-tudo" title="Exige código de autorização 4400">
+
+              <button
+                type="button"
+                id="btn-limpar-ranking"
+                class="btn-apagar-tudo"
+                title="Exige código de autorização 4400"
+              >
                 <i class="bi bi-trash"></i> Limpar
               </button>
             </div>
@@ -126,10 +169,12 @@
                   <th>Ação</th>
                 </tr>
               </thead>
+
               <tbody id="tabela-corpo">
                 <tr>
-                  <td colspan="7" class="carregando">
-                    <i class="bi bi-arrow-clockwise girando"></i> Carregando classificação...
+                  <td colspan="8" class="carregando">
+                    <i class="bi bi-arrow-clockwise girando"></i>
+                    Carregando classificação...
                   </td>
                 </tr>
               </tbody>
@@ -147,6 +192,7 @@
       class="nandev-watermark"
     >
       <div class="holographic-overlay"></div>
+
       <div class="geometric-particles" id="particles">
         <div class="particle"></div>
         <div class="particle"></div>
@@ -164,6 +210,7 @@
               <div class="inner-line horizontal-line line-3"></div>
             </div>
           </div>
+
           <div class="cube-face back">
             <div class="wireframe-lines">
               <div class="inner-line vertical-line v-line-1"></div>
@@ -171,23 +218,27 @@
               <div class="inner-line vertical-line v-line-3"></div>
             </div>
           </div>
+
           <div class="cube-face right">
             <div class="wireframe-lines">
               <div class="inner-line horizontal-line line-1"></div>
               <div class="inner-line horizontal-line line-3"></div>
             </div>
           </div>
+
           <div class="cube-face left">
             <div class="wireframe-lines">
               <div class="inner-line vertical-line v-line-1"></div>
               <div class="inner-line vertical-line v-line-3"></div>
             </div>
           </div>
+
           <div class="cube-face top">
             <div class="wireframe-lines">
               <div class="inner-line horizontal-line line-2"></div>
             </div>
           </div>
+
           <div class="cube-face bottom">
             <div class="wireframe-lines">
               <div class="inner-line vertical-line v-line-2"></div>
@@ -199,9 +250,11 @@
       <span class="watermark-text">
         Desenvolvido por <span class="watermark-highlight">Nan</span>dev
       </span>
+
       <span class="code-symbol">&lt;/&gt;</span>
     </a>
 
     <script type="module" src="ranking.js"></script>
   </body>
 </html>
+
