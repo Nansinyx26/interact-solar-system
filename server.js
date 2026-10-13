@@ -8,6 +8,15 @@
 import express from "express";
 import cors from "cors";
 import { MongoClient } from "mongodb";
+import { normalizarTurma, montarFiltroTurma, obterListaTurmas } from "./api/ranking.js";
+
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // .env opcional
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +31,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(express.static("web"));
 
 // URI do MongoDB Atlas obtida estritamente das variáveis de ambiente (.env / Render env)
 const MONGODB_URI = process.env.MONGODB_URI ?? "";
@@ -73,32 +83,53 @@ app.get("/api/ranking", async (req, res) => {
 
     const db = client.db("sistema_solar");
     const colecao = db.collection("ranking");
+    const turmaFiltro = String(req.query.turma ?? "").trim();
     const serieFiltro = String(req.query.serie ?? "").trim();
-    const limite = Math.min(Math.max(parseInt(req.query.limit ?? "50", 10), 1), 100);
+    const salaFiltro = String(req.query.sala ?? "").trim();
+    const limite = Math.min(Math.max(parseInt(req.query.limit ?? "100", 10), 1), 200);
 
-    const filtro = {};
-    if (serieFiltro && serieFiltro !== "Todas") {
-      filtro.serie = serieFiltro;
-    }
+    const filtro = montarFiltroTurma(turmaFiltro, serieFiltro, salaFiltro);
 
-    const resultados = await colecao
-      .find(filtro)
-      .sort({ pontuacao: -1, tempoSegundos: 1, timestamp: -1 })
-      .limit(limite)
-      .toArray();
+    const [resultados, turmasCadastradas] = await Promise.all([
+      colecao
+        .find(filtro)
+        .sort({ pontuacao: -1, tempoSegundos: 1, timestamp: -1 })
+        .limit(limite)
+        .toArray(),
+      obterListaTurmas(colecao)
+    ]);
 
-    const formatados = resultados.map((item, index) => ({
-      posicao: index + 1,
-      id: item._id.toString(),
-      nome: item.nome ?? "Anônimo",
-      serie: item.serie ?? "Geral",
-      pontuacao: item.pontuacao ?? 0,
-      acertos: item.acertos ?? 0,
-      tempoSegundos: item.tempoSegundos ?? 0,
-      data_hora: item.data_hora ?? new Date().toISOString(),
-    }));
+    const formatados = resultados.map((item, index) => {
+      const turmaCalculada = normalizarTurma(item.serie, item.sala, item.turma);
+      const acertos = Math.max(0, parseInt(item.acertos ?? 0, 10));
+      const totalQuestoes = 10;
+      const erros = Math.max(0, totalQuestoes - acertos);
 
-    return res.status(200).json({ ok: true, ranking: formatados });
+      return {
+        posicao: index + 1,
+        id: item._id.toString(),
+        nome: item.nome ?? "Anônimo",
+        turma: turmaCalculada,
+        serie: item.serie ?? "Geral",
+        sala: item.sala ?? "—",
+        quiz: item.quiz ?? "Quiz do Sistema Solar",
+        pontuacao: item.pontuacao ?? 0,
+        acertos,
+        totalQuestoes,
+        erros,
+        tempoSegundos: item.tempoSegundos ?? 0,
+        data_hora: item.data_hora ?? new Date().toISOString(),
+        timestamp: item.timestamp ?? (item.data_hora ? new Date(item.data_hora).getTime() / 1000 : 0),
+      };
+    });
+
+    return res.status(200).json({
+      ok: true,
+      ranking: formatados,
+      turmas: turmasCadastradas,
+      total: formatados.length,
+      turmaSelecionada: turmaFiltro || serieFiltro || "Todas",
+    });
   } catch (erro) {
     console.error("[Render Server] Erro ao buscar ranking:", erro);
     return res.status(500).json({ erro: "Falha ao obter ranking." });
@@ -117,6 +148,8 @@ app.post("/api/ranking", async (req, res) => {
     const dados = req.body ?? {};
     const nome = String(dados.nome ?? "").trim().slice(0, 50);
     const serie = String(dados.serie ?? "Geral").trim().slice(0, 30);
+    const sala = String(dados.sala ?? "").trim().slice(0, 20);
+    const quiz = String(dados.quiz ?? "Quiz do Sistema Solar").trim().slice(0, 60);
     const pontuacao = Math.max(0, parseInt(dados.pontuacao ?? 0, 10));
     const acertos = Math.max(0, parseInt(dados.acertos ?? 0, 10));
     const tempoSegundos = Math.max(0, parseFloat(dados.tempoSegundos ?? 0));
@@ -125,11 +158,20 @@ app.post("/api/ranking", async (req, res) => {
       return res.status(400).json({ erro: "Informe o nome do aluno." });
     }
 
+    const turmaInformada = dados.turma ? String(dados.turma).trim() : null;
+    const turmaCalculada = turmaInformada
+      ? normalizarTurma(null, null, turmaInformada)
+      : normalizarTurma(serie, sala);
+
     const doc = {
       nome,
       serie: serie || "Geral",
+      sala: sala || "Única",
+      turma: turmaCalculada,
+      quiz: quiz || "Quiz do Sistema Solar",
       pontuacao,
       acertos,
+      totalQuestoes: 10,
       tempoSegundos,
       data_hora: new Date(),
       timestamp: Date.now() / 1000,
@@ -140,6 +182,7 @@ app.post("/api/ranking", async (req, res) => {
       ok: true,
       mensagem: "Resultado salvo no ranking com sucesso!",
       id: resultado.insertedId.toString(),
+      turma: turmaCalculada,
     });
   } catch (erro) {
     console.error("[Render Server] Erro ao salvar ranking:", erro);

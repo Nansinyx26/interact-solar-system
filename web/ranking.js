@@ -2,18 +2,36 @@ import { URL_SERVIDOR_RENDER } from "./config.js";
 
 const ENDPOINT_RANKING = "/api/ranking";
 let dadosRankingCompletos = [];
+let turmaAtual = "Todas";
+let turmasCarregadas = false;
 
 document.addEventListener("DOMContentLoaded", () => {
-  carregarRanking();
-
   const filtroSerie = document.getElementById("filtro-serie");
   const buscaNome = document.getElementById("busca-nome");
   const formRanking = document.getElementById("form-ranking");
   const btnLimpar = document.getElementById("btn-limpar-ranking");
 
+  const params = new URLSearchParams(window.location.search);
+  const turmaParam = params.get("turma") || params.get("serie") || "Todas";
+  turmaAtual = turmaParam;
+  if (filtroSerie) {
+    filtroSerie.value = turmaAtual;
+  }
+
+  carregarRanking(turmaAtual);
+
   if (filtroSerie) {
     filtroSerie.addEventListener("change", () => {
-      carregarRanking(filtroSerie.value);
+      turmaAtual = filtroSerie.value;
+      if (buscaNome) buscaNome.value = "";
+      const url = new URL(window.location);
+      if (turmaAtual && turmaAtual !== "Todas") {
+        url.searchParams.set("turma", turmaAtual);
+      } else {
+        url.searchParams.delete("turma");
+      }
+      window.history.replaceState({}, "", url);
+      carregarRanking(turmaAtual);
     });
   }
 
@@ -58,24 +76,26 @@ document.addEventListener("DOMContentLoaded", () => {
 /**
  * Busca dados do ranking via API (/api/ranking com fallback para Render)
  */
-async function carregarRanking(serie = "Todas") {
+async function carregarRanking(turma = "Todas") {
+  turmaAtual = turma;
   const corpoTabela = document.getElementById("tabela-corpo");
   if (corpoTabela) {
-    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando"><i class="bi bi-arrow-clockwise girando"></i> Carregando classificação...</td></tr>`;
+    corpoTabela.innerHTML = `<tr><td colspan="8" class="carregando"><i class="bi bi-arrow-clockwise girando"></i> Carregando classificação...</td></tr>`;
   }
 
   let url = `${ENDPOINT_RANKING}?limit=100`;
-  if (serie && serie !== "Todas") {
-    url += `&serie=${encodeURIComponent(serie)}`;
+  if (turma && turma !== "Todas") {
+    url += `&turma=${encodeURIComponent(turma)}`;
   }
 
   let ranking = [];
+  let listaTurmas = [];
 
   try {
     let resposta = await fetch(url);
     if (!resposta.ok && URL_SERVIDOR_RENDER) {
       const urlRender = `${URL_SERVIDOR_RENDER}/api/ranking?limit=100${
-        serie && serie !== "Todas" ? `&serie=${encodeURIComponent(serie)}` : ""
+        turma && turma !== "Todas" ? `&turma=${encodeURIComponent(turma)}` : ""
       }`;
       resposta = await fetch(urlRender);
     }
@@ -83,14 +103,43 @@ async function carregarRanking(serie = "Todas") {
     if (resposta.ok) {
       const json = await resposta.json();
       ranking = json.ranking ?? [];
+      listaTurmas = json.turmas ?? [];
     }
   } catch (erro) {
     console.error("Falha ao buscar ranking:", erro);
   }
 
   dadosRankingCompletos = ranking;
+
+  // Atualiza opções do select de turmas se recebido do backend
+  if (listaTurmas.length > 0 && !turmasCarregadas) {
+    atualizarSelectTurmas(listaTurmas, turma);
+    turmasCarregadas = true;
+  }
+
   atualizarPodio(ranking);
-  renderizarTabela(ranking);
+  renderizarTabela(ranking, turma);
+}
+
+/**
+ * Popula dinamicamente o seletor com todas as turmas cadastradas
+ */
+function atualizarSelectTurmas(turmas, selecionada) {
+  const select = document.getElementById("filtro-serie");
+  if (!select) return;
+
+  const valorAnterior = selecionada || select.value || "Todas";
+
+  const opcoesHtml = [
+    '<option value="Todas">Todas as salas</option>',
+    ...turmas.map((t) => {
+      const sufixoContagem = t.totalRespostas > 0 ? ` (${t.totalRespostas})` : "";
+      return `<option value="${escaparHtml(t.id)}">${escaparHtml(t.nome)}${sufixoContagem}</option>`;
+    }),
+  ].join("");
+
+  select.innerHTML = opcoesHtml;
+  select.value = valorAnterior;
 }
 
 /**
@@ -100,7 +149,7 @@ function atualizarPodio(ranking) {
   const containerPodio = document.getElementById("podio");
   if (!containerPodio) return;
 
-  if (ranking.length === 0) {
+  if (!ranking || ranking.length === 0) {
     containerPodio.hidden = true;
     return;
   }
@@ -114,9 +163,13 @@ function atualizarPodio(ranking) {
 
     if (item) {
       el.style.display = "block";
-      el.querySelector(".nome-aluno").textContent = item.nome;
-      el.querySelector(".serie-aluno").textContent = item.serie;
-      el.querySelector(".pontos-aluno").textContent = `${item.pontuacao} pts`;
+      const elNome = el.querySelector(".nome-aluno");
+      const elSerie = el.querySelector(".serie-aluno");
+      const elPontos = el.querySelector(".pontos-aluno");
+
+      if (elNome) elNome.textContent = item.nome;
+      if (elSerie) elSerie.textContent = item.turma || item.serie || "—";
+      if (elPontos) elPontos.textContent = `${item.pontuacao} pts`;
     } else {
       el.style.display = "none";
     }
@@ -124,20 +177,45 @@ function atualizarPodio(ranking) {
 }
 
 /**
+ * Formata duração em segundos para string amigável (ex: "1m 15s" ou "45s")
+ */
+function formatarTempo(segundos) {
+  const segs = Math.max(0, Math.round(Number(segundos) || 0));
+  if (segs === 0) return "—";
+  const min = Math.floor(segs / 60);
+  const resto = segs % 60;
+  if (min > 0) {
+    return `${min}m ${resto}s`;
+  }
+  return `${resto}s`;
+}
+
+/**
  * Renderiza as linhas da tabela de classificação
  */
-function renderizarTabela(lista) {
+function renderizarTabela(lista, turma = turmaAtual) {
   const corpoTabela = document.getElementById("tabela-corpo");
   if (!corpoTabela) return;
 
-  if (lista.length === 0) {
-    corpoTabela.innerHTML = `<tr><td colspan="7" class="carregando"><i class="bi bi-info-circle"></i> Nenhum resultado registrado ainda.</td></tr>`;
+  if (!lista || lista.length === 0) {
+    const mensagemVazia =
+      turma && turma !== "Todas"
+        ? "Nenhum aluno desta turma respondeu aos quizzes ainda."
+        : "Nenhum resultado registrado ainda.";
+
+    corpoTabela.innerHTML = `
+      <tr>
+        <td colspan="8" class="carregando">
+          <i class="bi bi-info-circle"></i> ${mensagemVazia}
+        </td>
+      </tr>
+    `;
     return;
   }
 
   const html = lista
     .map((item, index) => {
-      const pos = index + 1;
+      const pos = item.posicao ?? index + 1;
       let posTag = `<span class="posicao-tag">${pos}</span>`;
       if (pos === 1) posTag = `<span class="posicao-tag pos-1"><i class="bi bi-trophy-fill"></i> 1</span>`;
       if (pos === 2) posTag = `<span class="posicao-tag pos-2"><i class="bi bi-award-fill"></i> 2</span>`;
@@ -147,20 +225,58 @@ function renderizarTabela(lista) {
         ? new Date(item.data_hora).toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           })
         : "—";
 
+      const totalQuestoes = item.totalQuestoes ?? 10;
+      const acertos = item.acertos ?? 0;
+      const erros = item.erros ?? Math.max(0, totalQuestoes - acertos);
+      const turmaExibicao = item.turma || (item.serie && item.sala ? `${item.serie} - ${item.sala}` : item.serie || "—");
+      const quizExibicao = item.quiz || "Quiz do Sistema Solar";
+      const tempoFormatado = formatarTempo(item.tempoSegundos);
+
       return `
       <tr>
         <td>${posTag}</td>
-        <td><strong>${escaparHtml(item.nome)}</strong></td>
-        <td><span class="serie-aluno">${escaparHtml(item.serie)}</span></td>
-        <td><span class="sala-aluno">${escaparHtml(item.sala ?? "—")}</span></td>
-        <td><strong>${item.pontuacao} pts</strong></td>
-        <td>${item.acertos} / 10</td>
-        <td><small style="color: #a1a1aa;">${dataFormatada}</small></td>
+        <td>
+          <div class="aluno-info">
+            <strong class="aluno-nome">${escaparHtml(item.nome)}</strong>
+          </div>
+        </td>
+        <td>
+          <span class="turma-badge">${escaparHtml(turmaExibicao)}</span>
+        </td>
+        <td>
+          <span class="quiz-badge" title="${escaparHtml(quizExibicao)}">
+            <i class="bi bi-journal-check"></i> ${escaparHtml(quizExibicao)}
+          </span>
+        </td>
+        <td>
+          <strong class="pontuacao-valor">${item.pontuacao} pts</strong>
+        </td>
+        <td>
+          <div class="desempenho-col">
+            <span class="acertos-tag">
+              <i class="bi bi-check-circle-fill"></i> ${acertos}/${totalQuestoes} acertos
+            </span>
+            <span class="erros-tag">
+              <i class="bi bi-x-circle-fill"></i> ${erros} erro${erros === 1 ? "" : "s"}
+            </span>
+            ${
+              tempoFormatado !== "—"
+                ? `<span class="tempo-tag"><i class="bi bi-stopwatch"></i> ${tempoFormatado}</span>`
+                : ""
+            }
+          </div>
+        </td>
+        <td>
+          <small class="data-hora-texto">
+            <i class="bi bi-calendar3"></i> ${dataFormatada}
+          </small>
+        </td>
         <td>
           <button type="button" class="btn-excluir-item" data-id="${item.id}" title="Apagar este registro">
             <i class="bi bi-trash"></i> Excluir
@@ -173,7 +289,7 @@ function renderizarTabela(lista) {
 
   corpoTabela.innerHTML = html;
 
-  // Associa manipuladores para os botões de excluir item individual
+  // Manipuladores de exclusão individual
   corpoTabela.querySelectorAll(".btn-excluir-item").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id;
@@ -188,15 +304,27 @@ function renderizarTabela(lista) {
 function filtrarETabelar(termoBusca) {
   const termo = termoBusca.toLowerCase().trim();
   if (!termo) {
-    renderizarTabela(dadosRankingCompletos);
+    renderizarTabela(dadosRankingCompletos, turmaAtual);
     return;
   }
 
   const filtrados = dadosRankingCompletos.filter((item) =>
-    item.nome.toLowerCase().includes(termo)
+    (item.nome || "").toLowerCase().includes(termo)
   );
 
-  renderizarTabela(filtrados);
+  const corpoTabela = document.getElementById("tabela-corpo");
+  if (filtrados.length === 0 && corpoTabela) {
+    corpoTabela.innerHTML = `
+      <tr>
+        <td colspan="8" class="carregando">
+          <i class="bi bi-search"></i> Nenhum aluno encontrado com "${escaparHtml(termo)}".
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  renderizarTabela(filtrados, turmaAtual);
 }
 
 /**
@@ -208,6 +336,7 @@ async function cadastrarResultado(form) {
 
   const nome = form.nome.value.trim();
   const serie = form.serie.value;
+  const sala = form.sala?.value || "Única";
   const pontuacao = parseInt(form.pontuacao.value, 10);
   const acertos = parseInt(form.acertos.value, 10);
 
@@ -216,7 +345,15 @@ async function cadastrarResultado(form) {
   btnSalvar.disabled = true;
   btnSalvar.innerHTML = `<i class="bi bi-arrow-clockwise girando"></i> Salvando...`;
 
-  const payload = { nome, serie, pontuacao, acertos, tempoSegundos: 0 };
+  const payload = {
+    nome,
+    serie,
+    sala,
+    quiz: "Quiz do Sistema Solar",
+    pontuacao,
+    acertos,
+    tempoSegundos: 0,
+  };
 
   try {
     let resposta = await fetch(ENDPOINT_RANKING, {
@@ -239,8 +376,7 @@ async function cadastrarResultado(form) {
       form.reset();
       form.pontuacao.value = "100";
       form.acertos.value = "10";
-      const serieFiltro = document.getElementById("filtro-serie")?.value ?? "Todas";
-      await carregarRanking(serieFiltro);
+      await carregarRanking(turmaAtual);
     } else {
       throw new Error(`HTTP ${resposta.status}`);
     }
@@ -297,8 +433,7 @@ async function apagarRegistros(idItem = null, limparTudo = false) {
 
     if (resposta.ok) {
       alert("Exclusão realizada com sucesso!");
-      const serieFiltro = document.getElementById("filtro-serie")?.value ?? "Todas";
-      await carregarRanking(serieFiltro);
+      await carregarRanking(turmaAtual);
     } else {
       const json = await resposta.json().catch(() => ({}));
       alert(`Falha ao excluir: ${json.erro || "Código de autorização inválido."}`);

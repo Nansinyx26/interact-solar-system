@@ -960,5 +960,233 @@ html.tema-claro .carregando {
 
 .tabela-ranking {
   width: 100%;
-  min-width: 850px;
+  min-width: 820px;
+}
+
+/* ==========================================================================
+   ESTILOS DE TURMAS, QUIZZES E DESEMPENHO (RESPONSIVO & TEMAS)
+   ========================================================================== */
+
+.aluno-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aluno-nome {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+html.tema-claro .aluno-nome {
+  color: #111827;
+}
+
+/* Badge estilizado da Turma */
+.turma-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f4f4f5;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+html.tema-claro .turma-badge {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1f2937;
+}
+
+/* Badge do Quiz */
+.quiz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d4d4d8;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+html.tema-claro .quiz-badge {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+/* Valor da pontuação */
+.pontuacao-valor {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+html.tema-claro .pontuacao-valor {
+  color: #111827;
+}
+
+/* Coluna de Desempenho */
+.desempenho-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.acertos-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #4ade80;
+  font-weight: 600;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+html.tema-claro .acertos-tag {
+  color: #15803d;
+}
+
+.erros-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f87171;
+  font-weight: 500;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+html.tema-claro .erros-tag {
+  color: #b91c1c;
+}
+
+.tempo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #a1a1aa;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+html.tema-claro .tempo-tag {
+  color: #6b7280;
+}
+
+.data-hora-texto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #a1a1aa;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+html.tema-claro .data-hora-texto {
+  color: #6b7280;
+}
+
+/* ==========================================================================
+   MELHORIAS DE RESPONSIVIDADE (MOBILE & TABLET & DESKTOP)
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .filtros-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .grupo-filtro {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .grupo-filtro select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .grupo-busca {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .input-busca-wrapper {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .input-busca-wrapper input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .ranking-container {
+    padding: 0 10px;
+    margin-top: 16px;
+  }
+
+  .cabecalho-ranking h1 {
+    font-size: 1.4rem;
+  }
+
+  .cabecalho-ranking p {
+    font-size: 0.88rem;
+  }
+
+  .grupo-filtro {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .grupo-busca {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .btn-apagar-tudo {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cartao-tabela {
+    padding: 14px 10px;
+  }
+
+  .tabela-wrapper {
+    border-radius: 8px;
+  }
+
+  .tabela-ranking th,
+  .tabela-ranking td {
+    padding: 10px 8px;
+    font-size: 0.82rem;
+  }
 }

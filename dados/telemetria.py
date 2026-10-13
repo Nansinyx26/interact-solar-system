@@ -166,14 +166,16 @@ class TelemetriaMongo:
             if not self._conectar():
                 return
             try:
+                serie_limpa = serie.replace("Ano", "").strip()
+                sala_limpa = sala.strip()
+                turma_calculada = f"{serie_limpa} {sala_limpa}".strip() if sala_limpa not in ("Única", "unica", "") else (serie.strip() or "Geral")
+
                 doc = {
-                    # Os mesmos limites de tamanho e os mesmos padrões da
-                    # api/ranking.js: os dois lados escrevem na MESMA coleção,
-                    # e um valor truncado de forma diferente vira outra linha
-                    # na classificação.
                     "nome": nome.strip()[:50],
                     "serie": serie.strip()[:30] or "Geral",
                     "sala": sala.strip()[:20] or "Única",
+                    "turma": turma_calculada,
+                    "quiz": "Quiz do Sistema Solar",
                     "pontuacao": max(0, pontuacao),
                     "acertos": max(0, acertos),
                     "tempoSegundos": max(0.0, tempo_segundos),

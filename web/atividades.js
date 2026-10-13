@@ -285,12 +285,22 @@ async function enviarParaRanking() {
   btn.disabled = true;
   btn.textContent = "Enviando...";
 
+  const serieLimpa = (estadoQuiz.serieAluno || "").replace(/Ano/i, "").trim();
+  const salaLimpa = (estadoQuiz.salaAluno || "").trim();
+  const turmaFormatada =
+    salaLimpa && salaLimpa !== "Única" && salaLimpa !== "unica"
+      ? `${serieLimpa} ${salaLimpa}`.trim()
+      : estadoQuiz.serieAluno || "Geral";
+
   const payload = {
     nome: estadoQuiz.nomeAluno,
     serie: estadoQuiz.serieAluno,
     sala: estadoQuiz.salaAluno,
+    turma: turmaFormatada,
+    quiz: "Quiz do Sistema Solar",
     pontuacao,
     acertos,
+    totalQuestoes: QUESTOES.length,
     tempoSegundos: estadoQuiz.tempoTotalSegundos,
   };
 

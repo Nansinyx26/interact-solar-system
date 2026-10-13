@@ -121,15 +121,31 @@
           <div class="filtros-bar">
             <div class="grupo-filtro">
               <label for="filtro-serie">
-                <i class="bi bi-funnel"></i> Filtrar:
+                <i class="bi bi-funnel"></i> Turma:
               </label>
 
-              <select id="filtro-serie">
-                <option value="Todas">Todas as Séries</option>
-                <option value="5º Ano A">5º Ano A</option>
-                <option value="5º Ano B">5º Ano B</option>
-                <option value="5º Ano C">5º Ano C</option>
-                <option value="5º Ano D">5º Ano D</option>
+              <select id="filtro-serie" aria-label="Filtrar resultados por turma">
+                <option value="Todas">Todas as salas</option>
+                <option value="1º A">1º A</option>
+                <option value="1º B">1º B</option>
+                <option value="1º C">1º C</option>
+                <option value="1º D">1º D</option>
+                <option value="2º A">2º A</option>
+                <option value="2º B">2º B</option>
+                <option value="2º C">2º C</option>
+                <option value="2º D">2º D</option>
+                <option value="3º A">3º A</option>
+                <option value="3º B">3º B</option>
+                <option value="3º C">3º C</option>
+                <option value="3º D">3º D</option>
+                <option value="4º A">4º A</option>
+                <option value="4º B">4º B</option>
+                <option value="4º C">4º C</option>
+                <option value="4º D">4º D</option>
+                <option value="5º A">5º A</option>
+                <option value="5º B">5º B</option>
+                <option value="5º C">5º C</option>
+                <option value="5º D">5º D</option>
                 <option value="Geral">Geral / Outro</option>
               </select>
             </div>
@@ -141,6 +157,7 @@
                   type="search"
                   id="busca-nome"
                   placeholder="Buscar por aluno..."
+                  aria-label="Buscar aluno pelo nome"
                 />
               </div>
 
@@ -161,11 +178,11 @@
                 <tr>
                   <th>Posição</th>
                   <th>Aluno(a)</th>
-                  <th>Série</th>
-                  <th>Sala</th>
+                  <th>Turma</th>
+                  <th>Quiz</th>
                   <th>Pontuação</th>
-                  <th>Acertos</th>
-                  <th>Data</th>
+                  <th>Desempenho</th>
+                  <th>Data e Horário</th>
                   <th>Ação</th>
                 </tr>
               </thead>
